@@ -9,3 +9,5 @@ NODE_CLASS_MAPPINGS = {
 NODE_DISPLAY_NAME_MAPPINGS = {
     "LoadImageFromPath": "Load Image From Path"
 }
+
+print("\033[34mIb Custom Nodes: \033[92mLoaded\033[0m")
