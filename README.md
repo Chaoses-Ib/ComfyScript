@@ -1,4 +1,13 @@
 # ComfyUI_Ib_CustomNodes
+- ComfyScript
+
+  Translate ComfyUI's workflows to human-readable Python scripts.
+
+  CLI:
+  ```sh
+  python -m script from-workflow "D:\workflow.json"
+  ```
+
 - Load Image From Path
 
   ComfyUI's built-in `Load Image` node can only load uploaded images, which produces duplicated files in the input directory and cannot reload the image when the source file is changed. `Load Image From Path` instead loads the image from the source path and does not have such problems.
