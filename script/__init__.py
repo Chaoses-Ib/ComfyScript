@@ -3,6 +3,7 @@ from types import SimpleNamespace
 import networkx as nx
 
 from . import astutil
+from . import passes
 
 class WorkflowToScriptTranspiler:
     def __init__(self, workflow: str):
@@ -44,6 +45,36 @@ class WorkflowToScriptTranspiler:
         v = node['v']
         # print(v.id)
 
+        class_id = self._declare_id(astutil.str_to_class_id(v.type))
+        
+        # TODO: Fix order of inputs
+        args = []
+        if hasattr(v, 'inputs'):
+            v.inputs.sort(key=lambda input: G.edges[links[input.link]]['v_slot'])
+            for input in v.inputs:
+                (node_u, node_v, link_id) = links[input.link]
+                edge = G.edges[node_u, node_v, link_id]
+
+                u = G.nodes[node_u]
+                u_slot = edge['u_slot']
+
+                args.append({
+                    'exp': u['output_ids'][u_slot],
+                    'type': input.type,
+                    'move': len(u['v'].outputs[u_slot].links) == 1
+                })
+        if hasattr(v, 'widgets_values'):
+            # https://github.com/comfyanonymous/ComfyUI/blob/2ef459b1d4d627929c84d11e5e0cbe3ded9c9f48/web/extensions/core/widgetInputs.js#L326-L375
+            for value in v.widgets_values:
+                # `value is str` doesn't work
+                if type(value) is str:
+                    args.append({'exp': astutil.to_str(value)})
+                else:
+                    # int, float
+                    args.append({'exp': str(value)})
+
+        args_of_any_type = [arg for arg in args if arg.get('type', None) == '*']
+
         vars = []
         vars_used = False
         if hasattr(v, 'outputs'):
@@ -53,36 +84,26 @@ class WorkflowToScriptTranspiler:
             for output in v.outputs:
                 # Outputs used before have slot_index, but no links.
                 if hasattr(output, 'slot_index') and len(output.links) > 0:
-                    id = self._assign_id(astutil.str_to_var_id(
-                        getattr(v, 'title', '') + output.name if output.name != '' else output.type
-                    ))
+                    # Variable reuse: If an input is only used by current node, and current node outputs a same type output, then the output should take the input's var name.
+                    # e.g. Reroute, TomePatchModel
+                    
+                    args_of_same_type = [arg for arg in args if arg.get('type', None) == output.type]
+                    if len(args_of_same_type) == 1 and args_of_same_type[0]['move']:
+                        id = args_of_same_type[0]['exp']
+                    elif len(v.outputs) == 1 and len(args_of_any_type) == 1:
+                        # e.g. Reroute
+                        id = args_of_any_type[0]['exp']
+                    else:
+                        id = self._assign_id(astutil.str_to_var_id(
+                            getattr(v, 'title', '') + output.name if output.name != '' else output.type
+                        ))
+
                     node.setdefault('output_ids', {})[output.slot_index] = id
+
                     vars_used = True
                 else:
                     id = '_'
                 vars.append(id)
-        
-        # TODO: Fix order of inputs
-        args = []
-        if hasattr(v, 'inputs'):
-            v.inputs.sort(key=lambda input: G.edges[links[input.link]]['v_slot'])
-            for input in v.inputs:
-                (node_u, node_v, link_id) = links[input.link]
-                edge = G.edges[node_u, node_v, link_id]
-                args.append(G.nodes[node_u]['output_ids'][edge['u_slot']])
-        if hasattr(v, 'widgets_values'):
-            # https://github.com/comfyanonymous/ComfyUI/blob/2ef459b1d4d627929c84d11e5e0cbe3ded9c9f48/web/extensions/core/widgetInputs.js#L326-L375
-            for value in v.widgets_values:
-                # `value is str` doesn't work
-                if type(value) is str:
-                    args.append(astutil.to_str(value))
-                else:
-                    # int, float
-                    args.append(str(value))
-        # TODO: If an input is only used by current node, and current node outputs a same type node, then the output should take the input's var name.
-        # e.g. Reroute, TomePatchModel
-
-        class_id = self._declare_id(astutil.str_to_class_id(v.type))
 
         c = ''
         # TODO: Dead code elimination
@@ -90,7 +111,9 @@ class WorkflowToScriptTranspiler:
             c += '# '
         if len(vars) != 0:
             c += f"{astutil.to_tuple(vars)} = "
-        c += f"{class_id}({', '.join(args)})\n"
+        c += f"{class_id}({', '.join(arg['exp'] for arg in args)})\n"
+        
+        c = passes.reroute_elimination(v, args, vars, c)
         return c
     
     def _topological_generations_ordered_dfs(self):
