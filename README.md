@@ -3,10 +3,29 @@
 
   Translate ComfyUI's workflows to human-readable Python scripts.
 
+  For example, here is a workflow in ComfyUI:
+
+  ![](images/README/ComfyUI.png)
+
+  Translate it to ComfyScript:
+  ```python
+  model, clip, vae = CheckpointLoaderSimple('v1-5-pruned-emaonly.ckpt')
+  conditioning = CLIPTextEncode('beautiful scenery nature glass bottle landscape, , purple galaxy bottle,', clip)
+  conditioning2 = CLIPTextEncode('text, watermark', clip)
+  latent = EmptyLatentImage(512, 512, 1)
+  latent = KSampler(model, 156680208700286, 20, 8, 'euler', 'normal', conditioning, conditioning2, latent, 1)
+  image = VAEDecode(latent, vae)
+  SaveImage(image, 'ComfyUI')
+  ```
+
+  When installed, `SaveImage` will be hooked to automatically save the script as images' metadata.
+
+  <!--
   CLI:
   ```sh
   python -m script from-workflow "D:\workflow.json"
   ```
+  -->
 
 - Load Image From Path
 
