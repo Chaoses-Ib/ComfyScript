@@ -62,6 +62,7 @@ class WorkflowToScriptTranspiler:
                     id = '_'
                 vars.append(id)
         
+        # TODO: Fix order of inputs
         args = []
         if hasattr(v, 'inputs'):
             v.inputs.sort(key=lambda input: G.edges[links[input.link]]['v_slot'])
@@ -92,16 +93,48 @@ class WorkflowToScriptTranspiler:
         c += f"{class_id}({', '.join(args)})\n"
         return c
     
+    def _topological_generations_ordered_dfs(self):
+        G = self.G
+        links = self.links
+
+        zero_outdegree = [v for v, d in G.out_degree() if d == 0]
+
+        # Coordinate system:
+        # O → X
+        # ↓
+        # Y
+        # The most top-left node has the smallest (x + y).
+        zero_outdegree.sort(key=lambda v: sum(G.nodes[v]['v'].pos))
+
+        visited = set()
+        def visit(node):
+            if node in visited:
+                return
+            visited.add(node)
+
+            # inputs are sorted by slot_index
+            v = G.nodes[node]['v']
+            if hasattr(v, 'inputs'):
+                for input in v.inputs:
+                    (node_u, _node_v, _link_id) = links[input.link]
+                    yield from visit(node_u)
+            
+            yield node
+        
+        for v in zero_outdegree:
+            yield from visit(v)
+    
     def to_script(self) -> str:
         # From leaves to roots or roots to leaves?
         # ComfyUI now executes workflows from leaves to roots, but there is a PR to change this to from roots to leaves with topological sort: https://github.com/comfyanonymous/ComfyUI/pull/931
         # To minimize future maintenance cost and suit the mental model better, we choose **from roots to leaves** too.
 
-        self.ids = {}
+        # TODO: Allow specifying end nodes
 
+        self.ids = {}
         c = ''
-        # TODO: Human-readable topological sort
-        for node in nx.topological_sort(self.G):
+        for node in self._topological_generations_ordered_dfs():
+            # TODO: Add line breaks if a node has multiple inputs
             c += self._node_to_assign_st(self.G.nodes[node])
         return c
     
