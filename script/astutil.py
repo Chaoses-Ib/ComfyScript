@@ -54,10 +54,14 @@ def str_to_const_id(s: str) -> str:
     return id_to_upper(str_to_raw_id(s))
 
 def to_str(s: str) -> str:
+    c = ''
+    if '\\' in s:
+        c += 'r'
     if '\n' not in s:
-        return f"'{s}'"
+        c += f"'{s}'"
     else:
-        return f"'''{s}'''"
+        c += f"'''{s}'''"
+    return c
 
 def to_tuple(t: list) -> str:
     if len(t) == 1:
