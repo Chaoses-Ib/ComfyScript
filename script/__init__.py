@@ -1,3 +1,4 @@
+from typing import Union
 import json
 from types import SimpleNamespace
 import networkx as nx
@@ -5,8 +6,12 @@ import networkx as nx
 from . import astutil
 from . import passes
 
+import nodes
+
 class WorkflowToScriptTranspiler:
-    def __init__(self, workflow: str):
+    def __init__(self, workflow: Union[str, dict]):
+        if type(workflow) is not str:
+            workflow = json.dumps(workflow)
         workflow = json.loads(workflow, object_hook=lambda d: SimpleNamespace(**d))
         assert workflow.version == 0.4
 
@@ -17,8 +22,8 @@ class WorkflowToScriptTranspiler:
         
         links = {}
         for link in workflow.links:
-            (id, u, u_slot, v, v_slot, type) = link
-            G.add_edge(u, v, key=id, u_slot=u_slot, v_slot=v_slot, type=type)
+            (id, u, u_slot, v, v_slot, value_type) = link
+            G.add_edge(u, v, key=id, u_slot=u_slot, v_slot=v_slot, type=value_type)
             links[id] = (u, v, id)
         
         self.G = G
@@ -37,6 +42,40 @@ class WorkflowToScriptTranspiler:
             name = f'{name}{i}'
         self.ids[name] = {}
         return name
+    
+    def _get_widget_value_names(self, node_type: str) -> list[str]:
+        widget_value_names = []
+        input_types = nodes.NODE_CLASS_MAPPINGS[node_type].INPUT_TYPES()
+        for group in 'required', 'optional':
+            group: dict = input_types.get(group)
+            if group is None:
+                continue
+            for name, config in group.items():
+                # str | list[str]
+                # https://github.com/comfyanonymous/ComfyUI/blob/4103f7fad5be7e22ed61843166b72b7c41671d75/web/scripts/widgets.js
+                # TODO: IMAGEUPLOAD
+                if type(config[0]) != str or config[0] in ('INT', 'FLOAT', 'STRING', 'BOOLEAN'):
+                    widget_value_names.append(name)
+                    if name in ('seed', 'noise_seed') and config[0] == 'INT':
+                        # Naturally filtered out by _keyword_args_to_positional()
+                        widget_value_names.append('control_after_generate')
+        
+        # print(node_type, input_types, widget_value_names)
+        return widget_value_names
+    
+    def _keyword_args_to_positional(self, node_type: str, kwargs: dict) -> list:
+        args = []
+        input_types = nodes.NODE_CLASS_MAPPINGS[node_type].INPUT_TYPES()
+        # TODO: Keep optional group as kwargs?
+        # TODO: Keep as kwargs if there are values of the same type?
+        for group in 'required', 'optional':
+            group: dict = input_types.get(group)
+            if group is None:
+                continue
+            for name in group:
+                if value := kwargs.get(name):
+                    args.append(value)
+        return args
 
     def _node_to_assign_st(self, node):
         G = self.G
@@ -47,31 +86,40 @@ class WorkflowToScriptTranspiler:
 
         class_id = self._declare_id(astutil.str_to_class_id(v.type))
         
-        # TODO: **Fix order of inputs**
-        args = []
+        args = {}
+        # inputs can override widgets_values
+        if hasattr(v, 'widgets_values'):
+            # https://github.com/comfyanonymous/ComfyUI/blob/4103f7fad5be7e22ed61843166b72b7c41671d75/web/scripts/widgets.js
+            widget_value_names = self._get_widget_value_names(v.type)
+            for i, value in enumerate(v.widgets_values):
+                name = widget_value_names[i]
+                # `value is str` doesn't work
+                # TODO: BOOLEAN
+                if type(value) is str:
+                    args[name] = {'exp': astutil.to_str(value)}
+                else:
+                    # int, float
+                    args[name] = {'exp': str(value)}
         if hasattr(v, 'inputs'):
-            v.inputs.sort(key=lambda input: G.edges[links[input.link]]['v_slot'])
+            # If a node's output is not used, it is allowed to have dangling inputs, in which case the link is None.
+            # TODO: This breaks the order and arg positions.
+            v.inputs.sort(key=lambda input: G.edges[links[input.link]]['v_slot'] if input.link else 0xFFFFFFFF)
             for input in v.inputs:
+                if input.link is None:
+                    continue
+
                 (node_u, node_v, link_id) = links[input.link]
                 edge = G.edges[node_u, node_v, link_id]
 
                 u = G.nodes[node_u]
                 u_slot = edge['u_slot']
 
-                args.append({
+                args[input.name] = {
                     'exp': u['output_ids'][u_slot],
                     'type': input.type,
                     'move': len(u['v'].outputs[u_slot].links) == 1
-                })
-        if hasattr(v, 'widgets_values'):
-            # https://github.com/comfyanonymous/ComfyUI/blob/2ef459b1d4d627929c84d11e5e0cbe3ded9c9f48/web/extensions/core/widgetInputs.js#L326-L375
-            for value in v.widgets_values:
-                # `value is str` doesn't work
-                if type(value) is str:
-                    args.append({'exp': astutil.to_str(value)})
-                else:
-                    # int, float
-                    args.append({'exp': str(value)})
+                }
+        args = self._keyword_args_to_positional(v.type, args)
 
         args_of_any_type = [arg for arg in args if arg.get('type', None) == '*']
 
@@ -86,6 +134,12 @@ class WorkflowToScriptTranspiler:
                 if hasattr(output, 'slot_index') and len(output.links) > 0:
                     # Variable reuse: If an input is only used by current node, and current node outputs a same type output, then the output should take the input's var name.
                     # e.g. Reroute, CLIPSetLastLayer, TomePatchModel, CRLoadLoRA
+
+                    # TODO: Name resolution
+                    # 1. The name of the input that uses this output
+                    # 2. The name reused from the input that has the same type
+                    # 3. The type of the output
+                    # How to make this transitive?
                     
                     args_of_same_type = [arg for arg in args if arg.get('type', None) == output.type]
                     if len(args_of_same_type) == 1 and args_of_same_type[0]['move']:
@@ -140,8 +194,10 @@ class WorkflowToScriptTranspiler:
             v = G.nodes[node]['v']
             if hasattr(v, 'inputs'):
                 for input in v.inputs:
-                    (node_u, _node_v, _link_id) = links[input.link]
-                    yield from visit(node_u)
+                    # If a node's output is not used, it is allowed to have dangling inputs, in which case the link is None.
+                    if input.link is not None:
+                        (node_u, _node_v, _link_id) = links[input.link]
+                        yield from visit(node_u)
             
             yield node
         
