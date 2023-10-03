@@ -47,7 +47,7 @@ class WorkflowToScriptTranspiler:
 
         class_id = self._declare_id(astutil.str_to_class_id(v.type))
         
-        # TODO: Fix order of inputs
+        # TODO: **Fix order of inputs**
         args = []
         if hasattr(v, 'inputs'):
             v.inputs.sort(key=lambda input: G.edges[links[input.link]]['v_slot'])
@@ -85,7 +85,7 @@ class WorkflowToScriptTranspiler:
                 # Outputs used before have slot_index, but no links.
                 if hasattr(output, 'slot_index') and len(output.links) > 0:
                     # Variable reuse: If an input is only used by current node, and current node outputs a same type output, then the output should take the input's var name.
-                    # e.g. Reroute, TomePatchModel
+                    # e.g. Reroute, CLIPSetLastLayer, TomePatchModel, CRLoadLoRA
                     
                     args_of_same_type = [arg for arg in args if arg.get('type', None) == output.type]
                     if len(args_of_same_type) == 1 and args_of_same_type[0]['move']:
@@ -110,9 +110,10 @@ class WorkflowToScriptTranspiler:
         if len(vars) > 0 and not vars_used:
             c += '# '
         if len(vars) != 0:
-            c += f"{astutil.to_tuple(vars)} = "
+            c += f"{astutil.to_assign_target_list(vars)} = "
         c += f"{class_id}({', '.join(arg['exp'] for arg in args)})\n"
         
+        # TODO: PrimitiveNode elimination
         c = passes.reroute_elimination(v, args, vars, c)
         return c
     

@@ -63,11 +63,21 @@ def to_str(s: str) -> str:
         c += f"'''{s}'''"
     return c
 
-def to_tuple(t: list) -> str:
-    if len(t) == 1:
-        return f'{t[0]}'
+def to_assign_target_list(t: list, fold_trailing_underscores: bool = False) -> str:
+    if fold_trailing_underscores:
+        trailing_underscores = 0
+        for i in range(len(t)):
+            if t[i] == '_':
+                trailing_underscores += 1
+            else:
+                break
+        
+        if trailing_underscores < 2:
+            return f"{', '.join(t)}"
+        else:
+            return f"{', '.join(t)}, *_"
     else:
-        return f"({', '.join(t)})"
+        return f"{', '.join(t)}"
 
 __all__ = [
     # 'is_xid_start',
@@ -82,5 +92,5 @@ __all__ = [
     'str_to_class_id',
     'str_to_const_id',
     'to_str',
-    'to_tuple',
+    'to_assign_target_list',
 ]
