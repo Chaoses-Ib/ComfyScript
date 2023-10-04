@@ -12,10 +12,14 @@ NODE_DISPLAY_NAME_MAPPINGS = {
 }
 
 def setup_script():
+    import sys
     import traceback
     
     import PIL
     import nodes
+
+    if sys.version_info < (3, 6):
+        print('Ib Custom Nodes: Python 3.6+ is required to preserve insertion order of input types.')
 
     pnginfo_add_text_original = PIL.PngImagePlugin.PngInfo.add_text
     def pnginfo_add_text_hook(self, key, value, zip=False):

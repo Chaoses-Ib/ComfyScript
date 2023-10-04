@@ -65,6 +65,7 @@ class WorkflowToScriptTranspiler:
     
     def _keyword_args_to_positional(self, node_type: str, kwargs: dict) -> list:
         args = []
+        # CPython 3.6+: Dictionaries preserve insertion order, meaning that keys will be produced in the same order they were added sequentially over the dictionary. (validated in setup_script())
         input_types = nodes.NODE_CLASS_MAPPINGS[node_type].INPUT_TYPES()
         # TODO: Keep optional group as kwargs?
         # TODO: Keep as kwargs if there are values of the same type?
