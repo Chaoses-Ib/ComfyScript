@@ -1,5 +1,8 @@
 import re
 
+# TODO: PrimitiveNode
+# TODO: Switch nodes: ModelMergeSimple, CRLoadLoRA, TomePatchModel, CLIPSetLastLayer, CRModelInputSwitch
+
 def reroute_elimination(v, args, vars, c):
     if v.type != 'Reroute':
         return c

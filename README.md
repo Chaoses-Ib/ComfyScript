@@ -66,11 +66,11 @@
 
   - Relative to the input directory:
   
-    `ComfyUI_00001_-assets\ComfyUI_00001_.png [output]`
+    `ComfyUI_00001_-assets\ComfyUI_00001_.png [input]`
 
   - Relative to the output directory:
   
-    `ComfyUI_00001_-assets\ComfyUI_00001_.png [input]`
+    `ComfyUI_00001_-assets\ComfyUI_00001_.png [output]`
 
   - Relative to the temp directory:
   

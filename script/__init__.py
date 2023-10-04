@@ -43,11 +43,33 @@ class WorkflowToScriptTranspiler:
             name = f'{name}{i}'
         self.ids[name] = {}
         return name
+
+    def _get_input_types(self, node_type: str) -> dict:
+        # registerNodeType: Reroute, PrimitiveNode, Note
+        if node_type == 'Reroute':
+            return {
+                'required': {
+                    '': ('*',)
+                }
+            }
+        elif node_type == 'PrimitiveNode':
+            return {
+                'required': {
+                    'value': ('*',)
+                }
+            }
+        elif node_type == 'Note':
+            return {
+                'required': {
+                    '': ('STRING',)
+                }
+            }
+        else:
+            return nodes.NODE_CLASS_MAPPINGS[node_type].INPUT_TYPES()
     
     def _get_widget_value_names(self, node_type: str) -> list[str]:
-        # TODO: registerNodeType: Reroute, PrimitiveNode, Note
         widget_value_names = []
-        input_types = nodes.NODE_CLASS_MAPPINGS[node_type].INPUT_TYPES()
+        input_types = self._get_input_types(node_type)
         for group in 'required', 'optional':
             group: dict = input_types.get(group)
             if group is None:
@@ -61,6 +83,10 @@ class WorkflowToScriptTranspiler:
                     if name in ('seed', 'noise_seed') and config[0] == 'INT':
                         # Naturally filtered out by _keyword_args_to_positional()
                         widget_value_names.append('control_after_generate')
+                elif node_type == 'PrimitiveNode':
+                    widget_value_names.append(name)
+                    # Only PrimitiveNode with INT output has control_after_generate, but we don't know the output type here.
+                    widget_value_names.append('control_after_generate')
         
         # print(node_type, input_types, widget_value_names)
         return widget_value_names
@@ -68,7 +94,7 @@ class WorkflowToScriptTranspiler:
     def _keyword_args_to_positional(self, node_type: str, kwargs: dict) -> list:
         args = []
         # CPython 3.6+: Dictionaries preserve insertion order, meaning that keys will be produced in the same order they were added sequentially over the dictionary. (validated in setup_script())
-        input_types = nodes.NODE_CLASS_MAPPINGS[node_type].INPUT_TYPES()
+        input_types = self._get_input_types(node_type)
         # TODO: Keep optional group as kwargs?
         # TODO: Keep as kwargs if there are values of the same type?
         for group in 'required', 'optional':
@@ -116,11 +142,12 @@ class WorkflowToScriptTranspiler:
 
                 u = G.nodes[node_u]
                 u_slot = edge['u_slot']
+                output_links = u['v'].outputs[u_slot].links
 
                 args[input.name] = {
                     'exp': u['output_ids'][u_slot],
                     'type': input.type,
-                    'move': len(u['v'].outputs[u_slot].links) == 1
+                    'move': output_links is None or len(output_links) == 1
                 }
         args = self._keyword_args_to_positional(v.type, args)
 
@@ -134,7 +161,7 @@ class WorkflowToScriptTranspiler:
             v.outputs.sort(key=lambda output: getattr(output, 'slot_index', 0xFFFFFFFF))
             for output in v.outputs:
                 # Outputs used before have slot_index, but no links.
-                if len(output.links) > 0:
+                if output.links is not None and len(output.links) > 0:
                     # Used outputs may also have no slot_index.
                     # TODO: How is the slot determined? Only valid for single output nodes?
                     if hasattr(output, 'slot_index'):

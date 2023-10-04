@@ -57,9 +57,11 @@ def to_str(s: str) -> str:
     c = ''
     if '\\' in s:
         c += 'r'
-    if '\n' not in s:
+    # TODO: "" if only single ' in s
+    if '\n' not in s and "'" not in s:
         c += f"'{s}'"
     else:
+        # TODO: What if s contains '''?
         c += f"'''{s}'''"
     return c
 
