@@ -12,6 +12,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
 }
 
 def setup_script():
+    import inspect
     import sys
     import traceback
     
@@ -26,7 +27,16 @@ def setup_script():
         if key == 'workflow':
             workflow = value
             try:
-                comfy_script = script.WorkflowToScriptTranspiler(workflow).to_script()
+                end_nodes = None
+                frame = inspect.currentframe()
+                while frame := frame.f_back:
+                    if 'unique_id' in frame.f_locals:
+                        end_nodes = [int(frame.f_locals['unique_id'])]
+                        break
+                else:
+                    print('Ib Custom Nodes: Failed to resolve the id of current node.')
+
+                comfy_script = script.WorkflowToScriptTranspiler(workflow).to_script(end_nodes)
                 # print(comfy_script)
 
                 chunks = self.chunks

@@ -2,12 +2,14 @@
 - ComfyScript
 
   Translate ComfyUI's workflows to human-readable Python scripts.
+  
+  When installed, `SaveImage` and similar nodes will be hooked to automatically save the script as images' metadata.
 
   For example, here is a workflow in ComfyUI:
 
-  ![](images/README/ComfyUI.png)
+  ![](images/README/workflow.png)
 
-  Translate it to ComfyScript:
+  ComfyScript translated from it:
   ```python
   model, clip, vae = CheckpointLoaderSimple('v1-5-pruned-emaonly.ckpt')
   conditioning = CLIPTextEncode('beautiful scenery nature glass bottle landscape, , purple galaxy bottle,', clip)
@@ -18,7 +20,31 @@
   SaveImage(image, 'ComfyUI')
   ```
 
-  When installed, `SaveImage` and similar nodes will be hooked to automatically save the script as images' metadata.
+  If there two or more `SaveImage` nodes in one workflow, only the necessary inputs of each node will be translated to scripts. For example, here is a 2 pass txt2img (hires fix) workflow:
+
+  ![](images/README/workflow2.png)
+
+  ComfyScript saved for each of the two saved image are respectively:
+  1. ```python
+     model, clip, vae = CheckpointLoaderSimple('v2-1_768-ema-pruned.ckpt')
+     conditioning = CLIPTextEncode('masterpiece HDR victorian portrait painting of woman, blonde hair, mountain nature, blue sky', clip)
+     conditioning2 = CLIPTextEncode('bad hands, text, watermark', clip)
+     latent = EmptyLatentImage(768, 768, 1)
+     latent = KSampler(model, 89848141647836, 12, 8, 'dpmpp_sde', 'normal', conditioning, conditioning2, latent, 1)
+     image = VAEDecode(latent, vae)
+     SaveImage(image, 'ComfyUI')
+     ```
+  2. ```python
+     model, clip, vae = CheckpointLoaderSimple('v2-1_768-ema-pruned.ckpt')
+     conditioning = CLIPTextEncode('masterpiece HDR victorian portrait painting of woman, blonde hair, mountain nature, blue sky', clip)
+     conditioning2 = CLIPTextEncode('bad hands, text, watermark', clip)
+     latent = EmptyLatentImage(768, 768, 1)
+     latent = KSampler(model, 89848141647836, 12, 8, 'dpmpp_sde', 'normal', conditioning, conditioning2, latent, 1)
+     latent2 = LatentUpscale(latent, 'nearest-exact', 1152, 1152, 'disabled')
+     latent2 = KSampler(model, 469771404043268, 14, 8, 'dpmpp_2m', 'simple', conditioning, conditioning2, latent2, 0.5)
+     image = VAEDecode(latent2, vae)
+     SaveImage(image, 'ComfyUI')
+     ```
 
   <!--
   CLI:

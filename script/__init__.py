@@ -13,6 +13,7 @@ class WorkflowToScriptTranspiler:
         if type(workflow) is not str:
             workflow = json.dumps(workflow)
         workflow = json.loads(workflow, object_hook=lambda d: SimpleNamespace(**d))
+        # serializedLGraph: https://github.com/comfyanonymous/ComfyUI/blob/2ef459b1d4d627929c84d11e5e0cbe3ded9c9f48/web/types/litegraph.d.ts#L332
         assert workflow.version == 0.4
 
         G = nx.MultiDiGraph()
@@ -44,6 +45,7 @@ class WorkflowToScriptTranspiler:
         return name
     
     def _get_widget_value_names(self, node_type: str) -> list[str]:
+        # TODO: registerNodeType: Reroute, PrimitiveNode, Note
         widget_value_names = []
         input_types = nodes.NODE_CLASS_MAPPINGS[node_type].INPUT_TYPES()
         for group in 'required', 'optional':
@@ -95,7 +97,7 @@ class WorkflowToScriptTranspiler:
             for i, value in enumerate(v.widgets_values):
                 name = widget_value_names[i]
                 # `value is str` doesn't work
-                # TODO: BOOLEAN
+                # TODO: BOOLEAN, not used in any node?
                 if type(value) is str:
                     args[name] = {'exp': astutil.to_str(value)}
                 else:
@@ -132,7 +134,17 @@ class WorkflowToScriptTranspiler:
             v.outputs.sort(key=lambda output: getattr(output, 'slot_index', 0xFFFFFFFF))
             for output in v.outputs:
                 # Outputs used before have slot_index, but no links.
-                if hasattr(output, 'slot_index') and len(output.links) > 0:
+                if len(output.links) > 0:
+                    # Used outputs may also have no slot_index.
+                    # TODO: How is the slot determined? Only valid for single output nodes?
+                    if hasattr(output, 'slot_index'):
+                        slot_index = output.slot_index
+                    elif len(v.outputs) == 1:
+                        slot_index = 0
+                    else:
+                        print(f"Ib Custom Nodes: Failed to determine slot_index of output {output.name} of node {v.id}.")
+                        continue
+
                     # Variable reuse: If an input is only used by current node, and current node outputs a same type output, then the output should take the input's var name.
                     # e.g. Reroute, CLIPSetLastLayer, TomePatchModel, CRLoadLoRA
 
@@ -153,7 +165,7 @@ class WorkflowToScriptTranspiler:
                             getattr(v, 'title', '') + output.name if output.name != '' else output.type
                         ))
 
-                    node.setdefault('output_ids', {})[output.slot_index] = id
+                    node.setdefault('output_ids', {})[slot_index] = id
 
                     vars_used = True
                 else:
@@ -172,18 +184,19 @@ class WorkflowToScriptTranspiler:
         c = passes.reroute_elimination(v, args, vars, c)
         return c
     
-    def _topological_generations_ordered_dfs(self):
+    def _topological_generations_ordered_dfs(self, end_nodes: Union[list[int], None] = None):
         G = self.G
         links = self.links
 
-        zero_outdegree = [v for v, d in G.out_degree() if d == 0]
+        if end_nodes is None:
+            end_nodes = [v for v, d in G.out_degree() if d == 0]
 
-        # Coordinate system:
-        # O → X
-        # ↓
-        # Y
-        # The most top-left node has the smallest (x + y).
-        zero_outdegree.sort(key=lambda v: sum(G.nodes[v]['v'].pos))
+            # Coordinate system:
+            # O → X
+            # ↓
+            # Y
+            # The most top-left node has the smallest (x + y).
+            end_nodes.sort(key=lambda v: sum(G.nodes[v]['v'].pos))
 
         visited = set()
         def visit(node):
@@ -202,19 +215,17 @@ class WorkflowToScriptTranspiler:
             
             yield node
         
-        for v in zero_outdegree:
+        for v in end_nodes:
             yield from visit(v)
     
-    def to_script(self) -> str:
+    def to_script(self, end_nodes = None) -> str:
         # From leaves to roots or roots to leaves?
         # ComfyUI now executes workflows from leaves to roots, but there is a PR to change this to from roots to leaves with topological sort: https://github.com/comfyanonymous/ComfyUI/pull/931
         # To minimize future maintenance cost and suit the mental model better, we choose **from roots to leaves** too.
 
-        # TODO: Allow specifying end nodes
-
         self.ids = {}
         c = ''
-        for node in self._topological_generations_ordered_dfs():
+        for node in self._topological_generations_ordered_dfs(end_nodes):
             # TODO: Add line breaks if a node has multiple inputs
             c += self._node_to_assign_st(self.G.nodes[node])
         return c
