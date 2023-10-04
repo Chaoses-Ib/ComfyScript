@@ -18,7 +18,7 @@
   SaveImage(image, 'ComfyUI')
   ```
 
-  When installed, `SaveImage` will be hooked to automatically save the script as images' metadata.
+  When installed, `SaveImage` and similar nodes will be hooked to automatically save the script as images' metadata.
 
   <!--
   CLI:
