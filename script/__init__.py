@@ -87,7 +87,7 @@ class WorkflowToScriptTranspiler:
                     widget_value_names.append(name)
                     # Only PrimitiveNode with INT output has control_after_generate, but we don't know the output type here.
                     widget_value_names.append('control_after_generate')
-        
+
         # print(node_type, input_types, widget_value_names)
         return widget_value_names
     
@@ -207,8 +207,8 @@ class WorkflowToScriptTranspiler:
             c += f"{astutil.to_assign_target_list(vars)} = "
         c += f"{class_id}({', '.join(arg['exp'] for arg in args)})\n"
         
-        # TODO: PrimitiveNode elimination
         c = passes.reroute_elimination(v, args, vars, c)
+        c = passes.primitive_node_elimination(v, args, vars, c)
         return c
     
     def _topological_generations_ordered_dfs(self, end_nodes: Union[list[int], None] = None):

@@ -37,7 +37,7 @@ def setup_script():
                     print('Ib Custom Nodes: Failed to resolve the id of current node.')
 
                 comfy_script = script.WorkflowToScriptTranspiler(workflow).to_script(end_nodes)
-                # print(comfy_script)
+                print('ComfyScript:', comfy_script, sep='\n')
 
                 chunks = self.chunks
                 self.chunks = []

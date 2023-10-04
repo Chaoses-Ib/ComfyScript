@@ -62,6 +62,7 @@ def to_str(s: str) -> str:
         c += f"'{s}'"
     else:
         # TODO: What if s contains '''?
+        # TODO: Fold trailing line feeds to \n?
         c += f"'''{s}'''"
     return c
 
