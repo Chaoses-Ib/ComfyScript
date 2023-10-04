@@ -125,10 +125,10 @@ class WorkflowToScriptTranspiler:
                 # `value is str` doesn't work
                 # TODO: BOOLEAN, not used in any node?
                 if type(value) is str:
-                    args[name] = {'exp': astutil.to_str(value)}
+                    args[name] = {'exp': astutil.to_str(value), 'value': value}
                 else:
                     # int, float
-                    args[name] = {'exp': str(value)}
+                    args[name] = {'exp': str(value), 'value': value}
         if hasattr(v, 'inputs'):
             # If a node's output is not used, it is allowed to have dangling inputs, in which case the link is None.
             # TODO: This breaks the order and arg positions.
@@ -149,7 +149,8 @@ class WorkflowToScriptTranspiler:
                     'type': input.type,
                     'move': output_links is None or len(output_links) == 1
                 }
-        args = self._keyword_args_to_positional(v.type, args)
+        args_dict = args
+        args = self._keyword_args_to_positional(v.type, args_dict)
 
         args_of_any_type = [arg for arg in args if arg.get('type', None) == '*']
 
@@ -209,6 +210,7 @@ class WorkflowToScriptTranspiler:
         
         c = passes.reroute_elimination(v, args, vars, c)
         c = passes.primitive_node_elimination(v, args, vars, c)
+        c = passes.switch_node_elimination(v, args_dict, args, vars, c)
         return c
     
     def _topological_generations_ordered_dfs(self, end_nodes: Union[list[int], None] = None):

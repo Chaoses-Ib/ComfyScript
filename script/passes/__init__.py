@@ -1,7 +1,6 @@
 import re
 
 # TODO: Switch nodes
-# e.g. TomePatchModel, CRLoadLoRA, CLIPSetLastLayer
 # How to prevent var rename?
 # e.g. ModelMergeSimple, CRModelInputSwitch
 
@@ -19,7 +18,26 @@ def primitive_node_elimination(v, args, vars, c):
     assert new_c != c, c
     return new_c
 
+SWITCH_NODES = {
+    'CLIPSetLastLayer': [{'stop_at_clip_layer': -1}],
+    'CR Apply ControlNet': [{'switch': 'Off'}, {'strength': 0}],
+    'CR Load LoRA': [{'switch': 'Off'}, {'strength_model': 0, 'strength_clip': 0}],
+    'TomePatchModel': [{'ratio': 0}],
+}
+def switch_node_elimination(v, args_dict: dict, args, vars, c):
+    switch_inputs = SWITCH_NODES.get(v.type)
+    if switch_inputs is None:
+        return c
+    # print('switch_node_elimination:', v.type, args_dict)
+    for switch_input in switch_inputs:
+        for k, v in switch_input.items():
+            # Only widget values are considered
+            if args_dict[k].get('value') == v:
+                return ''
+    return c
+
 __all__ = [
     'reroute_elimination',
     'primitive_node_elimination',
+    'switch_node_elimination',
 ]
