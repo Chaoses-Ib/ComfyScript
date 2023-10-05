@@ -221,6 +221,7 @@ class WorkflowToScriptTranspiler:
         c += f"{class_id}({', '.join(arg['exp'] for arg in args)})\n"
         
         ctx = passes.AssignContext(
+            node=node,
             v=v,
             args_dict=args_dict,
             args=args,
@@ -258,7 +259,7 @@ class WorkflowToScriptTranspiler:
             if hasattr(v, 'inputs'):
                 inputs = v.inputs
                 if hasattr(v, 'widgets_values'):
-                    inputs = passes.multiplexer_node_input_filter(v, self._widget_values_to_dict(v.type, v.widgets_values))
+                    inputs = passes.multiplexer_node_input_filter(G.nodes[node], self._widget_values_to_dict(v.type, v.widgets_values))
                 for input in inputs:
                     # If a node's output is not used, it is allowed to have dangling inputs, in which case the link is None.
                     if input.link is not None:

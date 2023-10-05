@@ -3,6 +3,7 @@ import re
 
 @dataclass
 class AssignContext:
+    node: dict
     v: dict
     args_dict: dict[str]
     args: list
@@ -111,7 +112,8 @@ MULTIPLEXER_NODES = {
         'model2': {'ratio': 0},
     }),
 }
-def multiplexer_node_input_filter(v, widget_values: dict):
+def multiplexer_node_input_filter(node, widget_values: dict):
+    v = node['v']
     multiplexer_inputs = MULTIPLEXER_NODES.get(v.type)
     if multiplexer_inputs is None:
         return v.inputs
@@ -120,11 +122,13 @@ def multiplexer_node_input_filter(v, widget_values: dict):
             if widget_values[k] != value:
                 break
         else:
+            node['multiplexer_node_elimination'] = True
             return filter(lambda input: input.type != multiplexer_inputs[0] or input.name == input_name, v.inputs)
     return v.inputs
 def multiplexer_node_elimination(ctx: AssignContext):
-    if ctx.v.type not in MULTIPLEXER_NODES:
+    if ctx.node.get('multiplexer_node_elimination') is not True:
         return
+    assert ctx.v.type in MULTIPLEXER_NODES
     assert '_' in ctx.c, ctx.c
     ctx.c = ''
 
