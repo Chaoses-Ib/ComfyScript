@@ -95,6 +95,11 @@ class WorkflowToScriptTranspiler:
         # print(node_type, input_types, widget_value_names)
         return widget_value_names
     
+    def _widget_values_to_dict(self, node_type: str, widget_values: list) -> dict:
+        # https://github.com/comfyanonymous/ComfyUI/blob/4103f7fad5be7e22ed61843166b72b7c41671d75/web/scripts/widgets.js
+        widget_value_names = self._get_widget_value_names(node_type)
+        return {name: value for name, value in zip(widget_value_names, widget_values)}
+
     def _keyword_args_to_positional(self, node_type: str, kwargs: dict) -> list:
         args = []
         # CPython 3.6+: Dictionaries preserve insertion order, meaning that keys will be produced in the same order they were added sequentially over the dictionary. (validated in setup_script())
@@ -122,10 +127,8 @@ class WorkflowToScriptTranspiler:
         args = {}
         # inputs can override widgets_values
         if hasattr(v, 'widgets_values'):
-            # https://github.com/comfyanonymous/ComfyUI/blob/4103f7fad5be7e22ed61843166b72b7c41671d75/web/scripts/widgets.js
-            widget_value_names = self._get_widget_value_names(v.type)
-            for i, value in enumerate(v.widgets_values):
-                name = widget_value_names[i]
+            widget_values = self._widget_values_to_dict(v.type, v.widgets_values)
+            for name, value in widget_values.items():
                 # `value is str` doesn't work
                 # TODO: BOOLEAN, not used in any node?
                 if type(value) is str:
@@ -146,13 +149,18 @@ class WorkflowToScriptTranspiler:
 
                 u = G.nodes[node_u]
                 u_slot = edge['u_slot']
-                output_links = u['v'].outputs[u_slot].links
+                output_ids = u.get('output_ids')
+                if output_ids is None:
+                    # Multiplexer nodes' inputs are filtered
+                    args[input.name] = { 'exp': '_', 'type': input.type }
+                else:
+                    output_links = u['v'].outputs[u_slot].links
 
-                args[input.name] = {
-                    'exp': u['output_ids'][u_slot],
-                    'type': input.type,
-                    'move': output_links is None or len(output_links) == 1
-                }
+                    args[input.name] = {
+                        'exp': output_ids[u_slot],
+                        'type': input.type,
+                        'move': output_links is None or len(output_links) == 1
+                    }
         args_dict = args
         args = self._keyword_args_to_positional(v.type, args_dict)
 
@@ -186,7 +194,7 @@ class WorkflowToScriptTranspiler:
                     # 3. The type of the output
                     # How to make this transitive?
                     
-                    args_of_same_type = [arg for arg in args if arg.get('type', None) == output.type]
+                    args_of_same_type = [arg for arg in args if arg.get('type') == output.type and arg['exp'] != '_']
                     if len(args_of_same_type) == 1 and args_of_same_type[0]['move']:
                         id = args_of_same_type[0]['exp']
                     elif len(v.outputs) == 1 and len(args_of_any_type) == 1:
@@ -212,10 +220,18 @@ class WorkflowToScriptTranspiler:
             c += f"{astutil.to_assign_target_list(vars)} = "
         c += f"{class_id}({', '.join(arg['exp'] for arg in args)})\n"
         
-        c = passes.reroute_elimination(v, args, vars, c)
-        c = passes.primitive_node_elimination(v, args, vars, c)
-        c = passes.switch_node_elimination(v, args_dict, args, vars, c)
-        return c
+        ctx = passes.AssignContext(
+            v=v,
+            args_dict=args_dict,
+            args=args,
+            vars=vars,
+            c=c,
+        )
+        for pass_ in passes.ASSIGN_PASSES:
+            pass_(ctx)
+            if ctx.c == '':
+                break
+        return ctx.c
     
     def _topological_generations_ordered_dfs(self, end_nodes: Union[list[int], None] = None):
         G = self.G
@@ -240,7 +256,10 @@ class WorkflowToScriptTranspiler:
             # inputs are sorted by slot_index
             v = G.nodes[node]['v']
             if hasattr(v, 'inputs'):
-                for input in v.inputs:
+                inputs = v.inputs
+                if hasattr(v, 'widgets_values'):
+                    inputs = passes.multiplexer_node_input_filter(v, self._widget_values_to_dict(v.type, v.widgets_values))
+                for input in inputs:
                     # If a node's output is not used, it is allowed to have dangling inputs, in which case the link is None.
                     if input.link is not None:
                         (node_u, _node_v, _link_id) = links[input.link]
