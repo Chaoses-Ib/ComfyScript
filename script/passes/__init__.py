@@ -2,6 +2,7 @@ import re
 
 # TODO: Switch nodes
 # How to prevent var rename?
+# How to remove unused branches?
 # e.g. ModelMergeSimple, CRModelInputSwitch
 
 def reroute_elimination(v, args, vars, c):

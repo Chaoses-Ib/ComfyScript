@@ -77,7 +77,6 @@ class WorkflowToScriptTranspiler:
             for name, config in group.items():
                 # str | list[str]
                 # https://github.com/comfyanonymous/ComfyUI/blob/4103f7fad5be7e22ed61843166b72b7c41671d75/web/scripts/widgets.js
-                # TODO: IMAGEUPLOAD
                 if type(config[0]) != str or config[0] in ('INT', 'FLOAT', 'STRING', 'BOOLEAN'):
                     widget_value_names.append(name)
                     if name in ('seed', 'noise_seed') and config[0] == 'INT':
@@ -87,6 +86,11 @@ class WorkflowToScriptTranspiler:
                     widget_value_names.append(name)
                     # Only PrimitiveNode with INT output has control_after_generate, but we don't know the output type here.
                     widget_value_names.append('control_after_generate')
+
+                # https://github.com/comfyanonymous/ComfyUI/blob/2ef459b1d4d627929c84d11e5e0cbe3ded9c9f48/web/extensions/core/uploadImage.js
+                if len(config) > 1 and type(config[1]) == dict and config[1].get('image_upload') == True:
+                    # Naturally filtered out by _keyword_args_to_positional()
+                    widget_value_names.append('upload')
 
         # print(node_type, input_types, widget_value_names)
         return widget_value_names
