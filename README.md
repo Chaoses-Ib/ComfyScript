@@ -59,7 +59,7 @@ python -m script from-workflow "D:\workflow.json"
 You can run the script with the runtime like this:
 ```python
 from script import runtime
-from script.runtime import ComfyScript
+from script.runtime import *
 
 # await runtime.load('http://127.0.0.1:8188/', locals())
 await runtime.load()
@@ -75,6 +75,10 @@ async with ComfyScript():
 ```
 
 A Jupyter Notebook is available at [runtime.ipynb](runtime.ipynb).
+
+[Type stubs](https://typing.readthedocs.io/en/latest/source/stubs.html) will be generated at [script/runtime.pyi](script/runtime.pyi) after loading. Mainstream editors can use them to help with coding:
+
+![](images/README/type-stubs.png)
 
 ## Load Image From Path
 ComfyUI's built-in `Load Image` node can only load uploaded images, which produces duplicated files in the input directory and cannot reload the image when the source file is changed. `Load Image From Path` instead loads the image from the source path and does not have such problems.

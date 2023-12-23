@@ -30,7 +30,11 @@ def id_to_lower(id: str) -> str:
     return re.sub(r'([a-z])([A-Z])', r'\1_\2', id).lower()
 
 def id_to_camel(id: str) -> str:
-    return re.sub(r'_([a-zA-Z])', lambda m: m.group(1).upper(), id)
+    if id.isupper():
+        id = id.lower()
+    id = id[0].upper() + id[1:]
+    id = re.sub(r'_([a-zA-Z])', lambda m: m.group(1).upper(), id)
+    return id
 
 def id_to_upper(id: str) -> str:
     return re.sub(r'([a-z])([A-Z])', r'\1_\2', id).upper()
