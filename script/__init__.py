@@ -6,11 +6,9 @@ import networkx as nx
 from . import astutil
 from . import passes
 
-import nodes
-
 class WorkflowToScriptTranspiler:
     def __init__(self, workflow: Union[str, dict]):
-        if type(workflow) is not str:
+        if not isinstance(workflow, str):
             workflow = json.dumps(workflow)
         workflow = json.loads(workflow, object_hook=lambda d: SimpleNamespace(**d))
         # serializedLGraph: https://github.com/comfyanonymous/ComfyUI/blob/2ef459b1d4d627929c84d11e5e0cbe3ded9c9f48/web/types/litegraph.d.ts#L332
@@ -45,6 +43,8 @@ class WorkflowToScriptTranspiler:
         return name
 
     def _get_input_types(self, node_type: str) -> dict:
+        import nodes
+        
         # registerNodeType: Reroute, PrimitiveNode, Note
         if node_type == 'Reroute':
             return {
@@ -129,9 +129,8 @@ class WorkflowToScriptTranspiler:
         if hasattr(v, 'widgets_values'):
             widget_values = self._widget_values_to_dict(v.type, v.widgets_values)
             for name, value in widget_values.items():
-                # `value is str` doesn't work
                 # TODO: BOOLEAN, not used in any node?
-                if type(value) is str:
+                if isinstance(value, str):
                     args[name] = {'exp': astutil.to_str(value), 'value': value}
                 else:
                     # int, float

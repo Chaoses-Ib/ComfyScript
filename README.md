@@ -55,6 +55,27 @@ python -m script from-workflow "D:\workflow.json"
 ```
 -->
 
+### Execution
+You can run the script with the runtime like this:
+```python
+from script import runtime
+from script.runtime import ComfyScript
+
+# await runtime.load('http://127.0.0.1:8188/', locals())
+await runtime.load()
+
+async with ComfyScript():
+    model, clip, vae = CheckpointLoaderSimple('v1-5-pruned-emaonly.ckpt')
+    conditioning = CLIPTextEncode('beautiful scenery nature glass bottle landscape, , purple galaxy bottle,', clip)
+    conditioning2 = CLIPTextEncode('text, watermark', clip)
+    latent = EmptyLatentImage(512, 512, 1)
+    latent = KSampler(model, 156680208700286, 20, 8, 'euler', 'normal', conditioning, conditioning2, latent, 1)
+    image = VAEDecode(latent, vae)
+    SaveImage(image, 'ComfyUI')
+```
+
+A Jupyter Notebook is available at [runtime.ipynb](runtime.ipynb).
+
 ## Load Image From Path
 ComfyUI's built-in `Load Image` node can only load uploaded images, which produces duplicated files in the input directory and cannot reload the image when the source file is changed. `Load Image From Path` instead loads the image from the source path and does not have such problems.
 
