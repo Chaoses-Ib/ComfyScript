@@ -60,9 +60,20 @@ def setup_script():
     save_images_orginal = getattr(SaveImage, SaveImage.FUNCTION)
     def save_images_hook(self, images, filename_prefix="ComfyUI", prompt=None, extra_pnginfo=None):
         # print(extra_pnginfo)
-        if extra_pnginfo is None or 'workflow' not in extra_pnginfo:
+        if extra_pnginfo is None or ('workflow' not in extra_pnginfo and 'ComfyScriptSource' not in extra_pnginfo):
             print("Ib Custom Nodes: Failed to save ComfyScript because workflow is not in extra_pnginfo")
-        # else:
+        elif 'ComfyScriptSource' in extra_pnginfo:
+            # Values in extra_pnginfo will be serialized as JSON
+            pnginfo_init_original = PIL.PngImagePlugin.PngInfo.__init__
+            def pnginfo_init_hook(self, _comfyscript_source=extra_pnginfo['ComfyScriptSource']):
+                pnginfo_init_original(self)
+                self.add_text('ComfyScriptSource', _comfyscript_source)
+            PIL.PngImagePlugin.PngInfo.__init__ = pnginfo_init_hook
+            del extra_pnginfo['ComfyScriptSource']
+            r = save_images_orginal(self, images, filename_prefix, prompt, extra_pnginfo)
+            PIL.PngImagePlugin.PngInfo.__init__ = pnginfo_init_original
+            return r
+        # elif 'workflow' in extra_pnginfo:
         #     workflow = extra_pnginfo['workflow']
         #     try:
         #         comfy_script = script.WorkflowToScriptTranspiler(workflow).to_script()

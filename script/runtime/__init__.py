@@ -136,11 +136,23 @@ def clear_prompt():
     prompt = {}
     count = -1
 
-async def queue_prompt():
+async def queue_prompt(source = None):
     global prompt, endpoint
+
+    if source is None:
+        outer = inspect.currentframe().f_back
+        source = ''.join(inspect.findsource(outer)[0])
+
     # print(prompt)
     async with aiohttp.ClientSession() as session:
-        async with session.post(f'{endpoint}prompt', json={'prompt': prompt}) as response:
+        async with session.post(f'{endpoint}prompt', json={
+            'prompt': prompt,
+            'extra_data': {
+                'extra_pnginfo': {
+                    'ComfyScriptSource': source
+                }
+            }
+        }) as response:
             assert response.status == 200
             return await response.json()
 
@@ -150,6 +162,8 @@ class ComfyScript:
         clear_prompt()
 
     async def __aexit__(self, exc_type, exc_value, traceback):
-        print(await queue_prompt())
+        outer = inspect.currentframe().f_back
+        source = ''.join(inspect.findsource(outer)[0])
+        print(await queue_prompt(source))
 
 __all__ = ['load', 'clear_prompt', 'queue_prompt', 'ComfyScript']
