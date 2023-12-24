@@ -1,4 +1,6 @@
+import asyncio
 import inspect
+import threading
 from typing import Union
 import uuid
 import aiohttp
@@ -9,6 +11,7 @@ endpoint = 'http://127.0.0.1:8188/'
 client_id = str(uuid.uuid4())
 prompt = {}
 count = -1
+daemon_thread = None
 
 def assign_id() -> str:
     global count
@@ -69,8 +72,8 @@ def get_type_stub(node: dict, class_id: str, type_callback) -> str:
     
     return c + ': ...'
 
-async def load(api_endpoint: str = endpoint, vars: dict = None):
-    global prompt, endpoint
+async def load(api_endpoint: str = endpoint, vars: dict = None, daemon: bool = True):
+    global prompt, endpoint, daemon_thread
 
     endpoint = api_endpoint
 
@@ -132,6 +135,48 @@ class ComfyScript:
 ''')
         f.write('\n'.join(type_stubs.values()) + '\n\n')
         f.write(node_stubs)
+    
+    if daemon and daemon_thread is None:
+        daemon_thread = threading.Thread(target=asyncio.run, args=(watch(),), daemon=True)
+        daemon_thread.start()
+        # TODO: Kill daemon thread if daemon turns to False
+
+async def watch():
+    while True:
+        async with aiohttp.ClientSession() as session:
+            async with session.ws_connect(f'{endpoint}ws?clientId={client_id}') as ws:
+                queue_remaining = 0
+                async for msg in ws:
+                    if msg.type == aiohttp.WSMsgType.TEXT:
+                        msg = msg.json()
+                        # print(msg)
+                        if msg['type'] == 'status':
+                            data = msg['data']
+                            new_queue_remaining = data['status']['exec_info']['queue_remaining']
+                            if queue_remaining != new_queue_remaining:
+                                queue_remaining = new_queue_remaining
+                                print(f'Queue remaining: {queue_remaining}')
+                        elif msg['type'] == 'progress':
+                            data = msg['data']
+                            print_progress(data['value'], data['max'])
+                    elif msg.type in (aiohttp.WSMsgType.CLOSED, aiohttp.WSMsgType.ERROR):
+                        break
+        await asyncio.sleep(1)
+    '''
+    {'type': 'status', 'data': {'status': {'exec_info': {'queue_remaining': 0}}, 'sid': 'adc24049-b013-4a58-956b-edbc591dc6e2'}}
+    {'type': 'status', 'data': {'status': {'exec_info': {'queue_remaining': 1}}}}
+    {'type': 'execution_start', 'data': {'prompt_id': '3328f0c8-9368-4070-90e7-087e854fe315'}}
+    {'type': 'execution_cached', 'data': {'nodes': ['9', '15', '5', '8', '12', '13', '16', '6', '1', '14', '0', '2', '20', '11', '17', '7', '10', '19', '3', '4', '18'], 'prompt_id': '3328f0c8-9368-4070-90e7-087e854fe315'}}
+    {'type': 'executing', 'data': {'node': '21', 'prompt_id': '3328f0c8-9368-4070-90e7-087e854fe315'}}
+    {'type': 'progress', 'data': {'value': 1, 'max': 15}}
+    ...
+    {'type': 'progress', 'data': {'value': 15, 'max': 15}}
+    {'type': 'executing', 'data': {'node': '22', 'prompt_id': '3328f0c8-9368-4070-90e7-087e854fe315'}}
+    {'type': 'executing', 'data': {'node': '23', 'prompt_id': '3328f0c8-9368-4070-90e7-087e854fe315'}}
+    {'type': 'executed', 'data': {'node': '23', 'output': {'images': [{'filename': 'C_00001_.png', 'subfolder': '', 'type': 'output'}]}, 'prompt_id': '3328f0c8-9368-4070-90e7-087e854fe315'}}
+    {'type': 'status', 'data': {'status': {'exec_info': {'queue_remaining': 0}}}}
+    {'type': 'executing', 'data': {'node': None, 'prompt_id': '3328f0c8-9368-4070-90e7-087e854fe315'}}
+    '''
 
 def clear_prompt():
     global prompt, count
@@ -174,7 +219,7 @@ def print_progress(iteration, total, prefix = '', suffix = '', decimals = 0, len
     
     From https://stackoverflow.com/questions/3173320/text-progress-bar-in-terminal-with-block-characters
     """
-    percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
+    percent = ("{0:3." + str(decimals) + "f}").format(100 * (iteration / float(total)))
     filledLength = int(length * iteration // total)
     bar = fill * filledLength + '-' * (length - filledLength)
     print(f'\r{prefix}{percent}%|{bar}| {iteration}/{total}{suffix}', end = printEnd)
@@ -217,7 +262,7 @@ async def exec_prompt(source = None):
 
 # TODO: Make prompt local to ComfyScript
 class ComfyScript:
-    def __init__(self, wait: bool = True):
+    def __init__(self, wait: bool = False):
         '''
         - `wait`: Wait for the prompt to finish before exiting the context manager.
         '''
@@ -230,7 +275,8 @@ class ComfyScript:
         outer = inspect.currentframe().f_back
         source = ''.join(inspect.findsource(outer)[0])
         response = await queue_prompt(source)
-        print(response)
+        # TODO: Fix multi-thread print
+        # print(response)
         if self.wait_prompt:
             await wait_prompt(response['prompt_id'])
 

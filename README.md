@@ -113,11 +113,21 @@ async with ComfyScript():
     SaveImage(image, 'ComfyUI')
 ```
 
-A Jupyter Notebook is available at [runtime.ipynb](runtime.ipynb).
+- A Jupyter Notebook is available at [runtime.ipynb](runtime.ipynb).
 
-[Type stubs](https://typing.readthedocs.io/en/latest/source/stubs.html) will be generated at [`script/runtime/__init__.pyi`](script/runtime/__init__.pyi) after loading. Mainstream editors can use them to help with coding:
+- [Type stubs](https://typing.readthedocs.io/en/latest/source/stubs.html) will be generated at [`script/runtime/__init__.pyi`](script/runtime/__init__.pyi) after loading. Mainstream editors can use them to help with coding:
 
-![](images/README/type-stubs.png)
+  ![](images/README/type-stubs.png)
+
+- The runtime is asynchronous by default. You can queue multiple prompts without waiting for the first one to finish. A daemon thread will watch and report the remaining prompts in the queue and the current progress, for example:
+  ```
+  Queue remaining: 1
+  Queue remaining: 2
+  100%|██████████████████████████████████████████████████| 20/20
+  Queue remaining: 1
+  100%|██████████████████████████████████████████████████| 20/20
+  Queue remaining: 0
+  ```
 
 ## Load Image From Path
 ComfyUI's built-in `Load Image` node can only load uploaded images, which produces duplicated files in the input directory and cannot reload the image when the source file is changed. `Load Image From Path` instead loads the image from the source path and does not have such problems.
