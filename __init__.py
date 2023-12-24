@@ -22,6 +22,7 @@ def setup_script():
     import inspect
     import sys
     import traceback
+    import json
     
     import PIL
     import nodes
@@ -31,9 +32,9 @@ def setup_script():
 
     pnginfo_add_text_original = PIL.PngImagePlugin.PngInfo.add_text
     def pnginfo_add_text_hook(self, key, value, zip=False):
-        if key == 'workflow':
-            workflow = value
-            try:
+        try:
+            if key == 'workflow':
+                workflow = value
                 end_nodes = None
                 frame = inspect.currentframe()
                 while frame := frame.f_back:
@@ -48,11 +49,20 @@ def setup_script():
 
                 chunks = self.chunks
                 self.chunks = []
-                self.add_text('ComfyScript', comfy_script)
+                pnginfo_add_text_original(self, 'ComfyScript', comfy_script, zip)
                 self.chunks.extend(chunks)
-            except Exception:
-                # Print stack trace, but do not block the original saving
-                traceback.print_exc()
+            elif key == 'ComfyScriptSource':
+                value = json.loads(value)
+                # print(value)
+
+                chunks = self.chunks
+                self.chunks = []
+                r = pnginfo_add_text_original(self, key, value, zip)
+                self.chunks.extend(chunks)
+                return r
+        except Exception:
+            # Print stack trace, but do not block the original saving
+            traceback.print_exc()
         return pnginfo_add_text_original(self, key, value, zip)
     PIL.PngImagePlugin.PngInfo.add_text = pnginfo_add_text_hook
 
@@ -62,17 +72,19 @@ def setup_script():
         # print(extra_pnginfo)
         if extra_pnginfo is None or ('workflow' not in extra_pnginfo and 'ComfyScriptSource' not in extra_pnginfo):
             print("Ib Custom Nodes: Failed to save ComfyScript because workflow is not in extra_pnginfo")
-        elif 'ComfyScriptSource' in extra_pnginfo:
-            # Values in extra_pnginfo will be serialized as JSON
-            pnginfo_init_original = PIL.PngImagePlugin.PngInfo.__init__
-            def pnginfo_init_hook(self, _comfyscript_source=extra_pnginfo['ComfyScriptSource']):
-                pnginfo_init_original(self)
-                self.add_text('ComfyScriptSource', _comfyscript_source)
-            PIL.PngImagePlugin.PngInfo.__init__ = pnginfo_init_hook
-            del extra_pnginfo['ComfyScriptSource']
-            r = save_images_orginal(self, images, filename_prefix, prompt, extra_pnginfo)
-            PIL.PngImagePlugin.PngInfo.__init__ = pnginfo_init_original
-            return r
+        # elif 'ComfyScriptSource' in extra_pnginfo:
+        #     # Values in extra_pnginfo will be serialized as JSON
+        #     pnginfo_init_original = PIL.PngImagePlugin.PngInfo.__init__
+        #     comfy_script_source = extra_pnginfo['ComfyScriptSource']
+        #     def pnginfo_init_hook(self):
+        #         pnginfo_init_original(self)
+        #         self.add_text('ComfyScriptSource', comfy_script_source)
+        #     PIL.PngImagePlugin.PngInfo.__init__ = pnginfo_init_hook
+        #     del extra_pnginfo['ComfyScriptSource']
+        #     r = save_images_orginal(self, images, filename_prefix, prompt, extra_pnginfo)
+        #     extra_pnginfo['ComfyScriptSource'] = comfy_script_source
+        #     PIL.PngImagePlugin.PngInfo.__init__ = pnginfo_init_original
+        #     return r
         # elif 'workflow' in extra_pnginfo:
         #     workflow = extra_pnginfo['workflow']
         #     try:
