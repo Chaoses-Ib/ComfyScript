@@ -1,10 +1,12 @@
 import inspect
 from typing import Union
+import uuid
 import aiohttp
 
 from .. import astutil
 
 endpoint = 'http://127.0.0.1:8188/'
+client_id = str(uuid.uuid4())
 prompt = {}
 count = -1
 
@@ -137,7 +139,7 @@ def clear_prompt():
     count = -1
 
 async def queue_prompt(source = None):
-    global prompt, endpoint
+    global prompt, endpoint, client_id
 
     if source is None:
         outer = inspect.currentframe().f_back
@@ -151,19 +153,92 @@ async def queue_prompt(source = None):
                 'extra_pnginfo': {
                     'ComfyScriptSource': source
                 }
-            }
+            },
+            'client_id': client_id,
         }) as response:
             assert response.status == 200
             return await response.json()
 
+def print_progress(iteration, total, prefix = '', suffix = '', decimals = 0, length = 50, fill = '█', printEnd = '\r'):
+    """
+    Call in a loop to create terminal progress bar
+    @params:
+        iteration   - Required  : current iteration (Int)
+        total       - Required  : total iterations (Int)
+        prefix      - Optional  : prefix string (Str)
+        suffix      - Optional  : suffix string (Str)
+        decimals    - Optional  : positive number of decimals in percent complete (Int)
+        length      - Optional  : character length of bar (Int)
+        fill        - Optional  : bar fill character (Str)
+        printEnd    - Optional  : end character (e.g. "\r", "\r\n") (Str)
+    
+    From https://stackoverflow.com/questions/3173320/text-progress-bar-in-terminal-with-block-characters
+    """
+    percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
+    filledLength = int(length * iteration // total)
+    bar = fill * filledLength + '-' * (length - filledLength)
+    print(f'\r{prefix}{percent}%|{bar}| {iteration}/{total}{suffix}', end = printEnd)
+    # Print New Line on Complete
+    if iteration == total: 
+        print()
+
+async def wait_prompt(prompt_id: str):
+    async with aiohttp.ClientSession() as session:
+        async with session.ws_connect(f'{endpoint}ws?clientId={client_id}') as ws:
+            async for msg in ws:
+                if msg.type == aiohttp.WSMsgType.TEXT:
+                    msg = msg.json()
+                    # print(msg)
+                    if msg['type'] == 'status':
+                        data = msg['data']
+                        if data['status']['exec_info']['queue_remaining'] == 0:
+                            break
+                    elif msg['type'] == 'executing':
+                        data = msg['data']
+                        if data['node'] is None and data['prompt_id'] == prompt_id:
+                            break
+                    elif msg['type'] == 'progress':
+                        data = msg['data']
+                        print_progress(data['value'], data['max'])
+                elif msg.type in (aiohttp.WSMsgType.CLOSED, aiohttp.WSMsgType.ERROR):
+                    break
+
+async def exec_prompt(source = None):
+    '''
+    Queue a prompt and wait for it to finish.
+    '''
+    if source is None:
+        outer = inspect.currentframe().f_back
+        source = ''.join(inspect.findsource(outer)[0])
+    
+    response = await queue_prompt(source)
+    print(response)
+    await wait_prompt(response['prompt_id'])
+
 # TODO: Make prompt local to ComfyScript
 class ComfyScript:
+    def __init__(self, wait: bool = True):
+        '''
+        - `wait`: Wait for the prompt to finish before exiting the context manager.
+        '''
+        self.wait_prompt = wait
+
     async def __aenter__(self):
         clear_prompt()
 
     async def __aexit__(self, exc_type, exc_value, traceback):
         outer = inspect.currentframe().f_back
         source = ''.join(inspect.findsource(outer)[0])
-        print(await queue_prompt(source))
+        response = await queue_prompt(source)
+        print(response)
+        if self.wait_prompt:
+            await wait_prompt(response['prompt_id'])
 
-__all__ = ['load', 'clear_prompt', 'queue_prompt', 'ComfyScript']
+__all__ = [
+    'load',
+    'clear_prompt',
+    'queue_prompt',
+    'wait_prompt',
+    'exec_prompt',
+    'ComfyScript'
+]
