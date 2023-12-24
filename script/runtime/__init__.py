@@ -2,7 +2,7 @@ import inspect
 from typing import Union
 import aiohttp
 
-from . import astutil
+from .. import astutil
 
 endpoint = 'http://127.0.0.1:8188/'
 prompt = {}
@@ -118,7 +118,7 @@ async def load(api_endpoint: str = endpoint, vars: dict = None):
 
         node_stubs += get_type_stub(node, class_id, add_type_stub) + '\n'
     
-    # runtime.pyi
+    # __init__.pyi
     with open(__file__ + 'i', 'w') as f:
         f.write(
 '''from typing import Literal

@@ -1,0 +1,2 @@
+# Already required by ComfyUI
+aiohttp

@@ -1,17 +1,24 @@
-from . import script
-from .image import *
-
 __all__ = ['NODE_CLASS_MAPPINGS', 'NODE_DISPLAY_NAME_MAPPINGS']
 
-NODE_CLASS_MAPPINGS = {
-    "LoadImageFromPath": LoadImageFromPath
-}
+NODE_CLASS_MAPPINGS = {}
+NODE_DISPLAY_NAME_MAPPINGS = {}
 
-NODE_DISPLAY_NAME_MAPPINGS = {
-    "LoadImageFromPath": "Load Image From Path"
-}
+success = True
+
+try:
+    from .image import *
+    NODE_CLASS_MAPPINGS['LoadImageFromPath'] = LoadImageFromPath
+    NODE_DISPLAY_NAME_MAPPINGS['LoadImageFromPath'] = "Load Image From Path"
+except ImportError:
+    success = False
+    print(
+f'''\033[34mIb Custom Nodes: \033[91mFailed to load LoadImageFromPath due to missing dependencies. If you need it, try to run:
+python -m pip install -r "{Path(__file__).resolve().parent / 'requirements.txt'}"
+\033[0m''')
 
 def setup_script():
+    from .script import transpile
+
     import inspect
     import sys
     import traceback
@@ -36,7 +43,7 @@ def setup_script():
                 else:
                     print('Ib Custom Nodes: Failed to resolve the id of current node.')
 
-                comfy_script = script.WorkflowToScriptTranspiler(workflow).to_script(end_nodes)
+                comfy_script = transpile.WorkflowToScriptTranspiler(workflow).to_script(end_nodes)
                 print('ComfyScript:', comfy_script, sep='\n')
 
                 chunks = self.chunks
@@ -77,6 +84,15 @@ def setup_script():
         return save_images_orginal(self, images, filename_prefix, prompt, extra_pnginfo)
     setattr(SaveImage, SaveImage.FUNCTION, save_images_hook)
 
-setup_script()
+try:
+    setup_script()
+except ImportError:
+    success = False
+    from pathlib import Path
+    print(
+f'''\033[34mIb Custom Nodes: \033[91mFailed to setup script translation due to missing dependencies. If you need this, try to run:
+python -m pip install -r "{Path(__file__).resolve().parent / 'script' / 'transpile' / 'requirements.txt'}"
+\033[0m''')
 
-print("\033[34mIb Custom Nodes: \033[92mLoaded\033[0m")
+if success:
+    print('\033[34mIb Custom Nodes: \033[92mLoaded\033[0m')

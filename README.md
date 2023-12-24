@@ -2,10 +2,49 @@
 - [ComfyScript](#comfyscript)
 - [Load Image From Path](#load-image-from-path)
 
-## ComfyScript
-Translate ComfyUI's workflows to human-readable Python scripts.
+## Installation
+```sh
+cd D:\ComfyUI\custom_nodes
+git clone https://github.com/Chaoses-Ib/ComfyUI_Ib_CustomNodes.git
+cd ComfyUI_Ib_CustomNodes
+python -m pip install -r requirements.txt
+```
 
-When installed, `SaveImage` and similar nodes will be hooked to automatically save the script as images' metadata.
+## ComfyScript
+A Python front end for ComfyUI. It has three use cases:
+- Serving as a [human-readable format](https://github.com/comfyanonymous/ComfyUI/issues/612) for ComfyUI's workflow.
+
+  This makes it easy to compare and reuse different parts of one's workflows.
+
+  Scripts can be automatically translated from workflows. See [translating from workflows](#translating-from-workflows) for details.
+
+- Directly running the script to generate images.
+
+  The main advantage of doing this is being able to mix Python code with ComfyUI's nodes, like doing loops, calling library functions, and easily encapsulating custom nodes. This also makes adding interaction easier since the UI and logic can be both written in Python. And, some people may feel more comfortable with Python than GUIs.
+
+  The main limitation is that we cannot get the output of nodes from Python before running the full workflow. But if [Node Expansion, While Loops, Components, and Lazy Evaluation #931](https://github.com/comfyanonymous/ComfyUI/pull/931) is someday merged into ComfyUI, this limitation can be solved, and it will be possible to use ComfyUI just like a simple Python library.
+
+  See [runtime](#runtime) for details.
+
+- Retrieving any wanted information by running the script with some stubs.
+
+  For example, to get all positive prompt texts, one can define:
+
+	```python
+  positive_prompts = []
+
+	def CLIPTextEncode(text, clip):
+	    return text
+	
+	def KSampler(model, seed, steps, cfg, sampler_name, scheduler, positive, negative, latent_image, denoise):
+	    positive_prompts.append(positive)
+	```
+  And use [`exec()`](https://docs.python.org/3/library/functions.html#exec) to run the script (stubs for other nodes can be automatically generated). This way, `Reroute`, `PrimitiveNode`, and other special nodes won't be a problem stopping one from getting the information.
+
+  It is also possible to generate a JSON by this. However, since JSON can only contain tree data and the workflow is a DAG, some information will have to be discarded, or the input have to be replicated at many positions.
+
+### Translating from workflows
+When this repository is installed, `SaveImage` and similar nodes will be hooked to automatically save the script as images' metadata.
 
 For example, here is a workflow in ComfyUI:
 
@@ -55,8 +94,8 @@ python -m script from-workflow "D:\workflow.json"
 ```
 -->
 
-### Execution
-You can run the script with the runtime like this:
+### Runtime
+With the runtime, you can run scripts like this:
 ```python
 from script import runtime
 from script.runtime import *
@@ -76,7 +115,7 @@ async with ComfyScript():
 
 A Jupyter Notebook is available at [runtime.ipynb](runtime.ipynb).
 
-[Type stubs](https://typing.readthedocs.io/en/latest/source/stubs.html) will be generated at [script/runtime.pyi](script/runtime.pyi) after loading. Mainstream editors can use them to help with coding:
+[Type stubs](https://typing.readthedocs.io/en/latest/source/stubs.html) will be generated at [`script/runtime/__init__.pyi`](script/runtime/__init__.pyi) after loading. Mainstream editors can use them to help with coding:
 
 ![](images/README/type-stubs.png)
 

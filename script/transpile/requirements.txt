@@ -1,0 +1,4 @@
+networkx ~= 3.0
+
+# If you need the CLI:
+# click ~= 8.1
