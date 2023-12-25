@@ -93,6 +93,9 @@ async def load(api_endpoint: str = endpoint, vars: dict = None, daemon: bool = T
         nonlocal type_stubs
         if type_id not in type_stubs:
             type_stubs[type_id] = f'class {type_id}: ...'
+
+            # To allow type hints
+            vars[type_id] = type(type_id, (), {})
     node_stubs = ''
 
     for node in nodes.values():
