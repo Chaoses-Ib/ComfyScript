@@ -1,13 +1,10 @@
 import asyncio
-from enum import Enum
 import inspect
 import threading
 import uuid
 import aiohttp
 
-from .. import astutil
-from . import node
-from . import stub
+from . import factory
 
 endpoint = 'http://127.0.0.1:8188/'
 client_id = str(uuid.uuid4())
@@ -30,27 +27,14 @@ async def load(api_endpoint: str = endpoint, vars: dict = None, daemon: bool = T
 
     print(f'Nodes: {len(nodes)}')
 
-    def def_class(class_id: str):
-        # To allow type hints
-        vars[class_id] = type(class_id, (), {})
-    type_stub = stub.TypeStubGenerator(def_class)
+    fact = factory.RuntimeFactory(vars, prompt)
 
     for node_info in nodes.values():
-        class_id = astutil.str_to_class_id(node_info['name'])
-
-        enums = {}
-        def def_enum(enum_id: str, enum: Enum):
-            enums[enum_id] = enum
-        defaults = type_stub.add_node(node_info, class_id, def_enum)
-
-        n = node.Node(prompt, node_info, defaults)
-        for enum_id, enum in enums.items():
-            setattr(n, enum_id, enum)
-        vars[class_id] = n
+        fact.add_node(node_info)
     
     # __init__.pyi
     with open(__file__ + 'i', 'w') as f:
-        f.write(type_stub.generate())
+        f.write(fact.type_stubs())
     
     if daemon and daemon_thread is None:
         daemon_thread = threading.Thread(target=asyncio.run, args=(watch(),), daemon=True)

@@ -1,6 +1,6 @@
 from enum import Enum
 
-from . import stub
+from . import factory
 
 def _positional_args_to_keyword(node: dict, args: tuple) -> dict:
     args = list(args)
@@ -47,8 +47,8 @@ class Node:
                     if group is not None and k in group:
                         input_type = group[k][0]
                         break
-                if stub.is_bool_enum(input_type):
-                    inputs[k] = stub.to_bool_enum(input_type, v)
+                if factory.is_bool_enum(input_type):
+                    inputs[k] = factory.to_bool_enum(input_type, v)
 
         self.prompt[id] = {
             'inputs': inputs,

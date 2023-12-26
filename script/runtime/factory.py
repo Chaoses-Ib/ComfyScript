@@ -1,6 +1,7 @@
-from enum import Enum
-from typing import Callable, Union
+from typing import Union
+
 from .. import astutil
+from . import node
 
 def _remove_extension(path: str) -> str:
     for ext in (
@@ -36,67 +37,67 @@ def to_bool_enum(enum: list[str], b: bool) -> str:
     else:
         return enum[1]
 
-class TypeStubGenerator:
-    def __init__(self, def_class: Callable[[str], None]):
-        self._def_class = def_class
-        self._input_types = {}
-        self._node_types = []
+class RuntimeFactory:
+    def __init__(self, vars: dict, prompt: dict):
+        self._vars = vars
+        self._prompt = prompt
+        self._data_type_stubs = {}
+        self._node_type_stubs = []
 
-    def add_node(self, node: dict, class_id: str, def_enum: Callable[[str, Enum], None]) -> dict:
-        '''
-        Returns default value dict.
-        '''
-        defaults = {}
+    def add_node(self, info: dict) -> dict:
+        class_id = astutil.str_to_class_id(info['name'])
+        enums = {}
+        enum_type_stubs = ''
+        input_defaults = {}
 
-        input_enums = ''
+        def to_type_hint(type_info: Union[str, list], name: str = None, optional: bool = False, default = None) -> str:
+            nonlocal enum_type_stubs
 
-        def to_type_hint(type: Union[str, list], name: str = None, optional: bool = False, default = None) -> str:
-            nonlocal input_enums
-
-            if isinstance(type, list):
-                if is_bool_enum(type):
+            if isinstance(type_info, list):
+                if is_bool_enum(type_info):
                     c = 'bool'
                     if default is None:
-                        default = bool_enum_default(type)
+                        default = bool_enum_default(type_info)
                 else:
                     # c = 'list[str]'
 
                     # c = f'Literal[\n        {f",{chr(10)}        ".join(astutil.to_str(s) for s in type)}\n        ]'
 
                     # TODO: Group by directory?
-                    enum_c, enum = astutil.to_str_enum(name, { _remove_extension(s): s for s in type }, '    ')
-                    input_enums += '\n' + enum_c
+                    enum_c, enum = astutil.to_str_enum(name, { _remove_extension(s): s for s in type_info }, '    ')
+                    enum_type_stubs += '\n' + enum_c
                     c = f'{class_id}.{name}'
 
-                    def_enum(name, enum)
+                    enums[name] = enum
 
-                    if default is None and len(type) > 0:
-                        default = type[0]
-            elif type == 'INT':
+                    if default is None and len(type_info) > 0:
+                        default = type_info[0]
+            elif type_info == 'INT':
                 c = 'int'
-            elif type == 'FLOAT':
+            elif type_info == 'FLOAT':
                 c = 'float'
-            elif type == 'STRING':
+            elif type_info == 'STRING':
                 c = 'str'
-            elif type == 'BOOLEAN':
+            elif type_info == 'BOOLEAN':
                 c = 'bool'
             else:
-                type_id = astutil.str_to_class_id(type)
-                if type_id not in self._input_types:
-                    self._input_types[type_id] = f'class {type_id}: ...'
-                    self._def_class(type_id)
+                type_id = astutil.str_to_class_id(type_info)
+                if type_id not in self._data_type_stubs:
+                    self._data_type_stubs[type_id] = f'class {type_id}: ...'
+
+                    self._vars[class_id] = type(class_id, (), {})
                 c = type_id
             
             if optional:
                 # c = f'Optional[{c}]'
                 c = f'{c} | None'
                 if default is None:
-                    defaults[name] = None
+                    input_defaults[name] = None
 
                     c += ' = None'
             
             if default is not None:
-                defaults[name] = default
+                input_defaults[name] = default
 
                 if isinstance(default, str):
                     default = astutil.to_str(default)
@@ -106,37 +107,37 @@ class TypeStubGenerator:
 
         inputs = []
         for (group, optional) in ('required', False), ('optional', True):
-            group: dict = node['input'].get(group)
+            group: dict = info['input'].get(group)
             if group is None:
                 continue
             for name, type_config in group.items():
-                type = type_config[0]
+                type_info = type_config[0]
                 config = {}
                 if len(type_config) > 1:
                     config = type_config[1]
-                inputs.append(f'{name}: {to_type_hint(type, name, optional, config.get("default"))}')
+                inputs.append(f'{name}: {to_type_hint(type_info, name, optional, config.get("default"))}')
         
         # Classes are used instead of functions for:
         # - Different syntax highlight color for nodes and utility functions/methods
         # - In-class enums
         c = f'class {class_id}:\n'
 
-        outputs = len(node['output'])
+        outputs = len(info['output'])
         if outputs >= 2:
-            output_type_hint = f' -> tuple[{", ".join(to_type_hint(type) for type in node["output"])}]'
+            output_type_hint = f' -> tuple[{", ".join(to_type_hint(type) for type in info["output"])}]'
         elif outputs == 1:
-            output_type_hint = f' -> {to_type_hint(node["output"][0])}'
+            output_type_hint = f' -> {to_type_hint(info["output"][0])}'
         else:
             output_type_hint = ''
 
+        # Docstring
+        # TODO: Min, max
         c += (
 f"""    '''```
     def {class_id}(
         {f",{chr(10)}        ".join(inputs)}
     ){output_type_hint}
     ```""")
-        
-        # TODO: Min, max
         
         for i, input in reversed(list(enumerate(inputs))):
             if '=' not in input:
@@ -151,15 +152,19 @@ f"""    '''```
         
         c += "'''\n"
 
+        # __new__
         c += f'    def __new__(cls, {", ".join(inputs)}){output_type_hint}: ...\n'
         
-        c += input_enums
+        c += enum_type_stubs
         
-        self._node_types.append(c)
+        self._node_type_stubs.append(c)
         
-        return defaults
+        n = node.Node(self._prompt, info, input_defaults)
+        for enum_id, enum in enums.items():
+            setattr(n, enum_id, enum)
+        self._vars[class_id] = n
 
-    def generate(self) -> str:
+    def type_stubs(self) -> str:
         c = (
 '''from __future__ import annotations
 from enum import Enum
@@ -169,10 +174,10 @@ class ComfyScript:
     async def __aexit__(self, exc_type, exc_value, traceback): ...
 
 ''')
-        c += '\n'.join(self._input_types.values()) + '\n\n'
-        c += '\n'.join(self._node_types)
+        c += '\n'.join(self._data_type_stubs.values()) + '\n\n'
+        c += '\n'.join(self._node_type_stubs)
         return c
 
 __all__ = [
-    'TypeStubGenerator',
+    'RuntimeFactory',
 ]
