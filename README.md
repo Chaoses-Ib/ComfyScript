@@ -115,7 +115,9 @@ A Jupyter Notebook example is available at [runtime.ipynb](runtime.ipynb).
 
 - [Type stubs](https://typing.readthedocs.io/en/latest/source/stubs.html) will be generated at [`script/runtime/__init__.pyi`](script/runtime/__init__.pyi) after loading. Mainstream editors can use them to help with coding:
 
-  ![](images/README/type-stubs.png)
+  | | |
+  | --- | --- |
+  | ![](images/README/type-stubs.png) | ![](images/README/type-stubs2.png) |
 
 - The runtime is asynchronous by default. You can queue multiple prompts without waiting for the first one to finish. A daemon thread will watch and report the remaining prompts in the queue and the current progress, for example:
   ```

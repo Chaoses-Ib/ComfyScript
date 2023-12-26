@@ -58,7 +58,12 @@ async def load(api_endpoint: str = endpoint, vars: dict = None, daemon: bool = T
     for node in nodes.values():
         class_id = astutil.str_to_class_id(node['name'])
 
-        def f(*args, _comfyscript_node=node,  **kwargs):
+        enums = {}
+        def def_enum(enum_id: str, enum: Enum):
+            enums[enum_id] = enum
+        defaults = type_stub.add_node(node, class_id, def_enum)
+
+        def f(*args, _comfyscript_node=node, _comfyscript_defaults=defaults,  **kwargs):
             global prompt
 
             node = _comfyscript_node
@@ -67,6 +72,10 @@ async def load(api_endpoint: str = endpoint, vars: dict = None, daemon: bool = T
             id = assign_id()
 
             inputs = positional_args_to_keyword(node, args) | kwargs
+            for k in list(inputs.keys()):
+                if inputs[k] is None:
+                    del inputs[k]
+            inputs = _comfyscript_defaults | inputs
             for k, v in inputs.items():
                 if isinstance(v, Enum):
                     inputs[k] = v.value
@@ -92,10 +101,8 @@ async def load(api_endpoint: str = endpoint, vars: dict = None, daemon: bool = T
                 return [id, 0]
             else:
                 return [[id, i] for i in range(outputs)]
-
-        def def_enum(enum_id: str, enum: Enum):
+        for enum_id, enum in enums.items():
             setattr(f, enum_id, enum)
-        type_stub.add_node(node, class_id, def_enum)
 
         vars[class_id] = f
     

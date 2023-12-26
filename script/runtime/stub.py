@@ -42,15 +42,22 @@ class TypeStubGenerator:
         self._input_types = {}
         self._node_types = []
 
-    def add_node(self, node: dict, class_id: str, def_enum: Callable[[str, Enum], None]) -> None:
+    def add_node(self, node: dict, class_id: str, def_enum: Callable[[str, Enum], None]) -> dict:
+        '''
+        Returns default value dict.
+        '''
+        defaults = {}
+
         input_enums = ''
 
-        def to_type_hint(type: Union[str, list], name: str = None, optional: bool = False) -> str:
+        def to_type_hint(type: Union[str, list], name: str = None, optional: bool = False, default = None) -> str:
             nonlocal input_enums
 
             if isinstance(type, list):
                 if is_bool_enum(type):
-                    c = f'bool = {bool_enum_default(type)}'
+                    c = 'bool'
+                    if default is None:
+                        default = bool_enum_default(type)
                 else:
                     # c = 'list[str]'
 
@@ -62,6 +69,9 @@ class TypeStubGenerator:
                     c = f'{class_id}.{name}'
 
                     def_enum(name, enum)
+
+                    if default is None and len(type) > 0:
+                        default = type[0]
             elif type == 'INT':
                 c = 'int'
             elif type == 'FLOAT':
@@ -76,9 +86,22 @@ class TypeStubGenerator:
                     self._input_types[type_id] = f'class {type_id}: ...'
                     self._def_class(type_id)
                 c = type_id
+            
             if optional:
                 # c = f'Optional[{c}]'
                 c = f'{c} | None'
+                if default is None:
+                    defaults[name] = None
+
+                    c += ' = None'
+            
+            if default is not None:
+                defaults[name] = default
+
+                if isinstance(default, str):
+                    default = astutil.to_str(default)
+                c += f' = {default}'
+            
             return c
 
         inputs = []
@@ -86,8 +109,12 @@ class TypeStubGenerator:
             group: dict = node['input'].get(group)
             if group is None:
                 continue
-            for name, config in group.items():
-                inputs.append(f'{name}: {to_type_hint(config[0], name, optional)}')
+            for name, type_config in group.items():
+                type = type_config[0]
+                config = {}
+                if len(type_config) > 1:
+                    config = type_config[1]
+                inputs.append(f'{name}: {to_type_hint(type, name, optional, config.get("default"))}')
         
         # Classes are used instead of functions for:
         # - Different syntax highlight color for nodes and utility functions/methods
@@ -107,14 +134,30 @@ f"""    '''```
     def {class_id}(
         {f",{chr(10)}        ".join(inputs)}
     ){output_type_hint}
-    ```'''
-""")
+    ```""")
+        
+        # TODO: Min, max
+        
+        for i, input in reversed(list(enumerate(inputs))):
+            if '=' not in input:
+                removed = False
+                for j, input in enumerate(inputs[:i]):
+                    if '=' in input:
+                        inputs[j] = input[:input.index('=')].rstrip() + ' | None'
+                        removed = True
+                if removed:
+                    c += '\n    Use `None` to use default values of arguments that appear before any non-default argument.\n    '
+                break
+        
+        c += "'''\n"
 
         c += f'    def __new__(cls, {", ".join(inputs)}){output_type_hint}: ...\n'
         
         c += input_enums
         
         self._node_types.append(c)
+        
+        return defaults
 
     def generate(self) -> str:
         c = (
