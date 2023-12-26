@@ -12,6 +12,30 @@ def _remove_extension(path: str) -> str:
         path = path.removesuffix(ext)
     return path
 
+def is_bool_enum(enum: list[str]) -> (bool, bool):
+    if len(enum) != 2:
+        return False
+    lower = [s.lower() for s in enum]
+    if lower == ['enable', 'disable'] or lower == ['on', 'off']:
+        return True
+    elif lower == ['disable', 'enable'] or lower == ['off', 'on']:
+        return True
+    return False
+
+def bool_enum_default(enum: list[str]) -> bool:
+    lower = enum[0].lower()
+    if lower in ('enable', 'on'):
+        return True
+    elif lower in ('disable', 'off'):
+        return False
+    raise ValueError(f'Invalid bool enum: {enum}')
+
+def to_bool_enum(enum: list[str], b: bool) -> str:
+    if bool_enum_default(enum) == b:
+        return enum[0]
+    else:
+        return enum[1]
+
 class TypeStubGenerator:
     def __init__(self, def_class: Callable[[str], None]):
         self._def_class = def_class
@@ -25,18 +49,19 @@ class TypeStubGenerator:
             nonlocal input_enums
 
             if isinstance(type, list):
-                # c = 'list[str]'
+                if is_bool_enum(type):
+                    c = f'bool = {bool_enum_default(type)}'
+                else:
+                    # c = 'list[str]'
 
-                # c = f'Literal[\n        {f",{chr(10)}        ".join(astutil.to_str(s) for s in type)}\n        ]'
+                    # c = f'Literal[\n        {f",{chr(10)}        ".join(astutil.to_str(s) for s in type)}\n        ]'
 
-                # TODO: Group by directory?
-                enum_c, enum = astutil.to_str_enum(name, { _remove_extension(s): s for s in type }, '    ')
-                input_enums += '\n' + enum_c
-                c = f'{class_id}.{name}'
+                    # TODO: Group by directory?
+                    enum_c, enum = astutil.to_str_enum(name, { _remove_extension(s): s for s in type }, '    ')
+                    input_enums += '\n' + enum_c
+                    c = f'{class_id}.{name}'
 
-                def_enum(name, enum)
-
-                # TODO: Bool enums
+                    def_enum(name, enum)
             elif type == 'INT':
                 c = 'int'
             elif type == 'FLOAT':

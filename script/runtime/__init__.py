@@ -70,6 +70,15 @@ async def load(api_endpoint: str = endpoint, vars: dict = None, daemon: bool = T
             for k, v in inputs.items():
                 if isinstance(v, Enum):
                     inputs[k] = v.value
+                elif v is True or v is False:
+                    input_type = None
+                    for group in 'required', 'optional':
+                        group: dict = node['input'].get(group)
+                        if group is not None and k in group:
+                            input_type = group[k][0]
+                            break
+                    if stub.is_bool_enum(input_type):
+                        inputs[k] = stub.to_bool_enum(input_type, v)
 
             prompt[id] = {
                 'inputs': inputs,
