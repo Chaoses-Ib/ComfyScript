@@ -6,33 +6,13 @@ import uuid
 import aiohttp
 
 from .. import astutil
+from . import node
 from . import stub
 
 endpoint = 'http://127.0.0.1:8188/'
 client_id = str(uuid.uuid4())
 prompt = {}
-count = -1
 daemon_thread = None
-
-def assign_id() -> str:
-    global count
-    count += 1
-    return str(count)
-
-def positional_args_to_keyword(node: dict, args: tuple) -> dict:
-    args = list(args)
-    kwargs = {}
-    for group in 'required', 'optional':
-        group: dict = node['input'].get(group)
-        if group is None:
-            continue
-        for name in group:
-            kwargs[name] = args.pop(0)
-            if len(args) == 0:
-                return kwargs
-    if len(args) != 0:
-        print(f'ComfyScript: {node["name"]} has more positional arguments than expected: {args}')
-    return kwargs
 
 async def load(api_endpoint: str = endpoint, vars: dict = None, daemon: bool = True):
     global prompt, endpoint, daemon_thread
@@ -55,56 +35,18 @@ async def load(api_endpoint: str = endpoint, vars: dict = None, daemon: bool = T
         vars[class_id] = type(class_id, (), {})
     type_stub = stub.TypeStubGenerator(def_class)
 
-    for node in nodes.values():
-        class_id = astutil.str_to_class_id(node['name'])
+    for node_info in nodes.values():
+        class_id = astutil.str_to_class_id(node_info['name'])
 
         enums = {}
         def def_enum(enum_id: str, enum: Enum):
             enums[enum_id] = enum
-        defaults = type_stub.add_node(node, class_id, def_enum)
+        defaults = type_stub.add_node(node_info, class_id, def_enum)
 
-        def f(*args, _comfyscript_node=node, _comfyscript_defaults=defaults,  **kwargs):
-            global prompt
-
-            node = _comfyscript_node
-            # print(node['name'], args, kwargs)
-
-            id = assign_id()
-
-            inputs = positional_args_to_keyword(node, args) | kwargs
-            for k in list(inputs.keys()):
-                if inputs[k] is None:
-                    del inputs[k]
-            inputs = _comfyscript_defaults | inputs
-            for k, v in inputs.items():
-                if isinstance(v, Enum):
-                    inputs[k] = v.value
-                elif v is True or v is False:
-                    input_type = None
-                    for group in 'required', 'optional':
-                        group: dict = node['input'].get(group)
-                        if group is not None and k in group:
-                            input_type = group[k][0]
-                            break
-                    if stub.is_bool_enum(input_type):
-                        inputs[k] = stub.to_bool_enum(input_type, v)
-
-            prompt[id] = {
-                'inputs': inputs,
-                'class_type': node['name'],
-            }
-
-            outputs = len(node['output'])
-            if outputs == 0:
-                return
-            elif outputs == 1:
-                return [id, 0]
-            else:
-                return [[id, i] for i in range(outputs)]
+        n = node.Node(prompt, node_info, defaults)
         for enum_id, enum in enums.items():
-            setattr(f, enum_id, enum)
-
-        vars[class_id] = f
+            setattr(n, enum_id, enum)
+        vars[class_id] = n
     
     # __init__.pyi
     with open(__file__ + 'i', 'w') as f:
@@ -153,9 +95,8 @@ async def watch():
     '''
 
 def clear_prompt():
-    global prompt, count
-    prompt = {}
-    count = -1
+    global prompt
+    prompt.clear()
 
 async def queue_prompt(source = None):
     global prompt, endpoint, client_id
