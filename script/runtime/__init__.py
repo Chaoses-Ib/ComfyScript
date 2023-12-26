@@ -1,11 +1,12 @@
 import asyncio
+from enum import Enum
 import inspect
 import threading
-from typing import Union
 import uuid
 import aiohttp
 
 from .. import astutil
+from . import stub
 
 endpoint = 'http://127.0.0.1:8188/'
 client_id = str(uuid.uuid4())
@@ -33,49 +34,6 @@ def positional_args_to_keyword(node: dict, args: tuple) -> dict:
         print(f'ComfyScript: {node["name"]} has more positional arguments than expected: {args}')
     return kwargs
 
-def get_type_stub(node: dict, class_id: str, type_callback) -> str:
-    def to_type_hint(type: Union[str, list], optional: bool = False) -> str:
-        if isinstance(type, list):
-            # c = 'list[str]'
-            c = f'Literal[\n        {f",{chr(10)}        ".join(astutil.to_str(s) for s in type)}\n        ]'
-        elif type == 'INT':
-            c = 'int'
-        elif type == 'FLOAT':
-            c = 'float'
-        elif type == 'STRING':
-            c = 'str'
-        elif type == 'BOOLEAN':
-            c = 'bool'
-        else:
-            type_id = astutil.str_to_class_id(type)
-            type_callback(type_id)
-            c = type_id
-        if optional:
-            # c = f'Optional[{c}]'
-            c = f'{c} | None'
-        return c
-
-    inputs = []
-    for (group, optional) in ('required', False), ('optional', True):
-        group: dict = node['input'].get(group)
-        if group is None:
-            continue
-        for name, config in group.items():
-            inputs.append(f'{name}: {to_type_hint(config[0], optional)}')
-    # Classes are used instead of functions for:
-    # - Different syntax highlight color for nodes and utility functions/methods
-    # - In-class enums
-    c = f'''class {class_id}:
-    def __new__(cls, {", ".join(inputs)})'''
-
-    outputs = len(node['output'])
-    if outputs >= 2:
-        c += f' -> tuple[{", ".join(to_type_hint(type) for type in node["output"])}]'
-    elif outputs == 1:
-        c += f' -> {to_type_hint(node["output"][0])}'
-    
-    return c + ': ...\n'
-
 async def load(api_endpoint: str = endpoint, vars: dict = None, daemon: bool = True):
     global prompt, endpoint, daemon_thread
 
@@ -92,15 +50,10 @@ async def load(api_endpoint: str = endpoint, vars: dict = None, daemon: bool = T
 
     print(f'Nodes: {len(nodes)}')
 
-    type_stubs = {}
-    def add_type_stub(type_id: str):
-        nonlocal type_stubs
-        if type_id not in type_stubs:
-            type_stubs[type_id] = f'class {type_id}: ...'
-
-            # To allow type hints
-            vars[type_id] = type(type_id, (), {})
-    node_stubs = ''
+    def def_class(class_id: str):
+        # To allow type hints
+        vars[class_id] = type(class_id, (), {})
+    type_stub = stub.TypeStubGenerator(def_class)
 
     for node in nodes.values():
         class_id = astutil.str_to_class_id(node['name'])
@@ -113,8 +66,13 @@ async def load(api_endpoint: str = endpoint, vars: dict = None, daemon: bool = T
 
             id = assign_id()
 
+            inputs = positional_args_to_keyword(node, args) | kwargs
+            for k, v in inputs.items():
+                if isinstance(v, Enum):
+                    inputs[k] = v.value
+
             prompt[id] = {
-                'inputs': positional_args_to_keyword(node, args) | kwargs,
+                'inputs': inputs,
                 'class_type': node['name'],
             }
 
@@ -125,23 +83,16 @@ async def load(api_endpoint: str = endpoint, vars: dict = None, daemon: bool = T
                 return [id, 0]
             else:
                 return [[id, i] for i in range(outputs)]
-        
-        vars[class_id] = f
 
-        node_stubs += get_type_stub(node, class_id, add_type_stub) + '\n'
+        def def_enum(enum_id: str, enum: Enum):
+            setattr(f, enum_id, enum)
+        type_stub.add_node(node, class_id, def_enum)
+
+        vars[class_id] = f
     
     # __init__.pyi
     with open(__file__ + 'i', 'w') as f:
-        f.write(
-'''from typing import Literal
-
-class ComfyScript:
-    async def __aenter__(self): ...
-    async def __aexit__(self, exc_type, exc_value, traceback): ...
-
-''')
-        f.write('\n'.join(type_stubs.values()) + '\n\n')
-        f.write(node_stubs)
+        f.write(type_stub.generate())
     
     if daemon and daemon_thread is None:
         daemon_thread = threading.Thread(target=asyncio.run, args=(watch(),), daemon=True)

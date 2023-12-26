@@ -1,3 +1,9 @@
+import sys
+if sys.version_info >= (3, 11):
+    from enum import StrEnum
+else:
+    from enum import Enum as StrEnum
+
 import re
 import keyword
 
@@ -13,7 +19,7 @@ def str_to_raw_id(s: str) -> str:
 
     if s.isascii():
         s = re.sub(r'[^A-Za-z_0-9]', '_', s)
-        s = re.sub(r'^[0-9]', r'_\0', s, count=1)
+        s = re.sub(r'^[0-9]', r'_\g<0>', s, count=1)
     else:
         s = re.sub(r'[\S\s]', lambda m: m.group(0) if is_xid_continue(m.group(0)) else '_', s)
         if not is_xid_start(s[0]):
@@ -86,6 +92,28 @@ def to_assign_target_list(t: list, fold_trailing_underscores: bool = False) -> s
     else:
         return f"{', '.join(t)}"
 
+def to_str_enum(id: str, dic: dict[str, str], indent: str) -> (str, StrEnum):
+    '''
+    Requires: `from enum import Enum`
+    '''
+    # TODO: Change to StrEnum if >= Python 3.11
+    c = f'{indent}class {id}(Enum):'
+
+    members = {}
+    for (k, v) in dic.items():
+        k = str_to_raw_id(k)
+        # 'comfy', 'comfy++'
+        while k in members:
+            k += '_'
+        members[k] = v
+        c += f'\n{indent}    {k} = {to_str(v)}'
+    
+    if len(members) == 0:
+        c += 'pass'
+    c += '\n'
+    
+    return c, StrEnum(id, members)
+
 __all__ = [
     # 'is_xid_start',
     # 'is_xid_continue',
@@ -100,4 +128,5 @@ __all__ = [
     'str_to_const_id',
     'to_str',
     'to_assign_target_list',
+    'to_str_enum',
 ]
