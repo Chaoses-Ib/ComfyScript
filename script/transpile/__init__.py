@@ -181,7 +181,7 @@ class WorkflowToScriptTranspiler:
                     elif len(v.outputs) == 1:
                         slot_index = 0
                     else:
-                        print(f"Ib Custom Nodes: Failed to determine slot_index of output {output.name} of node {v.id}.")
+                        print(f"ComfyScript: Failed to determine slot_index of output {output.name} of node {v.id}.")
                         continue
 
                     # Variable reuse: If an input is only used by current node, and current node outputs a same type output, then the output should take the input's var name.

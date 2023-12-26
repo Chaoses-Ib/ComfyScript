@@ -30,7 +30,7 @@ def positional_args_to_keyword(node: dict, args: tuple) -> dict:
             if len(args) == 0:
                 return kwargs
     if len(args) != 0:
-        print(f'Ib Custom Nodes: {node["name"]} has more positional arguments than expected: {args}')
+        print(f'ComfyScript: {node["name"]} has more positional arguments than expected: {args}')
     return kwargs
 
 def get_type_stub(node: dict, class_id: str, type_callback) -> str:
