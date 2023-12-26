@@ -109,7 +109,7 @@ def to_str_enum(id: str, dic: dict[str, str], indent: str) -> (str, StrEnum):
         c += f'\n{indent}    {k} = {to_str(v)}'
     
     if len(members) == 0:
-        c += 'pass'
+        c += '\n{indent}    pass'
     c += '\n'
     
     return c, StrEnum(id, members)

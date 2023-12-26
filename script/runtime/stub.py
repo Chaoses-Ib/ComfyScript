@@ -3,8 +3,12 @@ from typing import Callable, Union
 from .. import astutil
 
 def _remove_extension(path: str) -> str:
-    # `supported_pt_extensions`
-    for ext in '.ckpt', '.pt', '.bin', '.pth', '.safetensors':
+    for ext in (
+        # `supported_pt_extensions`
+        '.ckpt', '.pt', '.bin', '.pth', '.safetensors',
+        '.vae.pt', '.vae.safetensors',
+        '.yaml'
+    ):
         path = path.removesuffix(ext)
     return path
 
@@ -31,6 +35,8 @@ class TypeStubGenerator:
                 c = f'{class_id}.{name}'
 
                 def_enum(name, enum)
+
+                # TODO: Bool enums
             elif type == 'INT':
                 c = 'int'
             elif type == 'FLOAT':
@@ -63,14 +69,24 @@ class TypeStubGenerator:
         # - In-class enums
         c = f'class {class_id}:\n'
 
-        c += f'    def __new__(cls, {", ".join(inputs)})'
         outputs = len(node['output'])
         if outputs >= 2:
-            c += f' -> tuple[{", ".join(to_type_hint(type) for type in node["output"])}]'
+            output_type_hint = f' -> tuple[{", ".join(to_type_hint(type) for type in node["output"])}]'
         elif outputs == 1:
-            c += f' -> {to_type_hint(node["output"][0])}'
-        c += ': ...\n'
+            output_type_hint = f' -> {to_type_hint(node["output"][0])}'
+        else:
+            output_type_hint = ''
 
+        c += (
+f"""    '''```
+    def {class_id}(
+        {f",{chr(10)}        ".join(inputs)}
+    ){output_type_hint}
+    ```'''
+""")
+
+        c += f'    def __new__(cls, {", ".join(inputs)}){output_type_hint}: ...\n'
+        
         c += input_enums
         
         self._node_types.append(c)
