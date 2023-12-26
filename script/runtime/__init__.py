@@ -234,6 +234,25 @@ async def exec_prompt(source = None):
     print(response)
     await wait_prompt(response['prompt_id'])
 
+async def interrupt_prompt():
+    async with aiohttp.ClientSession() as session:
+        async with session.post(f'{endpoint}interrupt', json={
+            'client_id': client_id,
+        }) as response:
+            assert response.status == 200
+
+async def clear_queue():
+    async with aiohttp.ClientSession() as session:
+        async with session.post(f'{endpoint}queue', json={
+            'clear': True,
+            'client_id': client_id,
+        }) as response:
+            assert response.status == 200
+
+async def interrupt_all():
+    await clear_queue()
+    await interrupt_prompt()
+
 # TODO: Make prompt local to ComfyScript
 class ComfyScript:
     def __init__(self, wait: bool = False):
@@ -260,5 +279,8 @@ __all__ = [
     'queue_prompt',
     'wait_prompt',
     'exec_prompt',
+    'interrupt_prompt',
+    'clear_queue',
+    'interrupt_all',
     'ComfyScript'
 ]

@@ -128,6 +128,18 @@ A Jupyter Notebook example is available at [runtime.ipynb](runtime.ipynb).
   100%|██████████████████████████████████████████████████| 20/20
   Queue remaining: 0
   ```
+  To interrupt the current prompt:
+  ```python
+  await runtime.interrupt_prompt()
+  ```
+  To clear the queue:
+  ```python
+  await runtime.clear_queue()
+  ```
+  To interrupt the current prompt and clear the queue:
+  ```python
+  await runtime.interrupt_all()
+  ```
 
 ## Other nodes
 These nodes can be used without ComfyScript.
