@@ -37,7 +37,7 @@ def get_type_stub(node: dict, class_id: str, type_callback) -> str:
     def to_type_hint(type: Union[str, list], optional: bool = False) -> str:
         if isinstance(type, list):
             # c = 'list[str]'
-            c = f'Literal[\n    {f",{chr(10)}    ".join(astutil.to_str(s) for s in type)}\n    ]'
+            c = f'Literal[\n        {f",{chr(10)}        ".join(astutil.to_str(s) for s in type)}\n        ]'
         elif type == 'INT':
             c = 'int'
         elif type == 'FLOAT':
@@ -62,7 +62,11 @@ def get_type_stub(node: dict, class_id: str, type_callback) -> str:
             continue
         for name, config in group.items():
             inputs.append(f'{name}: {to_type_hint(config[0], optional)}')
-    c = f'def {class_id}({", ".join(inputs)})'
+    # Classes are used instead of functions for:
+    # - Different syntax highlight color for nodes and utility functions/methods
+    # - In-class enums
+    c = f'''class {class_id}:
+    def __new__(cls, {", ".join(inputs)})'''
 
     outputs = len(node['output'])
     if outputs >= 2:
@@ -70,7 +74,7 @@ def get_type_stub(node: dict, class_id: str, type_callback) -> str:
     elif outputs == 1:
         c += f' -> {to_type_hint(node["output"][0])}'
     
-    return c + ': ...'
+    return c + ': ...\n'
 
 async def load(api_endpoint: str = endpoint, vars: dict = None, daemon: bool = True):
     global prompt, endpoint, daemon_thread
