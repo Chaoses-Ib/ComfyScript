@@ -1,6 +1,6 @@
-from enum import Enum
+from __future__ import annotations
+from typing import Callable
 
-from . import factory
 from . import data
 
 def _positional_args_to_keyword(node: dict, args: tuple) -> dict:
@@ -19,52 +19,52 @@ def _positional_args_to_keyword(node: dict, args: tuple) -> dict:
     return kwargs
 
 class Node:
-    def __init__(self, prompt: dict, info: dict, defaults: dict, output_types: list[type]):
-        self.prompt = prompt
+    output_hook: Callable[[data.NodeOutput | list[data.NodeOutput]], None] | None = None
+
+    def __init__(self, info: dict, defaults: dict, output_types: list[type]):
         self.info = info
         self.defaults = defaults
         self.output_types = output_types
-
-    def _assign_id(self) -> str:
-        # Must be str
-        return str(int(max(self.prompt.keys(), key=int, default='-1')) + 1)
     
     def __call__(self, *args, **kwds):
-        # print(self.node['name'], args, kwds)
-
-        id = self._assign_id()
+        # print(self.info['name'], args, kwds)
 
         inputs = _positional_args_to_keyword(self.info, args) | kwds
         for k in list(inputs.keys()):
-            if inputs[k] is None:
+            v = inputs[k]
+            if v is None:
                 del inputs[k]
+            elif isinstance(v, data.NodeOutput) and v.output_slot is None:
+                raise TypeError(f'Argument "{k}" is an empty output: {v}')
         inputs = self.defaults | inputs
-        for k, v in inputs.items():
-            if isinstance(v, Enum):
-                inputs[k] = v.value
-            elif v is True or v is False:
-                input_type = None
-                for group in 'required', 'optional':
-                    group: dict = self.info['input'].get(group)
-                    if group is not None and k in group:
-                        input_type = group[k][0]
-                        break
-                if factory.is_bool_enum(input_type):
-                    inputs[k] = factory.to_bool_enum(input_type, v)
-            elif isinstance(v, data.NodeOutput):
-                inputs[k] = [v.id, v.slot]
 
-        self.prompt[id] = {
+        node_prompt = {
             'inputs': inputs,
             'class_type': self.info['name'],
         }
 
         outputs = len(self.output_types)
         if outputs == 0:
-            return
+            r = data.NodeOutput(self.info, node_prompt, None)
         elif outputs == 1:
-            return self.output_types[0](id, 0)
+            r = self.output_types[0](self.info, node_prompt, 0)
         else:
-            return [output_type(id, i) for i, output_type in enumerate(self.output_types)]
+            r = [output_type(self.info, node_prompt, i) for i, output_type in enumerate(self.output_types)]
+        
+        if self.info.get('output_node') is True and self.output_hook is not None:
+            self.output_hook(r)
+
+        return r
+
+    @classmethod
+    def set_output_hook(cls, hook: Callable[[data.NodeOutput | list[data.NodeOutput]], None]):
+        if cls.output_hook is not None:
+            # TODO: Stack?
+            raise RuntimeError('Output hook already set')
+        cls.output_hook = hook
+    
+    @classmethod
+    def clear_output_hook(cls):
+        cls.output_hook = None
 
 __all__ = ['Node']

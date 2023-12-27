@@ -111,7 +111,8 @@ class WorkflowToScriptTranspiler:
             if group is None:
                 continue
             for name in group:
-                if value := kwargs.get(name):
+                value = kwargs.get(name)
+                if value is not None:
                     args.append(value)
         return args
 

@@ -1,3 +1,4 @@
+from __future__ import annotations
 import asyncio
 import inspect
 import threading
@@ -5,14 +6,15 @@ import uuid
 import aiohttp
 
 from . import factory
+from . import node
+from . import data
 
 endpoint = 'http://127.0.0.1:8188/'
 client_id = str(uuid.uuid4())
-prompt = {}
 daemon_thread = None
 
 async def load(api_endpoint: str = endpoint, vars: dict = None, daemon: bool = True):
-    global prompt, endpoint, daemon_thread
+    global endpoint, daemon_thread
 
     endpoint = api_endpoint
 
@@ -24,7 +26,7 @@ async def load(api_endpoint: str = endpoint, vars: dict = None, daemon: bool = T
 
     print(f'Nodes: {len(nodes)}')
 
-    fact = factory.RuntimeFactory(prompt)
+    fact = factory.RuntimeFactory()
     for node_info in nodes.values():
         fact.add_node(node_info)
     
@@ -82,18 +84,19 @@ async def watch():
     {'type': 'executing', 'data': {'node': None, 'prompt_id': '3328f0c8-9368-4070-90e7-087e854fe315'}}
     '''
 
-def clear_prompt():
-    global prompt
-    prompt.clear()
-
-async def queue_prompt(source = None):
-    global prompt, endpoint, client_id
+async def queue_prompt(prompt: dict | data.NodeOutput | list[data.NodeOutput], source = None):
+    global endpoint, client_id
 
     if source is None:
         outer = inspect.currentframe().f_back
         source = ''.join(inspect.findsource(outer)[0])
-
+    
+    if isinstance(prompt, data.NodeOutput):
+        prompt = prompt.get_prompt()
+    elif isinstance(prompt, list):
+        prompt = data.get_outputs_prompt(prompt)
     # print(prompt)
+
     async with aiohttp.ClientSession() as session:
         async with session.post(f'{endpoint}prompt', json={
             'prompt': prompt,
@@ -182,21 +185,33 @@ async def interrupt_all():
     await clear_queue()
     await interrupt_prompt()
 
-# TODO: Make prompt local to ComfyScript
 class ComfyScript:
     def __init__(self, wait: bool = False):
         '''
         - `wait`: Wait for the prompt to finish before exiting the context manager.
         '''
+        self.outputs = []
         self.wait_prompt = wait
+    
+    def __iadd__(self, other: data.NodeOutput | list[data.NodeOutput]):
+        if isinstance(other, list):
+            self.outputs.extend(other)
+        else:
+            self.outputs.append(other)
+        return self
 
-    async def __aenter__(self):
-        clear_prompt()
+    async def __aenter__(self) -> ComfyScript:
+        self.outputs = []
+        node.Node.set_output_hook(self.__iadd__)
+        return self
 
     async def __aexit__(self, exc_type, exc_value, traceback):
         outer = inspect.currentframe().f_back
         source = ''.join(inspect.findsource(outer)[0])
-        response = await queue_prompt(source)
+
+        node.Node.clear_output_hook()
+        
+        response = await queue_prompt(self.outputs, source)
         # TODO: Fix multi-thread print
         # print(response)
         if self.wait_prompt:
@@ -204,7 +219,6 @@ class ComfyScript:
 
 __all__ = [
     'load',
-    'clear_prompt',
     'queue_prompt',
     'wait_prompt',
     'exec_prompt',
