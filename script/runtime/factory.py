@@ -1,7 +1,7 @@
 from typing import Union
 
 from .. import astutil
-from . import node
+from . import nodes
 from . import data
 
 def _remove_extension(path: str) -> str:
@@ -167,23 +167,18 @@ f"""    '''```
         
         self._node_type_stubs.append(c)
         
-        n = node.Node(info, input_defaults, output_types)
+        node = nodes.Node(info, input_defaults, output_types)
         for enum_id, enum in enums.items():
-            setattr(n, enum_id, enum)
-        self._vars[class_id] = n
+            setattr(node, enum_id, enum)
+        self._vars[class_id] = node
     
     def vars(self) -> dict:
         return self._vars
 
     def type_stubs(self) -> str:
-        # TODO: Other functions
         c = (
 '''from __future__ import annotations
 from enum import Enum
-
-class ComfyScript:
-    async def __aenter__(self): ...
-    async def __aexit__(self, exc_type, exc_value, traceback): ...
 
 ''')
         c += '\n'.join(self._data_type_stubs.values()) + '\n\n'

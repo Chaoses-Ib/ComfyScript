@@ -1,7 +1,26 @@
 from __future__ import annotations
 from typing import Callable
 
+from . import factory
 from . import data
+
+def load(nodes_info: dict, vars: dict | None) -> None:
+    fact = factory.RuntimeFactory()
+    for node_info in nodes_info.values():
+        fact.add_node(node_info)
+    
+    globals().update(fact.vars())
+    __all__.extend(fact.vars().keys())
+
+    # if vars is None:
+    #     # TODO: Or __builtins__?
+    #     vars = inspect.currentframe().f_back.f_globals
+    if vars is not None:
+        vars.update(fact.vars())
+
+    # nodes.pyi
+    with open(__file__ + 'i', 'w') as f:
+        f.write(fact.type_stubs())
 
 def _positional_args_to_keyword(node: dict, args: tuple) -> dict:
     args = list(args)
@@ -67,4 +86,7 @@ class Node:
     def clear_output_hook(cls):
         cls.output_hook = None
 
-__all__ = ['Node']
+__all__ = [
+    'load',
+    'Node',
+]

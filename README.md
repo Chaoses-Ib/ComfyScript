@@ -95,13 +95,11 @@ python -m script from-workflow "D:\workflow.json"
 ## Runtime
 With the runtime, you can run ComfyScript like this:
 ```python
-from script import runtime
 from script.runtime import *
+await load()
+from script.runtime.nodes import *
 
-# await runtime.load('http://127.0.0.1:8188/', locals())
-await runtime.load()
-
-async with ComfyScript():
+async with TaskManager():
     model, clip, vae = CheckpointLoaderSimple('v1-5-pruned-emaonly.ckpt')
     conditioning = CLIPTextEncode('beautiful scenery nature glass bottle landscape, , purple galaxy bottle,', clip)
     conditioning2 = CLIPTextEncode('text, watermark', clip)
@@ -128,21 +126,18 @@ A Jupyter Notebook example is available at [runtime.ipynb](runtime.ipynb).
   100%|██████████████████████████████████████████████████| 20/20
   Queue remaining: 0
   ```
-  To interrupt the current prompt:
+  Some control functions are also available:
   ```python
-  await runtime.interrupt_current()
-  ```
-  To clear the queue:
-  ```python
-  await runtime.clear_queue()
-  ```
-  To interrupt the current prompt and clear the queue:
-  ```python
-  await runtime.interrupt_all()
+  # Interrupt the current task
+  await interrupt_current()
+  # Clear the queue
+  await clear_queue()
+  # Interrupt the current task and clear the queue
+  await interrupt_all()
   ```
 
 ### Differences from ComfyUI's web UI
-In ComfyUI, the back end and the web UI use different schemas of workflows. Things like "S&R" (Search and Replace), "mute", "bypass" and "group" only exist in the web UI's workflows. Before sending workflows to the back end, the web UI will perform S&R, remove muted and bypassed nodes, and ignore groups as they are just UI elements that have no effect on the back end.
+In ComfyUI, the back end and the web UI use different schemas of workflows. Things like "S&R" (Search and Replace), "mute", "bypass" and "group" only exist in the web UI's workflows. Before sending the real workflows to the back end, the web UI will perform S&R, remove muted and bypassed nodes, and ignore groups as they are just UI elements that have no effect on the back end.
 
 In ComfyScript, S&R can be implemented with variables and [f-strings](https://docs.python.org/3/tutorial/inputoutput.html#formatted-string-literals):
 ```python

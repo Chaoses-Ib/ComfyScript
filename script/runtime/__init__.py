@@ -6,8 +6,7 @@ import threading
 import uuid
 import aiohttp
 
-from . import factory
-from . import node
+from . import nodes
 from . import data
 
 _endpoint = 'http://127.0.0.1:8188/'
@@ -22,7 +21,7 @@ async def _response_to_str(response: aiohttp.ClientResponse) -> str:
         msg = str(e)
     return f'{response}{msg}'
 
-async def load(api_endpoint: str = _endpoint, vars: dict = None, daemon: bool = True, save_script_source: bool = True):
+async def load(api_endpoint: str = _endpoint, vars: dict | None = None, daemon: bool = True, save_script_source: bool = True):
     global _endpoint, _save_script_source, _daemon_thread
 
     _endpoint = api_endpoint
@@ -32,34 +31,20 @@ async def load(api_endpoint: str = _endpoint, vars: dict = None, daemon: bool = 
         # http://127.0.0.1:8188/object_info
         async with session.get(f'{_endpoint}object_info') as response:
             if response.status == 200:
-                nodes = await response.json()
+                nodes_info = await response.json()
             else:
                 raise Exception(f'ComfyScript: Failed to load nodes: {await _response_to_str(response)}')
 
-    print(f'Nodes: {len(nodes)}')
+    print(f'Nodes: {len(nodes_info)}')
 
-    fact = factory.RuntimeFactory()
-    for node_info in nodes.values():
-        fact.add_node(node_info)
-    
-    # Reimport
-    globals().update(fact.vars())
-    __all__.extend(fact.vars().keys())
-    if vars is None:
-        # TODO: Or __builtins__?
-        vars = inspect.currentframe().f_back.f_globals
-        vars.update(fact.vars())
-
-    # __init__.pyi
-    with open(__file__ + 'i', 'w') as f:
-        f.write(fact.type_stubs())
+    nodes.load(nodes_info, vars)
     
     if daemon and _daemon_thread is None:
-        _daemon_thread = threading.Thread(target=asyncio.run, args=(watch(),), daemon=True)
+        _daemon_thread = threading.Thread(target=asyncio.run, args=(_watch(),), daemon=True)
         _daemon_thread.start()
         # TODO: Kill daemon thread if daemon turns to False
 
-async def watch():
+async def _watch():
     while True:
         try:
             async with aiohttp.ClientSession() as session:
@@ -77,7 +62,7 @@ async def watch():
                                     print(f'Queue remaining: {queue_remaining}')
                             elif msg['type'] == 'progress':
                                 data = msg['data']
-                                print_progress(data['value'], data['max'])
+                                _print_progress(data['value'], data['max'])
                         elif msg.type in (aiohttp.WSMsgType.CLOSED, aiohttp.WSMsgType.ERROR):
                             break
         except Exception as e:
@@ -134,7 +119,7 @@ async def queue(prompt: dict | data.NodeOutput | list[data.NodeOutput], source =
             else:
                 print(f'ComfyScript: Failed to queue prompt: {response}{await _response_to_str(response)}')
 
-def print_progress(iteration, total, prefix = '', suffix = '', decimals = 0, length = 50, fill = '█', printEnd = '\r'):
+def _print_progress(iteration, total, prefix = '', suffix = '', decimals = 0, length = 50, fill = '█', printEnd = '\r'):
     """
     Call in a loop to create terminal progress bar
     @params:
@@ -174,7 +159,7 @@ async def wait(prompt_id: str):
                             break
                     elif msg['type'] == 'progress':
                         data = msg['data']
-                        print_progress(data['value'], data['max'])
+                        _print_progress(data['value'], data['max'])
                 elif msg.type in (aiohttp.WSMsgType.CLOSED, aiohttp.WSMsgType.ERROR):
                     break
 
@@ -211,7 +196,7 @@ async def interrupt_all():
     await clear_queue()
     await interrupt_current()
 
-class ComfyScript:
+class TaskManager:
     def __init__(self, wait: bool = False):
         '''
         - `wait`: Wait for the prompt to finish before exiting the context manager.
@@ -226,16 +211,16 @@ class ComfyScript:
             self.outputs.append(other)
         return self
 
-    async def __aenter__(self) -> ComfyScript:
+    async def __aenter__(self) -> TaskManager:
         self.outputs = []
-        node.Node.set_output_hook(self.__iadd__)
+        nodes.Node.set_output_hook(self.__iadd__)
         return self
 
     async def __aexit__(self, exc_type, exc_value, traceback):
         outer = inspect.currentframe().f_back
         source = ''.join(inspect.findsource(outer)[0])
 
-        node.Node.clear_output_hook()
+        nodes.Node.clear_output_hook()
         
         response = await queue(self.outputs, source)
         # TODO: Fix multi-thread print
@@ -252,5 +237,5 @@ __all__ = [
     'interrupt_all',
     'clear_queue',
     'get_prompt',
-    'ComfyScript'
+    'TaskManager'
 ]
