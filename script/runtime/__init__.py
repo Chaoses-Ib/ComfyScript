@@ -9,18 +9,20 @@ from . import factory
 from . import node
 from . import data
 
-endpoint = 'http://127.0.0.1:8188/'
-client_id = str(uuid.uuid4())
-daemon_thread = None
+_endpoint = 'http://127.0.0.1:8188/'
+_client_id = str(uuid.uuid4())
+_save_script_source = True
+_daemon_thread = None
 
-async def load(api_endpoint: str = endpoint, vars: dict = None, daemon: bool = True):
-    global endpoint, daemon_thread
+async def load(api_endpoint: str = _endpoint, vars: dict = None, daemon: bool = True, save_script_source: bool = True):
+    global _endpoint, _save_script_source, _daemon_thread
 
-    endpoint = api_endpoint
+    _endpoint = api_endpoint
+    _save_script_source = save_script_source
 
     async with aiohttp.ClientSession() as session:
         # http://127.0.0.1:8188/object_info
-        async with session.get(f'{endpoint}object_info') as response:
+        async with session.get(f'{_endpoint}object_info') as response:
             assert response.status == 200
             nodes = await response.json()
 
@@ -42,15 +44,15 @@ async def load(api_endpoint: str = endpoint, vars: dict = None, daemon: bool = T
     with open(__file__ + 'i', 'w') as f:
         f.write(fact.type_stubs())
     
-    if daemon and daemon_thread is None:
-        daemon_thread = threading.Thread(target=asyncio.run, args=(watch(),), daemon=True)
-        daemon_thread.start()
+    if daemon and _daemon_thread is None:
+        _daemon_thread = threading.Thread(target=asyncio.run, args=(watch(),), daemon=True)
+        _daemon_thread.start()
         # TODO: Kill daemon thread if daemon turns to False
 
 async def watch():
     while True:
         async with aiohttp.ClientSession() as session:
-            async with session.ws_connect(f'{endpoint}ws?clientId={client_id}') as ws:
+            async with session.ws_connect(f'{_endpoint}ws?clientId={_client_id}') as ws:
                 queue_remaining = 0
                 async for msg in ws:
                     if msg.type == aiohttp.WSMsgType.TEXT:
@@ -84,28 +86,35 @@ async def watch():
     {'type': 'executing', 'data': {'node': None, 'prompt_id': '3328f0c8-9368-4070-90e7-087e854fe315'}}
     '''
 
-async def queue_prompt(prompt: dict | data.NodeOutput | list[data.NodeOutput], source = None):
-    global endpoint, client_id
+def get_prompt(prompt: dict | data.NodeOutput | list[data.NodeOutput]) -> dict:
+    if isinstance(prompt, data.NodeOutput):
+        prompt = prompt.get_prompt()
+    elif isinstance(prompt, list):
+        prompt = data.get_outputs_prompt(prompt)
+    return prompt
+
+async def queue(prompt: dict | data.NodeOutput | list[data.NodeOutput], source = None):
+    global _endpoint, _client_id
 
     if source is None:
         outer = inspect.currentframe().f_back
         source = ''.join(inspect.findsource(outer)[0])
     
-    if isinstance(prompt, data.NodeOutput):
-        prompt = prompt.get_prompt()
-    elif isinstance(prompt, list):
-        prompt = data.get_outputs_prompt(prompt)
+    prompt = get_prompt(prompt)
     # print(prompt)
 
     async with aiohttp.ClientSession() as session:
-        async with session.post(f'{endpoint}prompt', json={
-            'prompt': prompt,
-            'extra_data': {
+        extra_data = {}
+        if _save_script_source:
+            extra_data = {
                 'extra_pnginfo': {
                     'ComfyScriptSource': source
                 }
-            },
-            'client_id': client_id,
+            }
+        async with session.post(f'{_endpoint}prompt', json={
+            'prompt': prompt,
+            'extra_data': extra_data,
+            'client_id': _client_id,
         }) as response:
             assert response.status == 200
             return await response.json()
@@ -133,9 +142,9 @@ def print_progress(iteration, total, prefix = '', suffix = '', decimals = 0, len
     if iteration == total: 
         print()
 
-async def wait_prompt(prompt_id: str):
+async def wait(prompt_id: str):
     async with aiohttp.ClientSession() as session:
-        async with session.ws_connect(f'{endpoint}ws?clientId={client_id}') as ws:
+        async with session.ws_connect(f'{_endpoint}ws?clientId={_client_id}') as ws:
             async for msg in ws:
                 if msg.type == aiohttp.WSMsgType.TEXT:
                     msg = msg.json()
@@ -154,7 +163,7 @@ async def wait_prompt(prompt_id: str):
                 elif msg.type in (aiohttp.WSMsgType.CLOSED, aiohttp.WSMsgType.ERROR):
                     break
 
-async def exec_prompt(source = None):
+async def queue_wait(source = None):
     '''
     Queue a prompt and wait for it to finish.
     '''
@@ -162,28 +171,28 @@ async def exec_prompt(source = None):
         outer = inspect.currentframe().f_back
         source = ''.join(inspect.findsource(outer)[0])
     
-    response = await queue_prompt(source)
+    response = await queue(source)
     print(response)
-    await wait_prompt(response['prompt_id'])
+    await wait(response['prompt_id'])
 
-async def interrupt_prompt():
+async def interrupt_current():
     async with aiohttp.ClientSession() as session:
-        async with session.post(f'{endpoint}interrupt', json={
-            'client_id': client_id,
+        async with session.post(f'{_endpoint}interrupt', json={
+            'client_id': _client_id,
         }) as response:
             assert response.status == 200
 
 async def clear_queue():
     async with aiohttp.ClientSession() as session:
-        async with session.post(f'{endpoint}queue', json={
+        async with session.post(f'{_endpoint}queue', json={
             'clear': True,
-            'client_id': client_id,
+            'client_id': _client_id,
         }) as response:
             assert response.status == 200
 
 async def interrupt_all():
     await clear_queue()
-    await interrupt_prompt()
+    await interrupt_current()
 
 class ComfyScript:
     def __init__(self, wait: bool = False):
@@ -211,19 +220,20 @@ class ComfyScript:
 
         node.Node.clear_output_hook()
         
-        response = await queue_prompt(self.outputs, source)
+        response = await queue(self.outputs, source)
         # TODO: Fix multi-thread print
         # print(response)
         if self.wait_prompt:
-            await wait_prompt(response['prompt_id'])
+            await wait(response['prompt_id'])
 
 __all__ = [
     'load',
-    'queue_prompt',
-    'wait_prompt',
-    'exec_prompt',
-    'interrupt_prompt',
-    'clear_queue',
+    'queue',
+    'queue_wait',
+    'wait',
+    'interrupt_current',
     'interrupt_all',
+    'clear_queue',
+    'get_prompt',
     'ComfyScript'
 ]

@@ -42,7 +42,7 @@ python -m pip install -r requirements.txt
 ## Transpiler
 The transpiler can translate ComfyUI's workflows to ComfyScript.
 
-When this repository is installed, `SaveImage` and similar nodes will be hooked to automatically save the script as images' metadata.
+When this repository is installed, `SaveImage` and similar nodes will be hooked to automatically save the script as images' metadata. And the script will also be output to the terminal.
 
 For example, here is a workflow in ComfyUI:
 
@@ -113,7 +113,7 @@ async with ComfyScript():
 
 A Jupyter Notebook example is available at [runtime.ipynb](runtime.ipynb).
 
-- [Type stubs](https://typing.readthedocs.io/en/latest/source/stubs.html) will be generated at [`script/runtime/__init__.pyi`](script/runtime/__init__.pyi) after loading. Mainstream editors can use them to help with coding:
+- [Type stubs](https://typing.readthedocs.io/en/latest/source/stubs.html) will be generated at `script/runtime/__init__.pyi` after loading. Mainstream code editors (e.g. [VS Code](https://code.visualstudio.com/docs/languages/python)) can use them to help with coding:
 
   | | |
   | --- | --- |
@@ -130,7 +130,7 @@ A Jupyter Notebook example is available at [runtime.ipynb](runtime.ipynb).
   ```
   To interrupt the current prompt:
   ```python
-  await runtime.interrupt_prompt()
+  await runtime.interrupt_current()
   ```
   To clear the queue:
   ```python
