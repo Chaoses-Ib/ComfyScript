@@ -39,8 +39,8 @@ def to_bool_enum(enum: list[str], b: bool) -> str:
         return enum[1]
 
 class RuntimeFactory:
-    def __init__(self, vars: dict, prompt: dict):
-        self._vars = vars
+    def __init__(self, prompt: dict):
+        self._vars = {}
         self._prompt = prompt
         self._data_type_stubs = {}
         self._node_type_stubs = []
@@ -172,6 +172,9 @@ f"""    '''```
         for enum_id, enum in enums.items():
             setattr(n, enum_id, enum)
         self._vars[class_id] = n
+    
+    def vars(self) -> dict:
+        return self._vars
 
     def type_stubs(self) -> str:
         c = (

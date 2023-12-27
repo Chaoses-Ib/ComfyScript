@@ -16,9 +16,6 @@ async def load(api_endpoint: str = endpoint, vars: dict = None, daemon: bool = T
 
     endpoint = api_endpoint
 
-    if vars is None:
-        vars = inspect.currentframe().f_back.f_locals
-
     async with aiohttp.ClientSession() as session:
         # http://127.0.0.1:8188/object_info
         async with session.get(f'{endpoint}object_info') as response:
@@ -27,11 +24,18 @@ async def load(api_endpoint: str = endpoint, vars: dict = None, daemon: bool = T
 
     print(f'Nodes: {len(nodes)}')
 
-    fact = factory.RuntimeFactory(vars, prompt)
-
+    fact = factory.RuntimeFactory(prompt)
     for node_info in nodes.values():
         fact.add_node(node_info)
     
+    # Reimport
+    globals().update(fact.vars())
+    __all__.extend(fact.vars().keys())
+    if vars is None:
+        # TODO: Or __builtins__?
+        vars = inspect.currentframe().f_back.f_globals
+        vars.update(fact.vars())
+
     # __init__.pyi
     with open(__file__ + 'i', 'w') as f:
         f.write(fact.type_stubs())
