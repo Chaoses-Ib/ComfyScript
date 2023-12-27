@@ -61,25 +61,28 @@ async def load(api_endpoint: str = _endpoint, vars: dict = None, daemon: bool = 
 
 async def watch():
     while True:
-        async with aiohttp.ClientSession() as session:
-            async with session.ws_connect(f'{_endpoint}ws?clientId={_client_id}') as ws:
-                queue_remaining = 0
-                async for msg in ws:
-                    if msg.type == aiohttp.WSMsgType.TEXT:
-                        msg = msg.json()
-                        # print(msg)
-                        if msg['type'] == 'status':
-                            data = msg['data']
-                            new_queue_remaining = data['status']['exec_info']['queue_remaining']
-                            if queue_remaining != new_queue_remaining:
-                                queue_remaining = new_queue_remaining
-                                print(f'Queue remaining: {queue_remaining}')
-                        elif msg['type'] == 'progress':
-                            data = msg['data']
-                            print_progress(data['value'], data['max'])
-                    elif msg.type in (aiohttp.WSMsgType.CLOSED, aiohttp.WSMsgType.ERROR):
-                        break
-        await asyncio.sleep(1)
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.ws_connect(f'{_endpoint}ws?clientId={_client_id}') as ws:
+                    queue_remaining = 0
+                    async for msg in ws:
+                        if msg.type == aiohttp.WSMsgType.TEXT:
+                            msg = msg.json()
+                            # print(msg)
+                            if msg['type'] == 'status':
+                                data = msg['data']
+                                new_queue_remaining = data['status']['exec_info']['queue_remaining']
+                                if queue_remaining != new_queue_remaining:
+                                    queue_remaining = new_queue_remaining
+                                    print(f'Queue remaining: {queue_remaining}')
+                            elif msg['type'] == 'progress':
+                                data = msg['data']
+                                print_progress(data['value'], data['max'])
+                        elif msg.type in (aiohttp.WSMsgType.CLOSED, aiohttp.WSMsgType.ERROR):
+                            break
+        except Exception as e:
+            print(f'ComfyScript: Failed to watch, will retry in 5 seconds: {e}')
+        await asyncio.sleep(5)
     '''
     {'type': 'status', 'data': {'status': {'exec_info': {'queue_remaining': 0}}, 'sid': 'adc24049-b013-4a58-956b-edbc591dc6e2'}}
     {'type': 'status', 'data': {'status': {'exec_info': {'queue_remaining': 1}}}}
