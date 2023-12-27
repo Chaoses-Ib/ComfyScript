@@ -18,15 +18,15 @@ A Python front end for [ComfyUI](https://github.com/comfyanonymous/ComfyUI). It 
 
   For example, to get all positive prompt texts, one can define:
 
-	```python
+  ```python
   positive_prompts = []
 
-	def CLIPTextEncode(text, clip):
-	    return text
-	
-	def KSampler(model, seed, steps, cfg, sampler_name, scheduler, positive, negative, latent_image, denoise):
-	    positive_prompts.append(positive)
-	```
+  def CLIPTextEncode(text, clip):
+      return text
+  
+  def KSampler(model, seed, steps, cfg, sampler_name, scheduler, positive, negative, latent_image, denoise):
+      positive_prompts.append(positive)
+  ```
   And use [`exec()`](https://docs.python.org/3/library/functions.html#exec) to run the script (stubs for other nodes can be automatically generated). This way, `Reroute`, `PrimitiveNode`, and other special nodes won't be a problem stopping one from getting the information.
 
   It is also possible to generate a JSON by this. However, since JSON can only contain tree data and the workflow is a DAG, some information will have to be discarded, or the input have to be replicated at many positions.
@@ -140,6 +140,98 @@ A Jupyter Notebook example is available at [runtime.ipynb](runtime.ipynb).
   ```python
   await runtime.interrupt_all()
   ```
+
+### Differences from ComfyUI's web UI
+In ComfyUI, the back end and the web UI use different schemas of workflows. Things like "S&R" (Search and Replace), "mute", "bypass" and "group" only exist in the web UI's workflows. Before sending workflows to the back end, the web UI will perform S&R, remove muted and bypassed nodes, and ignore groups as they are just UI elements that have no effect on the back end.
+
+In ComfyScript, S&R can be implemented with variables and [f-strings](https://docs.python.org/3/tutorial/inputoutput.html#formatted-string-literals):
+```python
+pos = 'beautiful scenery nature glass bottle landscape, , purple galaxy bottle,'
+neg = 'text, watermark'
+seed = 123
+steps = 20
+model, clip, vae = CheckpointLoaderSimple('v1-5-pruned-emaonly.ckpt')
+latent = EmptyLatentImage(512, 512, 1)
+latent = KSampler(model, seed, steps, 8, 'euler', 'normal', CLIPTextEncode(pos, clip), CLIPTextEncode(neg, clip), latent, 1)
+SaveImage(VAEDecode(latent, vae), f'{seed} {steps}')
+```
+
+For mute and bypass, you can comment the code (<kbd><kbd>Ctrl</kbd>+<kbd>/</kbd></kbd> in VS Code):
+```python
+model, clip, vae = CheckpointLoaderSimple('v1-5-pruned-emaonly.ckpt')
+conditioning = CLIPTextEncode('beautiful scenery nature glass bottle landscape, , purple galaxy bottle,', clip)
+conditioning2 = CLIPTextEncode('text, watermark', clip)
+latent = EmptyLatentImage(512, 512, 1)
+# "mute"
+# latent = KSampler(model, 156680208700286, 20, 8, 'euler', 'normal', conditioning, conditioning2, latent, 1)
+# image = VAEDecode(latent, vae)
+# SaveImage(image, 'ComfyUI')
+```
+```python
+model, clip, vae = CheckpointLoaderSimple('v1-5-pruned-emaonly.ckpt')
+conditioning = CLIPTextEncode('beautiful scenery nature glass bottle landscape, , purple galaxy bottle,', clip)
+conditioning2 = CLIPTextEncode('text, watermark', clip)
+latent = EmptyLatentImage(512, 512, 1)
+# "bypass"
+# latent = KSampler(model, 156680208700286, 20, 8, 'euler', 'normal', conditioning, conditioning2, latent, 1)
+image = VAEDecode(latent, vae)
+SaveImage(image, 'ComfyUI')
+```
+Or use `if`:
+```python
+sample = False
+save = True
+
+model, clip, vae = CheckpointLoaderSimple('v1-5-pruned-emaonly.ckpt')
+conditioning = CLIPTextEncode('beautiful scenery nature glass bottle landscape, , purple galaxy bottle,', clip)
+conditioning2 = CLIPTextEncode('text, watermark', clip)
+latent = EmptyLatentImage(512, 512, 1)
+if sample:
+    latent = KSampler(model, 156680208700286, 20, 8, 'euler', 'normal', conditioning, conditioning2, latent, 1)
+if save:
+    image = VAEDecode(latent, vae)
+    SaveImage(image, 'ComfyUI')
+```
+
+For groups, you can just put related code together:
+```python
+pos = 'beautiful scenery nature glass bottle landscape, , purple galaxy bottle,'
+neg = 'text, watermark'
+
+# Model
+model, clip, vae = CheckpointLoaderSimple('v1-5-pruned-emaonly.ckpt')
+
+# Sampling
+seed = 123
+steps = 20
+latent = EmptyLatentImage(512, 512, 1)
+latent = KSampler(model, seed, steps, 8, 'euler', 'normal', CLIPTextEncode(pos, clip), CLIPTextEncode(neg, clip), latent, 1)
+
+# Save
+SaveImage(VAEDecode(latent, vae), f'{seed} {steps}')
+```
+Or define functions:
+```python
+def generate_image(pos, neg, seed, steps):
+    model, clip, vae = CheckpointLoaderSimple('v1-5-pruned-emaonly.ckpt')
+    latent = EmptyLatentImage(512, 512, 1)
+    latent = KSampler(model, seed, steps, 8, 'euler', 'normal', CLIPTextEncode(pos, clip), CLIPTextEncode(neg, clip), latent, 1)
+    SaveImage(VAEDecode(latent, vae), f'{seed} {steps}')
+
+pos = 'beautiful scenery nature glass bottle landscape, , purple galaxy bottle,'
+neg = 'text, watermark'
+generate_image(pos, neg, seed=123, steps=20)
+```
+
+Also, for multiple line strings:
+```python
+pos = '''beautiful scenery nature glass bottle landscape, 
+purple galaxy bottle,'''
+# or
+pos = (
+'''beautiful scenery nature glass bottle landscape, 
+purple galaxy bottle,''')
+```
 
 ## Other nodes
 These nodes can be used without ComfyScript.
