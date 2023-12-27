@@ -2,6 +2,7 @@ from typing import Union
 
 from .. import astutil
 from . import node
+from . import data
 
 def _remove_extension(path: str) -> str:
     for ext in (
@@ -50,12 +51,13 @@ class RuntimeFactory:
         enum_type_stubs = ''
         input_defaults = {}
 
-        def to_type_hint(type_info: Union[str, list], name: str = None, optional: bool = False, default = None) -> str:
+        def type_and_hint(type_info: Union[str, list], name: str = None, optional: bool = False, default = None) -> (type, str):
             nonlocal enum_type_stubs
 
+            c = None
             if isinstance(type_info, list):
                 if is_bool_enum(type_info):
-                    c = 'bool'
+                    t = bool
                     if default is None:
                         default = bool_enum_default(type_info)
                 else:
@@ -64,30 +66,34 @@ class RuntimeFactory:
                     # c = f'Literal[\n        {f",{chr(10)}        ".join(astutil.to_str(s) for s in type)}\n        ]'
 
                     # TODO: Group by directory?
-                    enum_c, enum = astutil.to_str_enum(name, { _remove_extension(s): s for s in type_info }, '    ')
+                    enum_c, t = astutil.to_str_enum(name, { _remove_extension(s): s for s in type_info }, '    ')
                     enum_type_stubs += '\n' + enum_c
                     c = f'{class_id}.{name}'
 
-                    enums[name] = enum
+                    enums[name] = t
 
                     if default is None and len(type_info) > 0:
                         default = type_info[0]
             elif type_info == 'INT':
-                c = 'int'
+                t = int
             elif type_info == 'FLOAT':
-                c = 'float'
+                t = float
             elif type_info == 'STRING':
-                c = 'str'
+                t = str
             elif type_info == 'BOOLEAN':
-                c = 'bool'
+                t = bool
             else:
                 type_id = astutil.str_to_class_id(type_info)
                 if type_id not in self._data_type_stubs:
                     self._data_type_stubs[type_id] = f'class {type_id}: ...'
 
-                    self._vars[class_id] = type(class_id, (), {})
-                c = type_id
-            
+                    t = type(type_id, (data.NodeOutput,), {})
+                    self._vars[type_id] = t
+                else:
+                    t = self._vars[type_id]
+            if c is None:
+                c = t.__name__
+
             if optional:
                 # c = f'Optional[{c}]'
                 c = f'{c} | None'
@@ -103,7 +109,7 @@ class RuntimeFactory:
                     default = astutil.to_str(default)
                 c += f' = {default}'
             
-            return c
+            return t, c
 
         inputs = []
         for (group, optional) in ('required', False), ('optional', True):
@@ -115,22 +121,25 @@ class RuntimeFactory:
                 config = {}
                 if len(type_config) > 1:
                     config = type_config[1]
-                inputs.append(f'{name}: {to_type_hint(type_info, name, optional, config.get("default"))}')
-        
+                inputs.append(f'{name}: {type_and_hint(type_info, name, optional, config.get("default"))[1]}')
+
+        output_types = [type_and_hint(type)[0] for type in info['output']]
+
+        outputs = len(info['output'])
+        if outputs >= 2:
+            output_type_hint = f' -> tuple[{", ".join(type_and_hint(type)[1] for type in info["output"])}]'
+        elif outputs == 1:
+            output_type_hint = f' -> {type_and_hint(info["output"][0])[1]}'
+        else:
+            output_type_hint = ''
+
         # Classes are used instead of functions for:
         # - Different syntax highlight color for nodes and utility functions/methods
         # - In-class enums
         c = f'class {class_id}:\n'
 
-        outputs = len(info['output'])
-        if outputs >= 2:
-            output_type_hint = f' -> tuple[{", ".join(to_type_hint(type) for type in info["output"])}]'
-        elif outputs == 1:
-            output_type_hint = f' -> {to_type_hint(info["output"][0])}'
-        else:
-            output_type_hint = ''
-
         # Docstring
+        # TODO: Display name
         # TODO: Min, max
         c += (
 f"""    '''```
@@ -159,7 +168,7 @@ f"""    '''```
         
         self._node_type_stubs.append(c)
         
-        n = node.Node(self._prompt, info, input_defaults)
+        n = node.Node(self._prompt, info, input_defaults, output_types)
         for enum_id, enum in enums.items():
             setattr(n, enum_id, enum)
         self._vars[class_id] = n

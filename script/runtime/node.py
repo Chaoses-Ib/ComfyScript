@@ -1,6 +1,7 @@
 from enum import Enum
 
 from . import factory
+from . import data
 
 def _positional_args_to_keyword(node: dict, args: tuple) -> dict:
     args = list(args)
@@ -18,10 +19,11 @@ def _positional_args_to_keyword(node: dict, args: tuple) -> dict:
     return kwargs
 
 class Node:
-    def __init__(self, prompt: dict, info: dict, defaults: dict):
+    def __init__(self, prompt: dict, info: dict, defaults: dict, output_types: list[type]):
         self.prompt = prompt
         self.info = info
         self.defaults = defaults
+        self.output_types = output_types
 
     def _assign_id(self) -> str:
         # Must be str
@@ -49,18 +51,20 @@ class Node:
                         break
                 if factory.is_bool_enum(input_type):
                     inputs[k] = factory.to_bool_enum(input_type, v)
+            elif isinstance(v, data.NodeOutput):
+                inputs[k] = [v.id, v.slot]
 
         self.prompt[id] = {
             'inputs': inputs,
             'class_type': self.info['name'],
         }
 
-        outputs = len(self.info['output'])
+        outputs = len(self.output_types)
         if outputs == 0:
             return
         elif outputs == 1:
-            return [id, 0]
+            return self.output_types[0](id, 0)
         else:
-            return [[id, i] for i in range(outputs)]
+            return [output_type(id, i) for i, output_type in enumerate(self.output_types)]
 
 __all__ = ['Node']
