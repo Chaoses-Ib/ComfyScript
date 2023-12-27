@@ -12,7 +12,8 @@ class WorkflowToScriptTranspiler:
             workflow = json.dumps(workflow)
         workflow = json.loads(workflow, object_hook=lambda d: SimpleNamespace(**d))
         # serializedLGraph: https://github.com/comfyanonymous/ComfyUI/blob/2ef459b1d4d627929c84d11e5e0cbe3ded9c9f48/web/types/litegraph.d.ts#L332
-        assert workflow.version == 0.4
+        if workflow.version != 0.4:
+            print(f"ComfyScript: Unsupported workflow version: {workflow.version}")
 
         G = nx.MultiDiGraph()
         for node in workflow.nodes:

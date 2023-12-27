@@ -1,6 +1,7 @@
 from __future__ import annotations
 import asyncio
 import inspect
+import json
 import threading
 import uuid
 import aiohttp
@@ -14,6 +15,13 @@ _client_id = str(uuid.uuid4())
 _save_script_source = True
 _daemon_thread = None
 
+async def _response_to_str(response: aiohttp.ClientResponse) -> str:
+    try:
+        msg = json.dumps(await response.json(), indent=2)
+    except Exception as e:
+        msg = str(e)
+    return f'{response}{msg}'
+
 async def load(api_endpoint: str = _endpoint, vars: dict = None, daemon: bool = True, save_script_source: bool = True):
     global _endpoint, _save_script_source, _daemon_thread
 
@@ -23,8 +31,10 @@ async def load(api_endpoint: str = _endpoint, vars: dict = None, daemon: bool = 
     async with aiohttp.ClientSession() as session:
         # http://127.0.0.1:8188/object_info
         async with session.get(f'{_endpoint}object_info') as response:
-            assert response.status == 200
-            nodes = await response.json()
+            if response.status == 200:
+                nodes = await response.json()
+            else:
+                raise Exception(f'ComfyScript: Failed to load nodes: {await _response_to_str(response)}')
 
     print(f'Nodes: {len(nodes)}')
 
@@ -116,8 +126,10 @@ async def queue(prompt: dict | data.NodeOutput | list[data.NodeOutput], source =
             'extra_data': extra_data,
             'client_id': _client_id,
         }) as response:
-            assert response.status == 200
-            return await response.json()
+            if response.status == 200:
+                return await response.json()
+            else:
+                print(f'ComfyScript: Failed to queue prompt: {response}{await _response_to_str(response)}')
 
 def print_progress(iteration, total, prefix = '', suffix = '', decimals = 0, length = 50, fill = '█', printEnd = '\r'):
     """
@@ -180,7 +192,8 @@ async def interrupt_current():
         async with session.post(f'{_endpoint}interrupt', json={
             'client_id': _client_id,
         }) as response:
-            assert response.status == 200
+            if response.status != 200:
+                print(f'ComfyScript: Failed to interrupt current task: {await _response_to_str(response)}')
 
 async def clear_queue():
     async with aiohttp.ClientSession() as session:
@@ -188,7 +201,8 @@ async def clear_queue():
             'clear': True,
             'client_id': _client_id,
         }) as response:
-            assert response.status == 200
+            if response.status != 200:
+                print(f'ComfyScript: Failed to clear queue: {await _response_to_str(response)}')
 
 async def interrupt_all():
     await clear_queue()
