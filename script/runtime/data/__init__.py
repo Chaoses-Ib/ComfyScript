@@ -69,6 +69,9 @@ class NodeOutput:
         return new_id
 
 def get_outputs_prompt(outputs: Iterable[NodeOutput]) -> dict:
+    if len(outputs) == 1:
+        return outputs[0].get_prompt()
+    
     output = NodeOutput({}, {
         'inputs': { i: output for i, output in enumerate(outputs) },
         'class_type': 'ComfyScript',

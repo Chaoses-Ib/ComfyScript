@@ -99,7 +99,7 @@ from script.runtime import *
 load()
 from script.runtime.nodes import *
 
-with TaskBuilder():
+with Workflow():
     model, clip, vae = CheckpointLoaderSimple('v1-5-pruned-emaonly.ckpt')
     conditioning = CLIPTextEncode('beautiful scenery nature glass bottle landscape, , purple galaxy bottle,', clip)
     conditioning2 = CLIPTextEncode('text, watermark', clip)

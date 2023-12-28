@@ -49,19 +49,6 @@ async def _load(api_endpoint: str = _endpoint, vars: dict | None = None, watch: 
     if watch:
         queue.start_watch()
 
-def get_prompt(task: data.NodeOutput | Iterable[data.NodeOutput] | TaskBuilder | dict) -> dict:
-    if isinstance(task, data.NodeOutput):
-        prompt = task.get_prompt()
-    elif isinstance(task, Iterable):
-        prompt = data.get_outputs_prompt(task)
-    elif isinstance(task, TaskBuilder):
-        prompt = task.get_prompt()
-    elif isinstance(task, dict):
-        prompt = task
-    else:
-        raise TypeError(f'ComfyScript: Invalid task type: {type(task)}')
-    return prompt
-
 def _print_progress(iteration, total, prefix = '', suffix = '', decimals = 0, length = 50, fill = '█', printEnd = '\r'):
     """
     Call in a loop to create terminal progress bar
@@ -135,10 +122,19 @@ class TaskQueue:
             self._watch_thread = threading.Thread(target=asyncio.run, args=(queue._watch(),), daemon=True)
             self._watch_thread.start()
 
-    async def _put(self, task: data.NodeOutput | Iterable[data.NodeOutput] | TaskBuilder | dict, source = None) -> Task | None:
+    async def _put(self, workflow: data.NodeOutput | Iterable[data.NodeOutput] | Workflow | dict, source = None) -> Task | None:
         global _endpoint, _client_id
         
-        prompt = get_prompt(task)
+        if isinstance(workflow, data.NodeOutput):
+            prompt = Workflow(outputs=workflow).get_prompt()
+        elif isinstance(workflow, Iterable):
+            prompt = Workflow(outputs=workflow).get_prompt()
+        elif isinstance(workflow, Workflow):
+            prompt = workflow.get_prompt()
+        elif isinstance(workflow, dict):
+            prompt = workflow
+        else:
+            raise TypeError(f'ComfyScript: Invalid workflow type: {workflow}')
         # print(prompt)
 
         async with aiohttp.ClientSession() as session:
@@ -161,16 +157,16 @@ class TaskQueue:
                 else:
                     print(f'ComfyScript: Failed to queue prompt: {response}{await _response_to_str(response)}')
     
-    def put(self, task: data.NodeOutput | Iterable[data.NodeOutput] | TaskBuilder | dict, source = None) -> Task | None:
+    def put(self, workflow: data.NodeOutput | Iterable[data.NodeOutput] | Workflow | dict, source = None) -> Task | None:
         if source is None:
             outer = inspect.currentframe().f_back
             source = ''.join(inspect.findsource(outer)[0])
-        return asyncio.run(self._put(task, source))
+        return asyncio.run(self._put(workflow, source))
     
-    def __iadd__(self, task: data.NodeOutput | Iterable[data.NodeOutput] | TaskBuilder | dict):
+    def __iadd__(self, workflow: data.NodeOutput | Iterable[data.NodeOutput] | Workflow | dict):
         outer = inspect.currentframe().f_back
         source = ''.join(inspect.findsource(outer)[0])
-        return self.put(task, source)
+        return self.put(workflow, source)
     
     def cancel_current(self):
         '''Interrupt the current task'''
@@ -233,26 +229,29 @@ class Task:
                     elif msg.type in (aiohttp.WSMsgType.CLOSED, aiohttp.WSMsgType.ERROR):
                         break
 
-class TaskBuilder:
-    def __init__(self, queue: bool = True, wait: bool = False):
+class Workflow:
+    def __init__(self, queue: bool = True, wait: bool = False, outputs: data.NodeOutput | Iterable[data.NodeOutput] | None = None):
         '''
-        - `wait`: Wait for the prompt to finish before exiting the context manager.
+        - `queue`: Put the workflow into the queue when exiting the context manager.
+        - `wait`: Wait for the task to finish before exiting the context manager. No effect if `queue` is `False`.
         '''
         self._outputs = []
+        if outputs is not None:
+            self += outputs
         self._queue = queue
         self._wait = wait
     
-    def __iadd__(self, other: data.NodeOutput | Iterable[data.NodeOutput]):
-        if isinstance(other, Iterable):
-            self._outputs.extend(other)
+    def __iadd__(self, outputs: data.NodeOutput | Iterable[data.NodeOutput]):
+        if isinstance(outputs, Iterable):
+            self._outputs.extend(outputs)
         else:
-            self._outputs.append(other)
+            self._outputs.append(outputs)
         return self
     
     def get_prompt(self) -> dict:
-        return get_prompt(self._outputs)
+        return data.get_outputs_prompt(self._outputs)
 
-    async def __aenter__(self) -> TaskBuilder:
+    async def __aenter__(self) -> Workflow:
         return self.__enter__()
 
     async def __aexit__(self, exc_type, exc_value, traceback):
@@ -269,7 +268,7 @@ class TaskBuilder:
                 if self._wait:
                     await task._wait()
 
-    def __enter__(self) -> TaskBuilder:
+    def __enter__(self) -> Workflow:
         self._outputs = []
         nodes.Node.set_output_hook(self.__iadd__)
         return self
@@ -283,7 +282,6 @@ __all__ = [
     'load',
     'TaskQueue',
     'queue',
-    'get_prompt',
     'Task',
-    'TaskBuilder',
+    'Workflow',
 ]
