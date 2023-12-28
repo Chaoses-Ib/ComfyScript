@@ -99,7 +99,7 @@ from script.runtime import *
 load()
 from script.runtime.nodes import *
 
-with TaskManager():
+with TaskBuilder():
     model, clip, vae = CheckpointLoaderSimple('v1-5-pruned-emaonly.ckpt')
     conditioning = CLIPTextEncode('beautiful scenery nature glass bottle landscape, , purple galaxy bottle,', clip)
     conditioning2 = CLIPTextEncode('text, watermark', clip)
@@ -117,7 +117,7 @@ A Jupyter Notebook example is available at [runtime.ipynb](runtime.ipynb).
   | --- | --- |
   | ![](images/README/type-stubs.png) | ![](images/README/type-stubs2.png) |
 
-- The runtime is asynchronous by default. You can queue multiple prompts without waiting for the first one to finish. A daemon thread will watch and report the remaining prompts in the queue and the current progress, for example:
+- The runtime is asynchronous by default. You can queue multiple tasks without waiting for the first one to finish. A daemon thread will watch and report the remaining tasks in the queue and the current progress, for example:
   ```
   Queue remaining: 1
   Queue remaining: 2
@@ -129,11 +129,11 @@ A Jupyter Notebook example is available at [runtime.ipynb](runtime.ipynb).
   Some control functions are also available:
   ```python
   # Interrupt the current task
-  interrupt_current()
+  queue.cancel_current()
   # Clear the queue
-  clear_queue()
+  queue.cancel_remaining()
   # Interrupt the current task and clear the queue
-  interrupt_all()
+  queue.cancel_all()
   ```
 
 ### Differences from ComfyUI's web UI

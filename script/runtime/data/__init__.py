@@ -1,6 +1,7 @@
 from __future__ import annotations
 import builtins
 from enum import Enum
+from typing import Iterable
 
 from .. import factory
 
@@ -67,7 +68,7 @@ class NodeOutput:
         }
         return new_id
 
-def get_outputs_prompt(outputs: list[NodeOutput]) -> dict:
+def get_outputs_prompt(outputs: Iterable[NodeOutput]) -> dict:
     output = NodeOutput({}, {
         'inputs': { i: output for i, output in enumerate(outputs) },
         'class_type': 'ComfyScript',
