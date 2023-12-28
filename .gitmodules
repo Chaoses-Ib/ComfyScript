@@ -1,3 +1,6 @@
 [submodule "nodes/ComfyUI_Ib_CustomNodes"]
 	path = nodes/ComfyUI_Ib_CustomNodes
 	url = https://github.com/Chaoses-Ib/ComfyUI_Ib_CustomNodes
+[submodule "nodes/comfyui_tooling_nodes"]
+	path = nodes/comfyui_tooling_nodes
+	url = https://github.com/Acly/comfyui-tooling-nodes

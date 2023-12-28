@@ -14,6 +14,10 @@ try:
     from .nodes import ComfyUI_Ib_CustomNodes
     NODE_CLASS_MAPPINGS.update(ComfyUI_Ib_CustomNodes.NODE_CLASS_MAPPINGS)
     NODE_DISPLAY_NAME_MAPPINGS.update(ComfyUI_Ib_CustomNodes.NODE_DISPLAY_NAME_MAPPINGS)
+
+    from .nodes import comfyui_tooling_nodes
+    NODE_CLASS_MAPPINGS.update(comfyui_tooling_nodes.NODE_CLASS_MAPPINGS)
+    NODE_DISPLAY_NAME_MAPPINGS.update(comfyui_tooling_nodes.NODE_DISPLAY_NAME_MAPPINGS)
 except ImportError:
     success = False
     print(
