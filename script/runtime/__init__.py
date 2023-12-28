@@ -229,7 +229,13 @@ class Task:
                     elif msg.type in (aiohttp.WSMsgType.CLOSED, aiohttp.WSMsgType.ERROR):
                         break
 
+    def __await__(self):
+        return self._wait().__await__()
+
 class Workflow:
+    '''
+    - `task: Task | None`: The last task of the workflow.
+    '''
     def __init__(self, queue: bool = True, wait: bool = False, outputs: data.NodeOutput | Iterable[data.NodeOutput] | None = None):
         '''
         - `queue`: Put the workflow into the queue when exiting the context manager.
@@ -240,6 +246,7 @@ class Workflow:
             self += outputs
         self._queue = queue
         self._wait = wait
+        self.task = None
     
     def __iadd__(self, outputs: data.NodeOutput | Iterable[data.NodeOutput]):
         if isinstance(outputs, Iterable):
@@ -261,12 +268,12 @@ class Workflow:
             outer = inspect.currentframe().f_back
             source = ''.join(inspect.findsource(outer)[0])            
             
-            task: Task = await queue._put(self._outputs, source)
-            if task:
+            self.task = await queue._put(self._outputs, source)
+            if self.task:
                 # TODO: Fix multi-thread print
                 # print(task)
                 if self._wait:
-                    await task._wait()
+                    await self.task
 
     def __enter__(self) -> Workflow:
         self._outputs = []

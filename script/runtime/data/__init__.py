@@ -11,6 +11,7 @@ class IdManager:
         self._id_map = {}
 
     def assign(self, key) -> str:
+        # TODO: Assign id by node types?
         self._id += 1
         self._id_map[key] = self._id
         # Must be str
