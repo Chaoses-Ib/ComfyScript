@@ -96,10 +96,10 @@ python -m script from-workflow "D:\workflow.json"
 With the runtime, you can run ComfyScript like this:
 ```python
 from script.runtime import *
-await load()
+load()
 from script.runtime.nodes import *
 
-async with TaskManager():
+with TaskManager():
     model, clip, vae = CheckpointLoaderSimple('v1-5-pruned-emaonly.ckpt')
     conditioning = CLIPTextEncode('beautiful scenery nature glass bottle landscape, , purple galaxy bottle,', clip)
     conditioning2 = CLIPTextEncode('text, watermark', clip)
@@ -129,11 +129,11 @@ A Jupyter Notebook example is available at [runtime.ipynb](runtime.ipynb).
   Some control functions are also available:
   ```python
   # Interrupt the current task
-  await interrupt_current()
+  interrupt_current()
   # Clear the queue
-  await clear_queue()
+  clear_queue()
   # Interrupt the current task and clear the queue
-  await interrupt_all()
+  interrupt_all()
   ```
 
 ### Differences from ComfyUI's web UI

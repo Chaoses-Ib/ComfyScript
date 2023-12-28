@@ -1,2 +1,4 @@
 # Already required by ComfyUI
 aiohttp
+
+nest_asyncio ~= 1.0
