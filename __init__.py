@@ -5,15 +5,20 @@ NODE_DISPLAY_NAME_MAPPINGS = {}
 
 success = True
 
+from pathlib import Path
+
 try:
-    from .image import *
-    NODE_CLASS_MAPPINGS['LoadImageFromPath'] = LoadImageFromPath
-    NODE_DISPLAY_NAME_MAPPINGS['LoadImageFromPath'] = "Load Image From Path"
+    print('\033[34mComfyScript: \033[93mLoading nodes...\033[0m')
+    # If there are conflicts, the later one will override the former one.
+
+    from .nodes import ComfyUI_Ib_CustomNodes
+    NODE_CLASS_MAPPINGS.update(ComfyUI_Ib_CustomNodes.NODE_CLASS_MAPPINGS)
+    NODE_DISPLAY_NAME_MAPPINGS.update(ComfyUI_Ib_CustomNodes.NODE_DISPLAY_NAME_MAPPINGS)
 except ImportError:
     success = False
     print(
-f'''\033[34mComfyScript: \033[91mFailed to load LoadImageFromPath due to missing dependencies. If you need it, try to run:
-python -m pip install -r "{Path(__file__).resolve().parent / 'requirements.txt'}"
+f'''\033[34mComfyScript: \033[91mFailed to load nodes due to missing submodules. If you need them, try to run:
+git -C "{Path(__file__).resolve().parent}" submodule update --init --recursive
 \033[0m''')
 
 def setup_script():
@@ -111,7 +116,6 @@ try:
     setup_script()
 except ImportError:
     success = False
-    from pathlib import Path
     print(
 f'''\033[34mComfyScript: \033[91mFailed to setup script translation due to missing dependencies. If you need this, try to run:
 python -m pip install -r "{Path(__file__).resolve().parent / 'script' / 'transpile' / 'requirements.txt'}"

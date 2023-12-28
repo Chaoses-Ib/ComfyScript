@@ -1,8 +1,2 @@
-# image.py
-# Already required by ComfyUI:
-# torch
-# Pillow
-# numpy
-
 -r script/transpile/requirements.txt
 -r script/runtime/requirements.txt

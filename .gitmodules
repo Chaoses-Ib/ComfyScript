@@ -1,0 +1,3 @@
+[submodule "nodes/ComfyUI_Ib_CustomNodes"]
+	path = nodes/ComfyUI_Ib_CustomNodes
+	url = https://github.com/Chaoses-Ib/ComfyUI_Ib_CustomNodes

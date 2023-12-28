@@ -34,7 +34,7 @@ A Python front end for [ComfyUI](https://github.com/comfyanonymous/ComfyUI). It 
 ## Installation
 ```sh
 cd D:\ComfyUI\custom_nodes
-git clone https://github.com/Chaoses-Ib/ComfyScript.git
+git clone --recurse-submodules https://github.com/Chaoses-Ib/ComfyScript.git
 cd ComfyScript
 python -m pip install -r requirements.txt
 ```
@@ -229,9 +229,9 @@ purple galaxy bottle,''')
 ```
 
 ## Other nodes
-These nodes can be used without ComfyScript.
+These nodes are installed to help with ComfyScript. But if you want, you can also use them in ComfyUI's web UI.
 
-### Load Image From Path
+### Load Image From Path (from [ComfyUI_Ib_CustomNodes](https://github.com/Chaoses-Ib/ComfyUI_Ib_CustomNodes))
 ComfyUI's built-in `Load Image` node can only load uploaded images, which produces duplicated files in the input directory and cannot reload the image when the source file is changed. `Load Image From Path` instead loads the image from the source path and does not have such problems.
 
 One use of this node is to work with Photoshop's [Quick Export](https://helpx.adobe.com/photoshop/using/export-artboards-layers.html#:~:text=in%20Photoshop.-,Quick%20Export%20As,-Use%20the%20Quick) to quickly perform img2img/inpaint on the edited image. Update: For working with Photoshop, [comfyui-photoshop](https://github.com/NimaNzrii/comfyui-photoshop) is more convenient and supports waiting for changes. See [tutorial at r/comfyui](https://www.reddit.com/r/comfyui/comments/18jygtn/new_ai_news_photoshop_to_comfyui_v1_is_finally/).
