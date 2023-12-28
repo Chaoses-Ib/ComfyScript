@@ -74,6 +74,7 @@ def _print_progress(iteration, total, prefix = '', suffix = '', decimals = 0, le
 
 class TaskQueue:
     def __init__(self):
+        self._tasks = {}
         self._watch_thread = None
 
     async def _watch(self):
@@ -83,6 +84,7 @@ class TaskQueue:
                     async with session.ws_connect(f'{_endpoint}ws?clientId={_client_id}') as ws:
                         queue_remaining = 0
                         async for msg in ws:
+                            # print(msg.type)
                             if msg.type == aiohttp.WSMsgType.TEXT:
                                 msg = msg.json()
                                 # print(msg)
@@ -92,9 +94,31 @@ class TaskQueue:
                                     if queue_remaining != new_queue_remaining:
                                         queue_remaining = new_queue_remaining
                                         print(f'Queue remaining: {queue_remaining}')
+                                elif msg['type'] == 'executing':
+                                    data = msg['data']
+                                    if data['node'] is None:
+                                        prompt_id = data['prompt_id']
+                                        task: Task = self._tasks.get(prompt_id)
+                                        if task is not None:
+                                            task._set_result_threadsafe(None, {})
+                                            del self._tasks[prompt_id]
+                                        
+                                        if new_queue_remaining == 0:
+                                            for task in self._tasks.values():
+                                                print(f'ComfyScript: The queue is empty but {task} has not been executed')
+                                                task._set_result_threadsafe(None, {})
+                                            self._tasks.clear()
+                                elif msg['type'] == 'executed':
+                                    data = msg['data']
+                                    prompt_id = data['prompt_id']
+                                    task: Task = self._tasks.get(prompt_id)
+                                    if task is not None:
+                                        task._set_result_threadsafe(data['node'], data['output'])
                                 elif msg['type'] == 'progress':
                                     data = msg['data']
                                     _print_progress(data['value'], data['max'])
+                            elif msg.type == aiohttp.WSMsgType.BINARY:
+                                pass
                             elif msg.type in (aiohttp.WSMsgType.CLOSED, aiohttp.WSMsgType.ERROR):
                                 break
             except Exception as e:
@@ -122,17 +146,13 @@ class TaskQueue:
             self._watch_thread = threading.Thread(target=asyncio.run, args=(queue._watch(),), daemon=True)
             self._watch_thread.start()
 
-    async def _put(self, workflow: data.NodeOutput | Iterable[data.NodeOutput] | Workflow | dict, source = None) -> Task | None:
+    async def _put(self, workflow: data.NodeOutput | Iterable[data.NodeOutput] | Workflow, source = None) -> Task | None:
         global _endpoint, _client_id
         
-        if isinstance(workflow, data.NodeOutput):
-            prompt = Workflow(outputs=workflow).get_prompt()
-        elif isinstance(workflow, Iterable):
-            prompt = Workflow(outputs=workflow).get_prompt()
+        if isinstance(workflow, data.NodeOutput) or isinstance(workflow, Iterable):
+            prompt, id = Workflow(outputs=workflow)._get_prompt_and_id()
         elif isinstance(workflow, Workflow):
-            prompt = workflow.get_prompt()
-        elif isinstance(workflow, dict):
-            prompt = workflow
+            prompt, id = workflow._get_prompt_and_id()
         else:
             raise TypeError(f'ComfyScript: Invalid workflow type: {workflow}')
         # print(prompt)
@@ -153,17 +173,19 @@ class TaskQueue:
                 if response.status == 200:
                     response = await response.json()
                     # print(response)
-                    return Task(response['prompt_id'], response['number'])
+                    task = Task(response['prompt_id'], response['number'], id)
+                    self._tasks[task.prompt_id] = task
+                    return task
                 else:
                     print(f'ComfyScript: Failed to queue prompt: {response}{await _response_to_str(response)}')
     
-    def put(self, workflow: data.NodeOutput | Iterable[data.NodeOutput] | Workflow | dict, source = None) -> Task | None:
+    def put(self, workflow: data.NodeOutput | Iterable[data.NodeOutput] | Workflow, source = None) -> Task | None:
         if source is None:
             outer = inspect.currentframe().f_back
             source = ''.join(inspect.findsource(outer)[0])
         return asyncio.run(self._put(workflow, source))
     
-    def __iadd__(self, workflow: data.NodeOutput | Iterable[data.NodeOutput] | Workflow | dict):
+    def __iadd__(self, workflow: data.NodeOutput | Iterable[data.NodeOutput] | Workflow):
         outer = inspect.currentframe().f_back
         source = ''.join(inspect.findsource(outer)[0])
         return self.put(workflow, source)
@@ -199,38 +221,110 @@ class TaskQueue:
         await self._cancel_current()
 
 class Task:
-    def __init__(self, prompt_id: str, number: int):
+    def __init__(self, prompt_id: str, number: int, id: data.IdManager):
         self.prompt_id = prompt_id
         self.number = number
-    
+        self._id = id
+        self._outputs = {}
+        self._fut = asyncio.Future()
+
     def __str__(self):
         return f'Task {self.number} ({self.prompt_id})'
     
-    def wait(self):
-        return asyncio.run(self._wait())
-    async def _wait(self):
-        async with aiohttp.ClientSession() as session:
-            async with session.ws_connect(f'{_endpoint}ws?clientId={_client_id}') as ws:
-                async for msg in ws:
-                    if msg.type == aiohttp.WSMsgType.TEXT:
-                        msg = msg.json()
-                        # print(msg)
-                        if msg['type'] == 'status':
-                            data = msg['data']
-                            if data['status']['exec_info']['queue_remaining'] == 0:
-                                break
-                        elif msg['type'] == 'executing':
-                            data = msg['data']
-                            if data['node'] is None and data['prompt_id'] == self.prompt_id:
-                                break
-                        elif msg['type'] == 'progress':
-                            data = msg['data']
-                            _print_progress(data['value'], data['max'])
-                    elif msg.type in (aiohttp.WSMsgType.CLOSED, aiohttp.WSMsgType.ERROR):
-                        break
+    def __repr__(self):
+        return f'Task(n={self.number}, id={self.prompt_id})'
+    
+    def _set_result_threadsafe(self, node_id: str | None, output: dict):
+        if node_id is not None:
+            self._outputs[node_id] = output
+        else:
+            self.get_loop().call_soon_threadsafe(self._fut.set_result, None)
+    
+    async def results(self) -> list:
+        # TODO: What to do if the workflow is already executed?
+        await self._fut
+        return list(self._outputs.values())
+    
+    async def result(self, output: data.NodeOutput) -> dict | None:
+        await self._fut
+        id = self._id.get(output.node_prompt)
+        if id is None:
+            return None
+        output = self._outputs.get(id)
+        return output
 
+    def wait_results(self) -> list:
+        return asyncio.run(self.results())
+    
+    def wait_result(self, output: data.NodeOutput) -> dict | None:
+        return asyncio.run(self.result(output))
+
+    # def wait(self):
+    #     return asyncio.run(self._wait())
+    # async def _wait(self):
+    #     async with aiohttp.ClientSession() as session:
+    #         async with session.ws_connect(f'{_endpoint}ws?clientId={_client_id}') as ws:
+    #             async for msg in ws:
+    #                 if msg.type == aiohttp.WSMsgType.TEXT:
+    #                     msg = msg.json()
+    #                     # print(msg)
+    #                     if msg['type'] == 'status':
+    #                         data = msg['data']
+    #                         if data['status']['exec_info']['queue_remaining'] == 0:
+    #                             break
+    #                     elif msg['type'] == 'executing':
+    #                         data = msg['data']
+    #                         if data['node'] is None and data['prompt_id'] == self.prompt_id:
+    #                             break
+    #                     elif msg['type'] == 'progress':
+    #                         data = msg['data']
+    #                         _print_progress(data['value'], data['max'])
+    #                 elif msg.type in (aiohttp.WSMsgType.CLOSED, aiohttp.WSMsgType.ERROR):
+    #                     break
+
+    # def __await__(self):
+    #     return self._wait().__await__()
+            
     def __await__(self):
-        return self._wait().__await__()
+        return self.results().__await__()
+
+    def wait(self):
+        return asyncio.run(self)
+
+    def done(self) -> bool:
+        """Return True if the task is done.
+
+        Done means either that a result / exception are available, or that the
+        task was cancelled.
+        """
+        return self._fut.done()
+    
+    def add_done_callback(self, callback, *, context = None) -> None:
+        """Add a callback to be run when the task becomes done.
+
+        The callback is called with a single argument - the future object. If
+        the future is already done when this is called, the callback is
+        scheduled with call_soon.
+
+        `functools.partial()` can be used to pass parameters to the callback, e.g.:
+        ```
+        # Call 'print("Future:", fut)' when "fut" is done.
+        task.add_done_callback(
+            functools.partial(print, "Future:"))
+        ```
+        """
+        return self._fut.add_done_callback(callback, context=context)
+    
+    def remove_done_callback(self, callback) -> int:
+        """Remove all instances of a callback from the "call when done" list.
+
+        Returns the number of callbacks removed.
+        """
+        return self._fut.remove_done_callback(callback)
+
+    def get_loop(self) -> asyncio.AbstractEventLoop:
+        """Return the event loop the task is bound to."""
+        return self._fut.get_loop()
 
 class Workflow:
     '''
@@ -255,8 +349,11 @@ class Workflow:
             self._outputs.append(outputs)
         return self
     
+    def _get_prompt_and_id(self) -> (dict, data.IdManager):
+        return data._get_outputs_prompt_and_id(self._outputs)
+
     def get_prompt(self) -> dict:
-        return data.get_outputs_prompt(self._outputs)
+        return self._get_prompt_and_id()[0]
 
     async def __aenter__(self) -> Workflow:
         return self.__enter__()

@@ -8,18 +8,20 @@ from .. import factory
 class IdManager:
     def __init__(self):
         self._id = -1
-        self._id_map = {}
+        self._objid_id_map = {}
+        self._id_obj_map = {}
 
-    def assign(self, key) -> str:
+    def assign(self, obj) -> str:
         # TODO: Assign id by node types?
         self._id += 1
-        self._id_map[key] = self._id
+        self._objid_id_map[builtins.id(obj)] = self._id
+        self._id_obj_map[self._id] = obj
         # Must be str
         return str(self._id)
 
-    def get(self, key) -> str | None:
+    def get(self, obj) -> str | None:
         # Must be str
-        id = self._id_map.get(key)
+        id = self._objid_id_map.get(builtins.id(obj))
         return str(id) if id is not None else None
 
     def last(self) -> str:
@@ -31,13 +33,17 @@ class NodeOutput:
         self.node_prompt = node_prompt
         self.output_slot = output_slot
     
-    def get_prompt(self) -> dict:
+    def _get_prompt_and_id(self) -> (dict, IdManager):
         prompt = {}
-        self._update_prompt(prompt, IdManager())
-        return prompt
+        id = IdManager()
+        self._update_prompt(prompt, id)
+        return prompt, id
+
+    def get_prompt(self) -> dict:
+        return self._get_prompt_and_id()[0]
     
     def _update_prompt(self, prompt: dict, id: IdManager) -> str:
-        prompt_id = id.get(builtins.id(self.node_prompt))
+        prompt_id = id.get(self.node_prompt)
         if prompt_id is not None:
             return prompt_id
 
@@ -62,16 +68,16 @@ class NodeOutput:
             else:
                 prompt_inputs[k] = v
         
-        new_id = id.assign(builtins.id(self.node_prompt))
+        new_id = id.assign(self.node_prompt)
         prompt[new_id] = {
             'inputs': prompt_inputs,
             'class_type': self.node_prompt['class_type'],
         }
         return new_id
 
-def get_outputs_prompt(outputs: Iterable[NodeOutput]) -> dict:
+def _get_outputs_prompt_and_id(outputs: Iterable[NodeOutput]) -> (dict, IdManager):
     if len(outputs) == 1:
-        return outputs[0].get_prompt()
+        return outputs[0]._get_prompt_and_id()
     
     output = NodeOutput({}, {
         'inputs': { i: output for i, output in enumerate(outputs) },
@@ -83,9 +89,10 @@ def get_outputs_prompt(outputs: Iterable[NodeOutput]) -> dict:
     output._update_prompt(prompt, id)
     del prompt[id.last()]
 
-    return prompt
+    return prompt, id
 
 __all__ = [
+    'IdManager',
     'NodeOutput',
-    'get_outputs_prompt',
+    '_get_outputs_prompt_and_id',
 ]
