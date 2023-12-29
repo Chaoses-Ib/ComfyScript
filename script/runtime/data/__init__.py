@@ -88,18 +88,18 @@ class NodeOutput:
         }
         return new_id
 
-    async def _wait(self, source = None) -> dict | None:
+    async def _wait(self, source = None) -> Result | None:
         if self.task is None:
             from ...runtime import queue
             self.task = await queue._put(self, source)
         return await self.task.result(self)
     
-    def __await__(self) -> dict | None:
+    def __await__(self) -> Result | None:
         outer = inspect.currentframe().f_back
         source = ''.join(inspect.findsource(outer)[0])
         return self._wait(source).__await__()
     
-    def wait(self) -> dict | None:
+    def wait(self) -> Result | None:
         outer = inspect.currentframe().f_back
         source = ''.join(inspect.findsource(outer)[0])
         return asyncio.run(self._wait(source))
@@ -120,8 +120,27 @@ def _get_outputs_prompt_and_id(outputs: Iterable[NodeOutput]) -> (dict, IdManage
 
     return prompt, id
 
+class Result:
+    def __init__(self, output: dict):
+        self._output = output
+    
+    def __repr__(self) -> str:
+        return f'Result({self._output.__repr__()})'
+    
+    def __str__(self) -> str:
+        return f'Result({self._output.__str__()})'
+
+    @classmethod
+    def from_output(cls, output: dict) -> Result:
+        if 'images' in output:
+            return ImagesResult(output)
+
+from .ImagesResult import ImagesResult
+
 __all__ = [
     'IdManager',
     'NodeOutput',
     '_get_outputs_prompt_and_id',
+    'Result',
+    'ImagesResult',
 ]

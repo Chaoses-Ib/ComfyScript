@@ -254,25 +254,32 @@ class Task:
         else:
             self.get_loop().call_soon_threadsafe(self._fut.set_result, output)
     
-    async def results(self) -> list[dict]:
+    async def _wait(self) -> list[data.Result]:
         outputs: dict = await self._fut
-        return list(outputs.values())
+        return [data.Result.from_output(output) for output in outputs.values()]
     
-    async def result(self, output: data.NodeOutput) -> dict | None:
+    def __await__(self) -> list[data.Result]:
+        return self._wait().__await__()
+
+    def wait(self) -> list[data.Result]:
+        return asyncio.run(self)
+    
+    async def result(self, output: data.NodeOutput) -> data.Result | None:
         id = self._id.get_id(output.node_prompt)
         if id is None:
             return None
         
-        if id in self._new_outputs:
-            return self._new_outputs[id]
+        output = self._new_outputs.get(id)
+        if output is not None:
+            return data.Result.from_output(output)
 
         outputs: dict = await self._fut
-        return outputs.get(id)
-
-    def wait_results(self) -> list[dict]:
-        return asyncio.run(self.results())
+        output = outputs.get(id)
+        if output is not None:
+            return data.Result.from_output(output)
+        return None
     
-    def wait_result(self, output: data.NodeOutput) -> dict | None:
+    def wait_result(self, output: data.NodeOutput) -> data.Result | None:
         return asyncio.run(self.result(output))
 
     # def wait(self):
@@ -300,12 +307,6 @@ class Task:
 
     # def __await__(self):
     #     return self._wait().__await__()
-            
-    def __await__(self):
-        return self.results().__await__()
-
-    def wait(self):
-        return asyncio.run(self)
 
     def done(self) -> bool:
         """Return True if the task is done.
