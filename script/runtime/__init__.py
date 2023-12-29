@@ -338,8 +338,8 @@ class Workflow:
         self._outputs = []
         if outputs is not None:
             self += outputs
-        self._queue = queue
-        self._wait = wait
+        self._queue_when_exit = queue
+        self._wait_when_exit = wait
         self.task = None
     
     def __iadd__(self, outputs: data.NodeOutput | Iterable[data.NodeOutput]):
@@ -357,31 +357,43 @@ class Workflow:
     
     def api_format_json(self) -> str:
         return json.dumps(self.api_format(), indent=2)
+    
+    async def _queue(self, source = None) -> Task | None:
+        global queue
+        self.task = await queue._put(self._outputs, source)
+        return self.task
+    
+    def queue(self, source = None) -> Task | None:
+        outer = inspect.currentframe().f_back
+        source = ''.join(inspect.findsource(outer)[0])
+        return asyncio.run(self._queue(source))
 
     async def __aenter__(self) -> Workflow:
         return self.__enter__()
-
-    async def __aexit__(self, exc_type, exc_value, traceback):
-        global queue
-        nodes.Node.clear_output_hook()
-        if self._queue:
-            outer = inspect.currentframe().f_back
-            source = ''.join(inspect.findsource(outer)[0])            
-            
-            self.task = await queue._put(self._outputs, source)
-            if self.task:
-                # TODO: Fix multi-thread print
-                # print(task)
-                if self._wait:
-                    await self.task
 
     def __enter__(self) -> Workflow:
         self._outputs = []
         nodes.Node.set_output_hook(self.__iadd__)
         return self
     
+    async def _exit(self, source):
+        nodes.Node.clear_output_hook()
+        if self._queue_when_exit:
+            if await self._queue(source):
+                # TODO: Fix multi-thread print
+                # print(task)
+                if self._wait_when_exit:
+                    await self.task
+
+    async def __aexit__(self, exc_type, exc_value, traceback):
+        outer = inspect.currentframe().f_back
+        source = ''.join(inspect.findsource(outer)[0])
+        await self._exit(source)
+    
     def __exit__(self, exc_type, exc_value, traceback):
-        return asyncio.run(self.__aexit__(exc_type, exc_value, traceback))
+        outer = inspect.currentframe().f_back
+        source = ''.join(inspect.findsource(outer)[0])
+        asyncio.run(self._exit(source))
 
 queue = TaskQueue()
 
