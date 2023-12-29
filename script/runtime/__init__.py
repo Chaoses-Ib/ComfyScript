@@ -352,8 +352,11 @@ class Workflow:
     def _get_prompt_and_id(self) -> (dict, data.IdManager):
         return data._get_outputs_prompt_and_id(self._outputs)
 
-    def get_prompt(self) -> dict:
+    def api_format(self) -> dict:
         return self._get_prompt_and_id()[0]
+    
+    def api_format_json(self) -> str:
+        return json.dumps(self.api_format(), indent=2)
 
     async def __aenter__(self) -> Workflow:
         return self.__enter__()

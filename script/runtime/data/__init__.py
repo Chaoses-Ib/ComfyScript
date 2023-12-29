@@ -1,6 +1,7 @@
 from __future__ import annotations
 import builtins
 from enum import Enum
+import json
 from typing import Iterable
 
 from .. import factory
@@ -39,8 +40,11 @@ class NodeOutput:
         self._update_prompt(prompt, id)
         return prompt, id
 
-    def get_prompt(self) -> dict:
+    def api_format(self) -> dict:
         return self._get_prompt_and_id()[0]
+    
+    def api_format_json(self) -> str:
+        return json.dumps(self.api_format())
     
     def _update_prompt(self, prompt: dict, id: IdManager) -> str:
         prompt_id = id.get(self.node_prompt)

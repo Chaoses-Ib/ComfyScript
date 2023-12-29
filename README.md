@@ -1,5 +1,5 @@
 # ComfyScript
-A Python front end for [ComfyUI](https://github.com/comfyanonymous/ComfyUI). It has three use cases:
+A Python front end for [ComfyUI](https://github.com/comfyanonymous/ComfyUI). It has the following use cases:
 - Serving as a [human-readable format](https://github.com/comfyanonymous/ComfyUI/issues/612) for ComfyUI's workflows.
 
   This makes it easy to compare and reuse different parts of one's workflows.
@@ -13,6 +13,10 @@ A Python front end for [ComfyUI](https://github.com/comfyanonymous/ComfyUI). It 
   The main limitation is that we cannot get the output of nodes from Python before running the full workflow. But if [Node Expansion, While Loops, Components, and Lazy Evaluation #931](https://github.com/comfyanonymous/ComfyUI/pull/931) is someday merged into ComfyUI, this limitation can be solved, and it will be possible to use ComfyUI just like a simple Python library.
 
   See [runtime](#runtime) for details.
+
+- Generating workflows with scripts.
+
+  You can run scripts to generate workflows and then use them in the web UI or elsewhere. This way, you can use loops and generate huge workflows where it would be time-consuming or impractical to create them manually. See [workflow generation](#workflow-generation) for details.
 
 - Retrieving any wanted information by running the script with some stubs.
 
@@ -30,6 +34,8 @@ A Python front end for [ComfyUI](https://github.com/comfyanonymous/ComfyUI). It 
   And use [`exec()`](https://docs.python.org/3/library/functions.html#exec) to run the script (stubs for other nodes can be automatically generated). This way, `Reroute`, `PrimitiveNode`, and other special nodes won't be a problem stopping one from getting the information.
 
   It is also possible to generate a JSON by this. However, since JSON can only contain tree data and the workflow is a DAG, some information will have to be discarded, or the input have to be replicated at many positions.
+
+- Converting workflows from ComfyUI's web UI format to API format without the web UI.
 
 ## Installation
 ```sh
@@ -137,7 +143,7 @@ A Jupyter Notebook example is available at [runtime.ipynb](runtime.ipynb).
   ```
 
 ### Differences from ComfyUI's web UI
-In ComfyUI, the back end and the web UI use different schemas of workflows. Things like "S&R" (Search and Replace), "mute", "bypass" and "group" only exist in the web UI's workflows. Before sending the real workflows to the back end, the web UI will perform S&R, remove muted and bypassed nodes, and ignore groups as they are just UI elements that have no effect on the back end.
+In ComfyUI, the back end and the web UI use different formats of workflows. Things like "S&R" (Search and Replace), "mute", "bypass" and "group" only exist in the web UI's format, not in the back end's API format. Before sending the workflows to the back end, the web UI will perform S&R, remove muted and bypassed nodes, and ignore groups as they are just UI elements that have no effect on the back end.
 
 In ComfyScript, S&R can be implemented with variables and [f-strings](https://docs.python.org/3/tutorial/inputoutput.html#formatted-string-literals):
 ```python
@@ -157,16 +163,12 @@ model, clip, vae = CheckpointLoaderSimple('v1-5-pruned-emaonly.ckpt')
 conditioning = CLIPTextEncode('beautiful scenery nature glass bottle landscape, , purple galaxy bottle,', clip)
 conditioning2 = CLIPTextEncode('text, watermark', clip)
 latent = EmptyLatentImage(512, 512, 1)
+
 # "mute"
 # latent = KSampler(model, 156680208700286, 20, 8, 'euler', 'normal', conditioning, conditioning2, latent, 1)
 # image = VAEDecode(latent, vae)
 # SaveImage(image, 'ComfyUI')
-```
-```python
-model, clip, vae = CheckpointLoaderSimple('v1-5-pruned-emaonly.ckpt')
-conditioning = CLIPTextEncode('beautiful scenery nature glass bottle landscape, , purple galaxy bottle,', clip)
-conditioning2 = CLIPTextEncode('text, watermark', clip)
-latent = EmptyLatentImage(512, 512, 1)
+
 # "bypass"
 # latent = KSampler(model, 156680208700286, 20, 8, 'euler', 'normal', conditioning, conditioning2, latent, 1)
 image = VAEDecode(latent, vae)
@@ -218,7 +220,7 @@ neg = 'text, watermark'
 generate_image(pos, neg, seed=123, steps=20)
 ```
 
-Also, for multiple line strings:
+Also, for multiple line strings and raw strings:
 ```python
 pos = '''beautiful scenery nature glass bottle landscape, 
 purple galaxy bottle,'''
@@ -226,7 +228,31 @@ purple galaxy bottle,'''
 pos = (
 '''beautiful scenery nature glass bottle landscape, 
 purple galaxy bottle,''')
+
+image = LoadImageFromPath(r'ComfyUI_00001_-assets\ComfyUI_00001_.png [output]')
 ```
+
+### Workflow generation
+For example, to generate a loopback (do multiple times img2img on the same image) workflow:
+```python
+with Workflow(queue=False) as wf:
+    model, clip, vae = CheckpointLoaderSimple('v1-5-pruned-emaonly.ckpt')
+    conditioning = CLIPTextEncode('beautiful scenery nature glass bottle landscape, , purple galaxy bottle,', clip)
+    conditioning2 = CLIPTextEncode('text, watermark', clip)
+    latent = EmptyLatentImage(512, 512, 1)
+    latent = KSampler(model, 123, 20, 8, 'euler', 'normal', conditioning, conditioning2, latent, 1)
+    SaveImage(VAEDecode(latent, vae), '0')
+    for i in range(5):
+        latent = KSampler(model, 123, 20, 8, 'euler', 'normal', conditioning, conditioning2, latent, 0.8)
+        SaveImage(VAEDecode(latent, vae), f'{i}')
+
+json = wf.api_format_json()
+with open('prompt.json', 'w') as f:
+    f.write(json)
+```
+This only generates workflows in the API format. But ComfyUI can automically convert API format workflows to the web UI format when you load them ([#1932](https://github.com/comfyanonymous/ComfyUI/pull/1932)):
+
+![](images/README/load-api-format.png)
 
 ## Other nodes
 These nodes are installed to help with ComfyScript. But if you want, you can also use them in ComfyUI's web UI.
