@@ -9,9 +9,6 @@ import asyncio
 import nest_asyncio
 import aiohttp
 
-from . import nodes
-from . import data
-
 nest_asyncio.apply()
 
 _endpoint = 'http://127.0.0.1:8188/'
@@ -416,6 +413,10 @@ class Workflow:
 
 queue = TaskQueue()
 
+from . import nodes
+from . import data
+from .data import *
+
 __all__ = [
     'load',
     'TaskQueue',
@@ -423,3 +424,4 @@ __all__ = [
     'Task',
     'Workflow',
 ]
+__all__.extend(data.__all__)

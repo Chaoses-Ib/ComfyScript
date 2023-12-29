@@ -125,22 +125,21 @@ class Result:
         self._output = output
     
     def __repr__(self) -> str:
-        return f'Result({self._output.__repr__()})'
+        return f'{self.__class__.__name__}({self._output.__repr__()})'
     
     def __str__(self) -> str:
-        return f'Result({self._output.__str__()})'
+        return f'{self.__class__.__name__}({self._output.__str__()})'
 
     @classmethod
     def from_output(cls, output: dict) -> Result:
         if 'images' in output:
             return ImagesResult(output)
 
-from .ImagesResult import ImagesResult
+from .Images import ImagesResult, Images
 
 __all__ = [
-    'IdManager',
     'NodeOutput',
-    '_get_outputs_prompt_and_id',
     'Result',
     'ImagesResult',
+    'Images',
 ]

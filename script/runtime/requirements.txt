@@ -2,3 +2,6 @@
 aiohttp
 
 nest_asyncio ~= 1.0
+
+# Jupyter
+ipywidgets ~= 8.1

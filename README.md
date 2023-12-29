@@ -8,7 +8,7 @@ A Python front end for [ComfyUI](https://github.com/comfyanonymous/ComfyUI). It 
 
 - Directly running the script to generate images.
 
-  The main advantage of doing this is being able to mix Python code with ComfyUI's nodes, like doing loops, calling library functions, and easily encapsulating custom nodes. This also makes adding interaction easier since the UI and logic can be both written in Python. And, some people may feel more comfortable with simple Python code than GUIs.
+  The main advantage of doing this is being able to mix Python code with ComfyUI's nodes, like doing loops, calling library functions, and easily encapsulating custom nodes. This also makes adding interaction easier since the UI and logic can be both written in Python. And, some people may feel more comfortable with simple Python code than a graph-based GUI.
 
   The main limitation is that we cannot get the output of nodes from Python before running the full workflow. But if [Node Expansion, While Loops, Components, and Lazy Evaluation #931](https://github.com/comfyanonymous/ComfyUI/pull/931) is someday merged into ComfyUI, this limitation can be solved, and it will be possible to use ComfyUI just like a simple Python library.
 
