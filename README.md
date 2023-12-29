@@ -44,6 +44,7 @@ git clone --recurse-submodules https://github.com/Chaoses-Ib/ComfyScript.git
 cd ComfyScript
 python -m pip install -r requirements.txt
 ```
+Minimum Python version: 3.9 (ComfyUI's minimum version is 3.8)
 
 ## Transpiler
 The transpiler can translate ComfyUI's workflows to ComfyScript.

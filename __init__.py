@@ -5,7 +5,12 @@ NODE_DISPLAY_NAME_MAPPINGS = {}
 
 success = True
 
+import sys
 from pathlib import Path
+
+if sys.version_info < (3, 9):
+    success = False
+    print('\033[34mComfyScript: \033[91mPython 3.9+ is required.\033[0m')
 
 try:
     print('\033[34mComfyScript: \033[93mLoading nodes...\033[0m')
@@ -29,7 +34,6 @@ def setup_script():
     from .script import transpile
 
     import inspect
-    import sys
     import traceback
     import json
     
