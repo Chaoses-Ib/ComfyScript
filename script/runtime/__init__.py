@@ -77,11 +77,21 @@ class TaskQueue:
         self._tasks = {}
         self._watch_thread = None
 
+    async def _get_history(self, prompt_id: str) -> dict | None:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(f'{_endpoint}history/{prompt_id}') as response:
+                if response.status == 200:
+                    json = await response.json()
+                    # print(json)
+                    return json.get(prompt_id)
+                else:
+                    print(f'ComfyScript: Failed to get history: {await _response_to_str(response)}')
+
     async def _watch(self):
         while True:
             try:
                 async with aiohttp.ClientSession() as session:
-                    async with session.ws_connect(f'{_endpoint}ws?clientId={_client_id}') as ws:
+                    async with session.ws_connect(f'{_endpoint}ws', params={'clientId': _client_id}) as ws:
                         queue_remaining = 0
                         async for msg in ws:
                             # print(msg.type)
@@ -100,7 +110,11 @@ class TaskQueue:
                                         prompt_id = data['prompt_id']
                                         task: Task = self._tasks.get(prompt_id)
                                         if task is not None:
-                                            task._set_result_threadsafe(None, {})
+                                            history = await self._get_history(prompt_id)
+                                            outputs = {}
+                                            if history is not None:
+                                                outputs = history['outputs']
+                                            task._set_result_threadsafe(None, outputs)
                                             del self._tasks[prompt_id]
                                         
                                         if new_queue_remaining == 0:
@@ -225,7 +239,7 @@ class Task:
         self.prompt_id = prompt_id
         self.number = number
         self._id = id
-        self._outputs = {}
+        self._new_outputs = {}
         self._fut = asyncio.Future()
 
     def __str__(self):
@@ -234,26 +248,28 @@ class Task:
     def __repr__(self):
         return f'Task(n={self.number}, id={self.prompt_id})'
     
-    def _set_result_threadsafe(self, node_id: str | None, output: dict):
+    def _set_result_threadsafe(self, node_id: str | None, output: dict) -> None:
         if node_id is not None:
-            self._outputs[node_id] = output
+            self._new_outputs[node_id] = output
         else:
-            self.get_loop().call_soon_threadsafe(self._fut.set_result, None)
+            self.get_loop().call_soon_threadsafe(self._fut.set_result, output)
     
-    async def results(self) -> list:
-        # TODO: What to do if the workflow is already executed?
-        await self._fut
-        return list(self._outputs.values())
+    async def results(self) -> list[dict]:
+        outputs: dict = await self._fut
+        return list(outputs.values())
     
     async def result(self, output: data.NodeOutput) -> dict | None:
-        await self._fut
-        id = self._id.get(output.node_prompt)
+        id = self._id.get_id(output.node_prompt)
         if id is None:
             return None
-        output = self._outputs.get(id)
-        return output
+        
+        if id in self._new_outputs:
+            return self._new_outputs[id]
 
-    def wait_results(self) -> list:
+        outputs: dict = await self._fut
+        return outputs.get(id)
+
+    def wait_results(self) -> list[dict]:
         return asyncio.run(self.results())
     
     def wait_result(self, output: data.NodeOutput) -> dict | None:
@@ -328,7 +344,7 @@ class Task:
 
 class Workflow:
     '''
-    - `task: Task | None`: The last task of the workflow.
+    - `task: Task | None`: The last task associated with the workflow.
     '''
     def __init__(self, queue: bool = True, wait: bool = False, outputs: data.NodeOutput | Iterable[data.NodeOutput] | None = None):
         '''
@@ -360,7 +376,9 @@ class Workflow:
     
     async def _queue(self, source = None) -> Task | None:
         global queue
-        self.task = await queue._put(self._outputs, source)
+        self.task = await queue._put(self, source)
+        for output in self._outputs:
+            output.task = self.task
         return self.task
     
     def queue(self, source = None) -> Task | None:
