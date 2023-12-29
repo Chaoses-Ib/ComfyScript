@@ -91,6 +91,10 @@ ComfyScript saved for each of the two saved image are respectively:
    SaveImage(image, 'ComfyUI')
    ```
 
+Comparing scripts:
+
+![](images/README/diff.png)
+
 <!--
 CLI:
 ```sh
@@ -233,7 +237,7 @@ image = LoadImageFromPath(r'ComfyUI_00001_-assets\ComfyUI_00001_.png [output]')
 ```
 
 ### Workflow generation
-For example, to generate a loopback (do multiple times img2img on the same image) workflow:
+In the [runtime](#runtime), you can get a workflow's API format by calling `api_format_json()`. For example, to generate a loopback (do multiple times img2img on the same image) workflow:
 ```python
 with Workflow(queue=False) as wf:
     model, clip, vae = CheckpointLoaderSimple('v1-5-pruned-emaonly.ckpt')
