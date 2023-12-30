@@ -277,19 +277,19 @@ class Task:
             self.get_loop().call_soon_threadsafe(self._fut.set_result, output)
             if display_result:
                 from IPython.display import display
-                images = []
+                image_batches = []
                 others = []
                 # TODO: Sort by the parsed id
                 for _id, output in sorted(output.items(), key=lambda item: item[0]):
                     result = data.Result.from_output(output)
-                    if isinstance(result, data.ImagesResult):
-                        images.append(result)
+                    if isinstance(result, data.ImageBatchResult):
+                        image_batches.append(result)
                     else:
                         others.append(result)
-                if images or others:
+                if image_batches or others:
                     display(clear=True)
-                if images:
-                    display(Images(*images))
+                if image_batches:
+                    display(Images(*image_batches))
                 if others:
                     display(*others)
     

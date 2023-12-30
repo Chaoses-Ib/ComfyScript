@@ -7,7 +7,7 @@ import aiohttp
 
 from . import Result
 
-class ImagesResult(Result):
+class ImageBatchResult(Result):
     # TODO: Lazy cell
     async def _get_image(self, image: dict) -> Image.Image | None:
         async with aiohttp.ClientSession() as session:
@@ -36,18 +36,20 @@ class ImagesResult(Result):
         self.display()
 
 class Images:
-    def __init__(self, *images: NodeOutput | ImagesResult):
-        self.images_results = images
+    '''Used to display multiple images in Jupyter Notebook.'''
+
+    def __init__(self, *images: NodeOutput | ImageBatchResult):
+        self.images = images
 
     async def _display(self, rows: int | None = 1, cols: int | None = None, height: int | None = None, width: int | None = None, **kwds):
         # TODO: Partial display
         images = []
-        for images_result in self.images_results:
-            if isinstance(images_result, NodeOutput):
-                images_result = await images_result
-            if isinstance(images_result, ImagesResult):
-                images.extend(await images_result)
-        images = [image for image in images if image is not None]
+        for image in self.images:
+            if isinstance(image, NodeOutput):
+                image = await image
+            if isinstance(image, ImageBatchResult):
+                images.extend(await image)
+        images = [img for img in images if img is not None]
         if not images:
             return
         
@@ -79,9 +81,9 @@ class Images:
                         kwds['height'] = height
                     if width is not None:
                         kwds['width'] = width
-                    images_result = widgets.Image(value=images[k]._repr_png_(), **kwds)
-                    images_result.add_class('comfy-script-image')
-                    grid[i, j] = images_result
+                    image = widgets.Image(value=images[k]._repr_png_(), **kwds)
+                    image.add_class('comfy-script-image')
+                    grid[i, j] = image
 
         # https://github.com/microsoft/vscode-jupyter/issues/7161
         display(widgets.HBox(children=[widgets.HTML('''<style>
@@ -106,6 +108,6 @@ from ...runtime import _endpoint, _response_to_str
 from ..data import NodeOutput
 
 __all__ = [
-    'ImagesResult',
+    'ImageBatchResult',
     'Images',
 ]

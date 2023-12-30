@@ -134,13 +134,13 @@ class Result:
     @classmethod
     def from_output(cls, output: dict) -> Result:
         if 'images' in output:
-            return ImagesResult(output)
+            return ImageBatchResult(output)
 
-from .Images import ImagesResult, Images
+from .Images import ImageBatchResult, Images
 
 __all__ = [
     'NodeOutput',
     'Result',
-    'ImagesResult',
+    'ImageBatchResult',
     'Images',
 ]
