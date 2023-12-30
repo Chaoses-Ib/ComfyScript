@@ -16,6 +16,7 @@ class IdManager:
 
     def assign_id(self, obj: object) -> str:
         # Assign id by node types to utilize cache
+        # TODO: Hash inputs recursively to utlize cache better?
         type = obj['class_type']
         type_id = self._type_ids.get(type, -1) + 1
         self._type_ids[type] = type_id

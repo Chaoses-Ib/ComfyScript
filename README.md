@@ -155,6 +155,10 @@ A Jupyter Notebook example is available at [runtime.ipynb](runtime.ipynb).
   queue.cancel_remaining()
   # Interrupt the current task and clear the queue
   queue.cancel_all()
+
+  # With Workflow:
+  Workflow(cancel_remaining=True)
+  Workflow(cancel_all=True)
   ```
 
 ### Differences from ComfyUI's web UI
@@ -246,6 +250,56 @@ purple galaxy bottle,''')
 
 image = LoadImageFromPath(r'ComfyUI_00001_-assets\ComfyUI_00001_.png [output]')
 ```
+
+### Examples
+#### Select and process
+For example, to generate 3 images at once, and then let the user decide which ones they want to hires fix:
+```python
+import ipywidgets as widgets
+
+queue.watch_display(False, False)
+
+latents = []
+image_batches = []
+with Workflow():
+    seed = 0
+    pos = 'sky, 1girl, smile'
+    neg = 'embedding:easynegative'
+    model, clip, vae = CheckpointLoaderSimple(CheckpointLoaderSimple.ckpt_name.AOM3A1B_orangemixs)
+    model2, clip2, vae2 = CheckpointLoaderSimple(CheckpointLoaderSimple.ckpt_name.CounterfeitV25_25)
+    for color in 'red', 'green', 'blue':
+        latent = EmptyLatentImage(440, 640)
+        latent = KSampler(model, seed, steps=15, cfg=6, sampler_name='uni_pc',
+                          positive=CLIPTextEncode(f'{color}, {pos}', clip), negative=CLIPTextEncode(neg, clip),
+                          latent_image=latent)
+        latents.append(latent)
+        image_batches.append(SaveImage(VAEDecode(latent, vae), f'{seed} {color}'))
+
+grid = widgets.GridspecLayout(1, len(image_batches))
+for i, image_batch in enumerate(image_batches):
+    image_batch = image_batch.wait()
+    image = widgets.Image(value=image_batch[0]._repr_png_())
+
+    button = widgets.Button(description=f'Hires fix {i}')
+    def hiresfix(button, i=i):
+        print(f'Image {i} is chosen')
+        with Workflow():
+            latent = LatentUpscaleBy(latents[i], scale_by=2)
+            latent = KSampler(model2, seed, steps=15, cfg=6, sampler_name='uni_pc',
+                            positive=CLIPTextEncode(pos, clip2), negative=CLIPTextEncode(neg, clip2),
+                            latent_image=latent, denoise=0.6)
+            image_batch = SaveImage(VAEDecode(latent, vae2), f'{seed} hires')
+        display(image_batch.wait())
+    button.on_click(hiresfix)
+
+    grid[0, i] = widgets.VBox(children=(image, button))
+display(grid)
+```
+This example uses [ipywidgets](https://github.com/jupyter-widgets/ipywidgets) for the GUI, but other GUI frameworks can be used as well.
+
+Screenshot:
+
+![](images/README/select.png)
 
 ### Workflow generation
 In the [runtime](#runtime), you can get a workflow's API format by calling `api_format_json()`. For example, to generate a loopback (do multiple times img2img on the same image) workflow:

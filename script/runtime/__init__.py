@@ -179,6 +179,14 @@ class TaskQueue:
             self._watch_thread = threading.Thread(target=asyncio.run, args=(queue._watch(),), daemon=True)
             self._watch_thread.start()
 
+    def watch_display(self, display_node: bool = True, display_task: bool = True):
+        '''
+        - `display_node`: When an output node is finished, display its result.
+        - `display_task`: When a task is finished (all output nodes are finished), display all the results.
+        '''
+        self._watch_display_node = display_node
+        self._watch_display_task = display_task
+
     async def _put(self, workflow: data.NodeOutput | Iterable[data.NodeOutput] | Workflow, source = None) -> Task | None:
         global _endpoint, _client_id
         
