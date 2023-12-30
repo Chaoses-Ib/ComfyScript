@@ -53,9 +53,17 @@ class Images:
         if not images:
             return
         
-        # TODO: Not use HTML if there is only one image?
-
         from IPython.display import display
+        
+        # Not use HTML if there is only one image or one column
+        if height is None and width is None:
+            if len(images) == 1:
+                display(images[0])
+                return
+            if cols == 1:
+                display(*images)
+                return
+        
         import ipywidgets as widgets
 
         first_image = images[0]
