@@ -73,6 +73,8 @@ class TaskQueue:
     def __init__(self):
         self._tasks = {}
         self._watch_thread = None
+        self._watch_display_node = None
+        self._watch_display_task = None
 
     async def _get_history(self, prompt_id: str) -> dict | None:
         async with aiohttp.ClientSession() as session:
@@ -101,6 +103,8 @@ class TaskQueue:
                                     if queue_remaining != new_queue_remaining:
                                         queue_remaining = new_queue_remaining
                                         print(f'Queue remaining: {queue_remaining}')
+                                elif msg['type'] == 'execution_start':
+                                    pass
                                 elif msg['type'] == 'executing':
                                     data = msg['data']
                                     if data['node'] is None:
@@ -111,7 +115,9 @@ class TaskQueue:
                                             outputs = {}
                                             if history is not None:
                                                 outputs = history['outputs']
-                                            task._set_result_threadsafe(None, outputs)
+                                            task._set_result_threadsafe(None, outputs, self._watch_display_task)
+                                            if self._watch_display_task:
+                                                print(f'Queue remaining: {queue_remaining}')
                                             del self._tasks[prompt_id]
                                         
                                         if new_queue_remaining == 0:
@@ -124,7 +130,9 @@ class TaskQueue:
                                     prompt_id = data['prompt_id']
                                     task: Task = self._tasks.get(prompt_id)
                                     if task is not None:
-                                        task._set_result_threadsafe(data['node'], data['output'])
+                                        task._set_result_threadsafe(data['node'], data['output'], self._watch_display_node)
+                                        if self._watch_display_node:
+                                            print(f'Queue remaining: {queue_remaining}')
                                 elif msg['type'] == 'progress':
                                     data = msg['data']
                                     _print_progress(data['value'], data['max'])
@@ -151,8 +159,22 @@ class TaskQueue:
         {'type': 'executing', 'data': {'node': None, 'prompt_id': '3328f0c8-9368-4070-90e7-087e854fe315'}}
         '''
 
-    def start_watch(self):
-        '''`load()` will `start_watch()` by default.'''
+    def start_watch(self, display_node: bool = True, display_task: bool = True):
+        '''
+        - `display_node`: When an output node is finished, display its result.
+        - `display_task`: When a task is finished (all output nodes are finished), display all the results.
+
+        `load()` will `start_watch()` by default.
+        '''
+
+        if display_node or display_task:
+            try:
+                import IPython
+                self._watch_display_node = display_node
+                self._watch_display_task = display_task
+            except ImportError:
+                print('ComfyScript: IPython is not available, cannot display task results')
+
         if self._watch_thread is None:
             self._watch_thread = threading.Thread(target=asyncio.run, args=(queue._watch(),), daemon=True)
             self._watch_thread.start()
@@ -245,11 +267,30 @@ class Task:
     def __repr__(self):
         return f'Task(n={self.number}, id={self.prompt_id})'
     
-    def _set_result_threadsafe(self, node_id: str | None, output: dict) -> None:
+    def _set_result_threadsafe(self, node_id: str | None, output: dict, display_result: bool = False) -> None:
         if node_id is not None:
             self._new_outputs[node_id] = output
+            if display_result:
+                from IPython.display import display
+                display(data.Result.from_output(output), clear=True)
         else:
             self.get_loop().call_soon_threadsafe(self._fut.set_result, output)
+            if display_result:
+                from IPython.display import display
+                images = []
+                others = []
+                for _id, output in sorted(output.items(), key=lambda item: int(item[0])):
+                    result = data.Result.from_output(output)
+                    if isinstance(result, data.ImagesResult):
+                        images.append(result)
+                    else:
+                        others.append(result)
+                if images or others:
+                    display(clear=True)
+                if images:
+                    display(Images(*images))
+                if others:
+                    display(*others)
     
     async def _wait(self) -> list[data.Result]:
         outputs: dict = await self._fut

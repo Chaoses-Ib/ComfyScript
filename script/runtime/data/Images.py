@@ -8,23 +8,25 @@ import aiohttp
 from . import Result
 
 class ImagesResult(Result):
-    async def _get_image(self, image: dict) -> Image.Image:
+    # TODO: Lazy cell
+    async def _get_image(self, image: dict) -> Image.Image | None:
         async with aiohttp.ClientSession() as session:
             async with session.get(f'{_endpoint}view', params=image) as response:
                 if response.status == 200:
                     return Image.open(io.BytesIO(await response.read()))
                 else:
                     print(f'ComfyScript: Failed to get image: {await _response_to_str(response)}')
+                    return
     
-    def __await__(self) -> list[Image.Image]:
+    def __await__(self) -> list[Image.Image | None]:
         async def f(self):
             return [await self._get_image(image) for image in self._output['images']]
         return f(self).__await__()
     
-    async def get(self, i: int) -> Image.Image:
+    async def get(self, i: int) -> Image.Image | None:
         return await self._get_image(self._output['images'][i])
     
-    def __getitem__(self, i: int) -> Image.Image:
+    def __getitem__(self, i: int) -> Image.Image | None:
         return asyncio.run(self.get(i))
     
     def display(self, rows: int | None = 1, cols: int | None = None, height: int | None = None, width: int | None = None, **kwds):
@@ -45,8 +47,11 @@ class Images:
                 images_result = await images_result
             if isinstance(images_result, ImagesResult):
                 images.extend(await images_result)
+        images = [image for image in images if image is not None]
         if not images:
             return
+        
+        # TODO: Not use HTML if there is only one image?
 
         from IPython.display import display
         import ipywidgets as widgets

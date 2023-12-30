@@ -1,5 +1,9 @@
 # ComfyScript
-A Python front end for [ComfyUI](https://github.com/comfyanonymous/ComfyUI). It has the following use cases:
+A Python front end for [ComfyUI](https://github.com/comfyanonymous/ComfyUI).
+
+![](images/README/preview.png)
+
+It has the following use cases:
 - Serving as a [human-readable format](https://github.com/comfyanonymous/ComfyUI/issues/612) for ComfyUI's workflows.
 
   This makes it easy to compare and reuse different parts of one's workflows.
@@ -38,8 +42,9 @@ A Python front end for [ComfyUI](https://github.com/comfyanonymous/ComfyUI). It 
 - Converting workflows from ComfyUI's web UI format to API format without the web UI.
 
 ## Installation
+Install [ComfyUI](https://github.com/comfyanonymous/ComfyUI) first. And then:
 ```sh
-cd D:\ComfyUI\custom_nodes
+cd ComfyUI/custom_nodes
 git clone --recurse-submodules https://github.com/Chaoses-Ib/ComfyScript.git
 cd ComfyScript
 python -m pip install -r requirements.txt
