@@ -344,16 +344,20 @@ class Workflow:
     '''
     - `task: Task | None`: The last task associated with the workflow.
     '''
-    def __init__(self, queue: bool = True, wait: bool = False, outputs: data.NodeOutput | Iterable[data.NodeOutput] | None = None):
+    def __init__(self, queue: bool = True, cancel_all: bool = False, cancel_remaining: bool = False, wait: bool = False, outputs: data.NodeOutput | Iterable[data.NodeOutput] | None = None):
         '''
-        - `queue`: Put the workflow into the queue when exiting the context manager.
-        - `wait`: Wait for the task to finish before exiting the context manager. No effect if `queue` is `False`.
+        - `queue`: Put the workflow into the queue when exiting the context.
+        - `cancel_all`: Call `queue.cancel_all()` before queueing the workflow, so that it can start immediately.
+        - `cancel_remaining`: Call `queue.cancel_remaining()` before queueing the workflow, so that it can start after the current task finishes.
+        - `wait`: Wait for the task to finish before exiting the context. No effect if `queue` is `False`.
         '''
         self._outputs = []
         if outputs is not None:
             self += outputs
         self._queue_when_exit = queue
         self._wait_when_exit = wait
+        self._cancel_all_when_queue = cancel_all
+        self._cancel_remaining_when_queue = cancel_remaining
         self.task = None
     
     def __iadd__(self, outputs: data.NodeOutput | Iterable[data.NodeOutput]):
@@ -374,6 +378,12 @@ class Workflow:
     
     async def _queue(self, source = None) -> Task | None:
         global queue
+
+        if self._cancel_all_when_queue:
+            await queue._cancel_all()
+        elif self._cancel_remaining_when_queue:
+            await queue._cancel_remaining()
+
         self.task = await queue._put(self, source)
         for output in self._outputs:
             output.task = self.task
