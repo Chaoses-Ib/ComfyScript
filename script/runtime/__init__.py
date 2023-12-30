@@ -279,7 +279,8 @@ class Task:
                 from IPython.display import display
                 images = []
                 others = []
-                for _id, output in sorted(output.items(), key=lambda item: int(item[0])):
+                # TODO: Sort by the parsed id
+                for _id, output in sorted(output.items(), key=lambda item: item[0]):
                     result = data.Result.from_output(output)
                     if isinstance(result, data.ImagesResult):
                         images.append(result)

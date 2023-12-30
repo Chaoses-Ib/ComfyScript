@@ -10,17 +10,21 @@ from .. import factory
 
 class IdManager:
     def __init__(self):
-        self._id = -1
+        self._type_ids: dict[str, int] = {}
         self._objid_id_map = {}
         self._id_obj_map = {}
 
-    def assign_id(self, obj) -> str:
-        # TODO: Assign id by node types?
-        self._id += 1
-        self._objid_id_map[builtins.id(obj)] = self._id
-        self._id_obj_map[self._id] = obj
+    def assign_id(self, obj: object) -> str:
+        # Assign id by node types to utilize cache
+        type = obj['class_type']
+        type_id = self._type_ids.get(type, -1) + 1
+        self._type_ids[type] = type_id
+        id = f'{type}.{type_id}'
+        
+        self._objid_id_map[builtins.id(obj)] = id
+        self._id_obj_map[id] = obj
         # Must be str
-        return str(self._id)
+        return id
 
     def get_id(self, obj) -> str | None:
         # Must be str
@@ -29,9 +33,6 @@ class IdManager:
     
     def get_obj(self, id: str) -> object | None:
         return self._id_obj_map.get(int(id))
-
-    def last(self) -> str:
-        return str(self._id)
 
 class NodeOutput:
     '''
@@ -115,8 +116,8 @@ def _get_outputs_prompt_and_id(outputs: Iterable[NodeOutput]) -> (dict, IdManage
 
     prompt = {}
     id = IdManager()
-    output._update_prompt(prompt, id)
-    del prompt[id.last()]
+    output_id = output._update_prompt(prompt, id)
+    del prompt[output_id]
 
     return prompt, id
 
