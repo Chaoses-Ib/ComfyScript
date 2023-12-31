@@ -50,11 +50,12 @@ class RuntimeFactory:
         enum_type_stubs = ''
         input_defaults = {}
 
-        def type_and_hint(type_info: Union[str, list], name: str = None, optional: bool = False, default = None) -> (type, str):
+        def type_and_hint(type_info: Union[str, list], name: str = None, optional: bool = False, default = None, output: bool = False) -> (type, str):
             nonlocal enum_type_stubs
 
             c = None
             if isinstance(type_info, list):
+                assert not output
                 if is_bool_enum(type_info):
                     t = bool
                     if default is None:
@@ -73,13 +74,13 @@ class RuntimeFactory:
 
                     if default is None and len(type_info) > 0:
                         default = type_info[0]
-            elif type_info == 'INT':
+            elif not output and type_info == 'INT':
                 t = int
-            elif type_info == 'FLOAT':
+            elif not output and type_info == 'FLOAT':
                 t = float
-            elif type_info == 'STRING':
+            elif not output and type_info == 'STRING':
                 t = str
-            elif type_info == 'BOOLEAN':
+            elif not output and type_info == 'BOOLEAN':
                 t = bool
             else:
                 type_id = astutil.str_to_class_id(type_info)
@@ -122,13 +123,13 @@ class RuntimeFactory:
                     config = type_config[1]
                 inputs.append(f'{name}: {type_and_hint(type_info, name, optional, config.get("default"))[1]}')
 
-        output_types = [type_and_hint(type)[0] for type in info['output']]
+        output_types = [type_and_hint(type, output=True)[0] for type in info['output']]
 
         outputs = len(info['output'])
         if outputs >= 2:
-            output_type_hint = f' -> tuple[{", ".join(type_and_hint(type)[1] for type in info["output"])}]'
+            output_type_hint = f' -> tuple[{", ".join(type_and_hint(type, output=True)[1] for type in info["output"])}]'
         elif outputs == 1:
-            output_type_hint = f' -> {type_and_hint(info["output"][0])[1]}'
+            output_type_hint = f' -> {type_and_hint(info["output"][0], output=True)[1]}'
         else:
             output_type_hint = ''
 
@@ -138,6 +139,7 @@ class RuntimeFactory:
         c = f'class {class_id}:\n'
 
         # Docstring
+        # TODO: Return names
         # TODO: Display name
         # TODO: Min, max
         # TODO: Round?
