@@ -30,9 +30,10 @@ def _positional_args_to_keyword(node: dict, args: tuple) -> dict:
         if group is None:
             continue
         for name in group:
-            kwargs[name] = args.pop(0)
+            # args may be empty before any pop
             if len(args) == 0:
                 return kwargs
+            kwargs[name] = args.pop(0)
     if len(args) != 0:
         print(f'ComfyScript: {node["name"]} has more positional arguments than expected: {args}')
     return kwargs
