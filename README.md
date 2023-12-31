@@ -150,6 +150,8 @@ A Jupyter Notebook example is available at [runtime.ipynb](runtime.ipynb).
   queue.cancel_remaining()
   # Interrupt the current task and clear the queue
   queue.cancel_all()
+  # Call the callback when the queue is empty
+  queue.when_empty(callback)
 
   # With Workflow:
   Workflow(cancel_remaining=True)
@@ -247,6 +249,29 @@ image = LoadImageFromPath(r'ComfyUI_00001_-assets\ComfyUI_00001_.png [output]')
 ```
 
 ### Examples
+#### Auto queue
+Automatically queue new workflows when the queue becomes empty.
+
+For example, one can use [comfyui-photoshop](https://github.com/NimaNzrii/comfyui-photoshop) (currently a bit buggy) to automatically do img2img with the image in Photoshop when it changes:
+```python
+def f(wf):
+    seed = 0
+    pos = '1girl, angry, middle finger'
+    neg = 'embedding:easynegative'
+    model, clip, vae = CheckpointLoaderSimple(CheckpointLoaderSimple.ckpt_name.CounterfeitV25_25)
+    image, width, height = PhotoshopToComfyUI(wait_for_photoshop_changes=True)
+    latent = VAEEncode(image, vae)
+    latent = LatentUpscaleBy(latent, scale_by=1.5)
+    latent = KSampler(model, seed, steps=15, cfg=6, sampler_name='uni_pc',
+                        positive=CLIPTextEncode(pos, clip), negative=CLIPTextEncode(neg, clip),
+                        latent_image=latent, denoise=0.8)
+    PreviewImage(VAEDecode(latent, vae))
+queue.when_empty(f)
+```
+Screenshot:
+
+![](images/README/auto-queue.png)
+
 #### Select and process
 For example, to generate 3 images at once, and then let the user decide which ones they want to hires fix:
 ```python

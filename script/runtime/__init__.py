@@ -2,7 +2,7 @@ from __future__ import annotations
 import inspect
 import json
 import threading
-from typing import Iterable
+from typing import Callable, Iterable
 import uuid
 
 import asyncio
@@ -59,8 +59,11 @@ class TaskQueue:
     def __init__(self):
         self._tasks = {}
         self._watch_thread = None
+        self._queue_empty_callback = None
+        self._queue_remaining_callbacks = [self._when_empty_callback]
         self._watch_display_node = None
         self._watch_display_task = None
+        self.queue_remaining = 0
 
     async def _get_history(self, prompt_id: str) -> dict | None:
         async with aiohttp.ClientSession() as session:
@@ -77,7 +80,8 @@ class TaskQueue:
             try:
                 async with aiohttp.ClientSession() as session:
                     async with session.ws_connect(f'{api.endpoint}ws', params={'clientId': _client_id}) as ws:
-                        queue_remaining = 0
+                        self.queue_remaining = 0
+                        executing = False
                         async for msg in ws:
                             # print(msg.type)
                             if msg.type == aiohttp.WSMsgType.TEXT:
@@ -85,32 +89,40 @@ class TaskQueue:
                                 # print(msg)
                                 if msg['type'] == 'status':
                                     data = msg['data']
-                                    new_queue_remaining = data['status']['exec_info']['queue_remaining']
-                                    if queue_remaining != new_queue_remaining:
-                                        queue_remaining = new_queue_remaining
-                                        print(f'Queue remaining: {queue_remaining}')
+                                    queue_remaining = data['status']['exec_info']['queue_remaining']
+                                    if self.queue_remaining != queue_remaining:
+                                        self.queue_remaining = queue_remaining
+                                        if not executing:
+                                            for callback in self._queue_remaining_callbacks:
+                                                callback(self.queue_remaining)
+                                        print(f'Queue remaining: {self.queue_remaining}')
                                 elif msg['type'] == 'execution_start':
-                                    pass
+                                    executing = True
                                 elif msg['type'] == 'executing':
                                     data = msg['data']
                                     if data['node'] is None:
                                         prompt_id = data['prompt_id']
                                         task: Task = self._tasks.get(prompt_id)
                                         if task is not None:
-                                            history = await self._get_history(prompt_id)
-                                            outputs = {}
-                                            if history is not None:
-                                                outputs = history['outputs']
-                                            task._set_result_threadsafe(None, outputs, self._watch_display_task)
-                                            if self._watch_display_task:
-                                                print(f'Queue remaining: {queue_remaining}')
                                             del self._tasks[prompt_id]
-                                        
-                                        if new_queue_remaining == 0:
+
+                                        if self.queue_remaining == 0:
                                             for task in self._tasks.values():
                                                 print(f'ComfyScript: The queue is empty but {task} has not been executed')
                                                 task._set_result_threadsafe(None, {})
                                             self._tasks.clear()
+                                        
+                                        for callback in self._queue_remaining_callbacks:
+                                            callback(self.queue_remaining)
+                                        executing = False
+
+                                        history = await self._get_history(prompt_id)
+                                        outputs = {}
+                                        if history is not None:
+                                            outputs = history['outputs']
+                                        task._set_result_threadsafe(None, outputs, self._watch_display_task)
+                                        if self._watch_display_task:
+                                            print(f'Queue remaining: {self.queue_remaining}')
                                 elif msg['type'] == 'executed':
                                     data = msg['data']
                                     prompt_id = data['prompt_id']
@@ -118,7 +130,7 @@ class TaskQueue:
                                     if task is not None:
                                         task._set_result_threadsafe(data['node'], data['output'], self._watch_display_node)
                                         if self._watch_display_node:
-                                            print(f'Queue remaining: {queue_remaining}')
+                                            print(f'Queue remaining: {self.queue_remaining}')
                                 elif msg['type'] == 'progress':
                                     data = msg['data']
                                     _print_progress(data['value'], data['max'])
@@ -164,6 +176,14 @@ class TaskQueue:
         if self._watch_thread is None:
             self._watch_thread = threading.Thread(target=asyncio.run, args=(queue._watch(),), daemon=True)
             self._watch_thread.start()
+
+    def add_queue_remaining_callback(self, callback: Callable[[int], None]):
+        self.remove_queue_remaining_callback(callback)
+        self._queue_remaining_callbacks.append(callback)
+
+    def remove_queue_remaining_callback(self, callback: Callable[[int], None]):
+        if callback in self._queue_remaining_callbacks:
+            self._queue_remaining_callbacks.remove(callback)
 
     def watch_display(self, display_node: bool = True, display_task: bool = True):
         '''
@@ -217,6 +237,35 @@ class TaskQueue:
         source = ''.join(inspect.findsource(outer)[0])
         return self.put(workflow, source)
     
+    def _when_empty_callback(self, queue_remaining: int):
+        if queue_remaining == 0 and self._queue_empty_callback is not None:
+            self._queue_empty_callback()
+
+    def when_empty(self, callback: Callable[[Workflow], None | bool] | None, enter_workflow: bool = True, source = None):
+        '''Call the callback when the queue is empty.
+
+        - `callback`: Return `True` to stop, `None` or `False` to continue.
+
+        Only one callback can be registered at a time. Use `add_queue_remaining_callback()` if you want to register multiple callbacks.
+        '''
+        if callback is None:
+            self._queue_empty_callback = None
+            return
+        if source is None:
+            outer = inspect.currentframe().f_back
+            source = ''.join(inspect.findsource(outer)[0])
+        def f(callback=callback, enter_workflow=enter_workflow, source=source):
+            wf = Workflow()
+            if enter_workflow:
+                wf.__enter__()
+                callback(wf)
+                asyncio.run(wf._exit(source))
+            else:
+                callback(wf)
+        self._queue_empty_callback = f
+        if self.queue_remaining == 0:
+            f()
+
     def cancel_current(self):
         '''Interrupt the current task'''
         return asyncio.run(self._cancel_current())
