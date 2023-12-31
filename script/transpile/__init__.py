@@ -1,4 +1,4 @@
-from typing import Union
+from __future__ import annotations
 import json
 from types import SimpleNamespace
 import networkx as nx
@@ -8,10 +8,22 @@ from .. import astutil
 from . import passes
 
 class WorkflowToScriptTranspiler:
-    def __init__(self, workflow: Union[str, dict], api_endpoint: str = None):
-        if not isinstance(workflow, str):
-            workflow = json.dumps(workflow)
-        workflow = json.loads(workflow, object_hook=lambda d: SimpleNamespace(**d))
+    def __init__(self, workflow: str | dict, api_endpoint: str = None):
+        '''
+        - `workflow`: Can be in web UI format or API format.
+        '''
+        if api_endpoint is not None:
+            api.set_endpoint(api_endpoint)
+        self.nodes_info = api.get_nodes_info()
+
+        if isinstance(workflow, str):
+            workflow = json.loads(workflow)
+        if 'version' not in workflow:
+            # print('Converting prompt to workflow...')
+            from . import prompt
+            workflow = prompt.prompt_to_workflow(workflow, self.nodes_info)
+
+        workflow = json.loads(json.dumps(workflow), object_hook=lambda d: SimpleNamespace(**d))
         # serializedLGraph: https://github.com/comfyanonymous/ComfyUI/blob/2ef459b1d4d627929c84d11e5e0cbe3ded9c9f48/web/types/litegraph.d.ts#L332
         if workflow.version != 0.4:
             print(f"ComfyScript: Unsupported workflow version: {workflow.version}")
@@ -29,10 +41,6 @@ class WorkflowToScriptTranspiler:
         
         self.G = G
         self.links = links
-
-        if api_endpoint is not None:
-            api.set_endpoint(api_endpoint)
-        self.nodes_info = api.get_nodes_info()
 
     def _declare_id(self, id: str) -> str:
         if id not in self.ids:
@@ -99,7 +107,10 @@ class WorkflowToScriptTranspiler:
         # print(node_type, input_types, widget_value_names)
         return widget_value_names
     
-    def _widget_values_to_dict(self, node_type: str, widget_values: list) -> dict:
+    def _widget_values_to_dict(self, node_type: str, widget_values: list | dict) -> dict:
+        # prompt.prompt_to_workflow
+        if isinstance(widget_values, SimpleNamespace):
+            return widget_values.__dict__
         # https://github.com/comfyanonymous/ComfyUI/blob/4103f7fad5be7e22ed61843166b72b7c41671d75/web/scripts/widgets.js
         widget_value_names = self._get_widget_value_names(node_type)
         return {name: value for name, value in zip(widget_value_names, widget_values)}
@@ -238,7 +249,7 @@ class WorkflowToScriptTranspiler:
                 break
         return ctx.c
     
-    def _topological_generations_ordered_dfs(self, end_nodes: Union[list[int], None] = None):
+    def _topological_generations_ordered_dfs(self, end_nodes: list[int | str] | None = None):
         G = self.G
         links = self.links
 
@@ -275,7 +286,7 @@ class WorkflowToScriptTranspiler:
         for v in end_nodes:
             yield from visit(v)
     
-    def to_script(self, end_nodes = None) -> str:
+    def to_script(self, end_nodes: list[int | str] | None = None) -> str:
         # From leaves to roots or roots to leaves?
         # ComfyUI now executes workflows from leaves to roots, but there is a PR to change this to from roots to leaves with topological sort: https://github.com/comfyanonymous/ComfyUI/pull/931
         # To minimize future maintenance cost and suit the mental model better, we choose **from roots to leaves** too.
