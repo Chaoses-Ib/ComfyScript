@@ -3,11 +3,12 @@ import json
 from types import SimpleNamespace
 import networkx as nx
 
+from .. import api
 from .. import astutil
 from . import passes
 
 class WorkflowToScriptTranspiler:
-    def __init__(self, workflow: Union[str, dict]):
+    def __init__(self, workflow: Union[str, dict], api_endpoint: str = None):
         if not isinstance(workflow, str):
             workflow = json.dumps(workflow)
         workflow = json.loads(workflow, object_hook=lambda d: SimpleNamespace(**d))
@@ -29,6 +30,10 @@ class WorkflowToScriptTranspiler:
         self.G = G
         self.links = links
 
+        if api_endpoint is not None:
+            api.set_endpoint(api_endpoint)
+        self.nodes_info = api.get_nodes_info()
+
     def _declare_id(self, id: str) -> str:
         if id not in self.ids:
             self.ids[id] = {}
@@ -44,8 +49,6 @@ class WorkflowToScriptTranspiler:
         return name
 
     def _get_input_types(self, node_type: str) -> dict:
-        import nodes
-        
         # registerNodeType: Reroute, PrimitiveNode, Note
         if node_type == 'Reroute':
             return {
@@ -66,7 +69,7 @@ class WorkflowToScriptTranspiler:
                 }
             }
         else:
-            return nodes.NODE_CLASS_MAPPINGS[node_type].INPUT_TYPES()
+            return self.nodes_info[node_type]['input']
     
     def _get_widget_value_names(self, node_type: str) -> list[str]:
         widget_value_names = []
@@ -173,7 +176,7 @@ class WorkflowToScriptTranspiler:
             # Unused outputs have no slot_index.
             # sort() is stable.
             v.outputs.sort(key=lambda output: getattr(output, 'slot_index', 0xFFFFFFFF))
-            for output in v.outputs:
+            for i, output in enumerate(v.outputs):
                 # Outputs used before have slot_index, but no links.
                 if output.links is not None and len(output.links) > 0:
                     # Used outputs may also have no slot_index.
@@ -183,8 +186,8 @@ class WorkflowToScriptTranspiler:
                     elif len(v.outputs) == 1:
                         slot_index = 0
                     else:
-                        print(f"ComfyScript: Failed to determine slot_index of output {output.name} of node {v.id}.")
-                        continue
+                        # print(f"ComfyScript: Failed to determine slot_index of output {output.name} of node {v.id}.")
+                        slot_index = i
 
                     # Variable reuse: If an input is only used by current node, and current node outputs a same type output, then the output should take the input's var name.
                     # e.g. Reroute, CLIPSetLastLayer, TomePatchModel, CRLoadLoRA

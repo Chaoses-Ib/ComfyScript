@@ -101,12 +101,7 @@ Comparing scripts:
 
 ![](images/README/diff.png)
 
-<!--
-CLI:
-```sh
-python -m script from-workflow "D:\workflow.json"
-```
--->
+You can also use the transpiler via the [CLI](script/transpile/README.md#cli).
 
 ## Runtime
 With the runtime, you can run ComfyScript like this:

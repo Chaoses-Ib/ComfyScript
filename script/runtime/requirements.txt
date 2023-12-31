@@ -1,7 +1,4 @@
-# Already required by ComfyUI
-aiohttp
-
-nest_asyncio ~= 1.0
+-r ../requirements.txt
 
 # Jupyter
 ipywidgets ~= 8.1

@@ -11,11 +11,11 @@ class ImageBatchResult(Result):
     # TODO: Lazy cell
     async def _get_image(self, image: dict) -> Image.Image | None:
         async with aiohttp.ClientSession() as session:
-            async with session.get(f'{_endpoint}view', params=image) as response:
+            async with session.get(f'{api.endpoint}view', params=image) as response:
                 if response.status == 200:
                     return Image.open(io.BytesIO(await response.read()))
                 else:
-                    print(f'ComfyScript: Failed to get image: {await _response_to_str(response)}')
+                    print(f'ComfyScript: Failed to get image: {await api.response_to_str(response)}')
                     return
     
     def __await__(self) -> list[Image.Image | None]:
@@ -112,7 +112,7 @@ padding: 2px;
     def _ipython_display_(self):
         self.display()
 
-from ...runtime import _endpoint, _response_to_str
+from ... import api
 from ..data import NodeOutput
 
 __all__ = [

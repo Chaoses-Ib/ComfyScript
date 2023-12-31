@@ -11,33 +11,19 @@ import aiohttp
 
 nest_asyncio.apply()
 
-_endpoint = 'http://127.0.0.1:8188/'
 _client_id = str(uuid.uuid4())
 _save_script_source = True
 
-async def _response_to_str(response: aiohttp.ClientResponse) -> str:
-    try:
-        msg = json.dumps(await response.json(), indent=2)
-    except Exception as e:
-        msg = str(e)
-    return f'{response}{msg}'
-
-def load(api_endpoint: str = _endpoint, vars: dict | None = None, watch: bool = True, save_script_source: bool = True):
+def load(api_endpoint: str = 'http://127.0.0.1:8188/', vars: dict | None = None, watch: bool = True, save_script_source: bool = True):
     asyncio.run(_load(api_endpoint, vars, watch, save_script_source))
-async def _load(api_endpoint: str = _endpoint, vars: dict | None = None, watch: bool = True, save_script_source: bool = True):
-    global _endpoint, _save_script_source, queue
 
-    _endpoint = api_endpoint
+async def _load(api_endpoint: str = 'http://127.0.0.1:8188/', vars: dict | None = None, watch: bool = True, save_script_source: bool = True):
+    global _save_script_source, queue
+
     _save_script_source = save_script_source
 
-    async with aiohttp.ClientSession() as session:
-        # http://127.0.0.1:8188/object_info
-        async with session.get(f'{_endpoint}object_info') as response:
-            if response.status == 200:
-                nodes_info = await response.json()
-            else:
-                raise Exception(f'ComfyScript: Failed to load nodes: {await _response_to_str(response)}')
-
+    api.set_endpoint(api_endpoint)
+    nodes_info = await api._get_nodes_info()
     print(f'Nodes: {len(nodes_info)}')
 
     nodes.load(nodes_info, vars)
@@ -78,19 +64,19 @@ class TaskQueue:
 
     async def _get_history(self, prompt_id: str) -> dict | None:
         async with aiohttp.ClientSession() as session:
-            async with session.get(f'{_endpoint}history/{prompt_id}') as response:
+            async with session.get(f'{api.endpoint}history/{prompt_id}') as response:
                 if response.status == 200:
                     json = await response.json()
                     # print(json)
                     return json.get(prompt_id)
                 else:
-                    print(f'ComfyScript: Failed to get history: {await _response_to_str(response)}')
+                    print(f'ComfyScript: Failed to get history: {await api.response_to_str(response)}')
 
     async def _watch(self):
         while True:
             try:
                 async with aiohttp.ClientSession() as session:
-                    async with session.ws_connect(f'{_endpoint}ws', params={'clientId': _client_id}) as ws:
+                    async with session.ws_connect(f'{api.endpoint}ws', params={'clientId': _client_id}) as ws:
                         queue_remaining = 0
                         async for msg in ws:
                             # print(msg.type)
@@ -188,7 +174,7 @@ class TaskQueue:
         self._watch_display_task = display_task
 
     async def _put(self, workflow: data.NodeOutput | Iterable[data.NodeOutput] | Workflow, source = None) -> Task | None:
-        global _endpoint, _client_id
+        global _client_id
         
         if isinstance(workflow, data.NodeOutput) or isinstance(workflow, Iterable):
             prompt, id = Workflow(outputs=workflow)._get_prompt_and_id()
@@ -206,7 +192,7 @@ class TaskQueue:
                         'ComfyScriptSource': source
                     }
                 }
-            async with session.post(f'{_endpoint}prompt', json={
+            async with session.post(f'{api.endpoint}prompt', json={
                 'prompt': prompt,
                 'extra_data': extra_data,
                 'client_id': _client_id,
@@ -218,7 +204,7 @@ class TaskQueue:
                     self._tasks[task.prompt_id] = task
                     return task
                 else:
-                    print(f'ComfyScript: Failed to queue prompt: {response}{await _response_to_str(response)}')
+                    print(f'ComfyScript: Failed to queue prompt: {response}{await api.response_to_str(response)}')
     
     def put(self, workflow: data.NodeOutput | Iterable[data.NodeOutput] | Workflow, source = None) -> Task | None:
         if source is None:
@@ -236,23 +222,23 @@ class TaskQueue:
         return asyncio.run(self._cancel_current())
     async def _cancel_current(self):
         async with aiohttp.ClientSession() as session:
-            async with session.post(f'{_endpoint}interrupt', json={
+            async with session.post(f'{api.endpoint}interrupt', json={
                 'client_id': _client_id,
             }) as response:
                 if response.status != 200:
-                    print(f'ComfyScript: Failed to interrupt current task: {await _response_to_str(response)}')
+                    print(f'ComfyScript: Failed to interrupt current task: {await api.response_to_str(response)}')
 
     def cancel_remaining(self):
         '''Clear the queue'''
         return asyncio.run(self._cancel_remaining())
     async def _cancel_remaining(self):
         async with aiohttp.ClientSession() as session:
-            async with session.post(f'{_endpoint}queue', json={
+            async with session.post(f'{api.endpoint}queue', json={
                 'clear': True,
                 'client_id': _client_id,
             }) as response:
                 if response.status != 200:
-                    print(f'ComfyScript: Failed to clear queue: {await _response_to_str(response)}')
+                    print(f'ComfyScript: Failed to clear queue: {await api.response_to_str(response)}')
 
     def cancel_all(self):
         '''Interrupt the current task and clear the queue'''
@@ -333,7 +319,7 @@ class Task:
     #     return asyncio.run(self._wait())
     # async def _wait(self):
     #     async with aiohttp.ClientSession() as session:
-    #         async with session.ws_connect(f'{_endpoint}ws?clientId={_client_id}') as ws:
+    #         async with session.ws_connect(f'{api.endpoint}ws?clientId={_client_id}') as ws:
     #             async for msg in ws:
     #                 if msg.type == aiohttp.WSMsgType.TEXT:
     #                     msg = msg.json()
@@ -473,6 +459,7 @@ class Workflow:
 
 queue = TaskQueue()
 
+from .. import api
 from . import nodes
 from . import data
 from .data import *
