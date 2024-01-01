@@ -88,6 +88,5 @@ class Node:
         cls.output_hook = None
 
 __all__ = [
-    'load',
     'Node',
 ]
