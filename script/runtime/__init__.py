@@ -132,6 +132,7 @@ class TaskQueue:
                                         if self._watch_display_node:
                                             print(f'Queue remaining: {self.queue_remaining}')
                                 elif msg['type'] == 'progress':
+                                    # TODO: https://github.com/comfyanonymous/ComfyUI/issues/2425
                                     data = msg['data']
                                     _print_progress(data['value'], data['max'])
                             elif msg.type == aiohttp.WSMsgType.BINARY:

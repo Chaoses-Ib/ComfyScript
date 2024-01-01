@@ -14,9 +14,9 @@ It has the following use cases:
 
   The main advantage of doing this is being able to mix Python code with ComfyUI's nodes, like doing loops, calling library functions, and easily encapsulating custom nodes. This also makes adding interaction easier since the UI and logic can be both written in Python. And, some people may feel more comfortable with simple Python code than a graph-based GUI.
 
-  The main limitation is that we cannot get the output of nodes from Python before running the full workflow. But if [Node Expansion, While Loops, Components, and Lazy Evaluation #931](https://github.com/comfyanonymous/ComfyUI/pull/931) is someday merged into ComfyUI, this limitation can be solved, and it will be possible to use ComfyUI just like a simple Python library.
+  The main limitation is that we cannot get the output of nodes from Python before running the full workflow. However, this limitation can be mitigated by expanding a workflow dynamically and run it multiple times. (If [#931](https://github.com/comfyanonymous/ComfyUI/pull/931) is someday merged into ComfyUI, this limitation can be solved, and it will be possible to use ComfyUI just like a simple Python library.)
 
-  See [runtime](#runtime) for details.
+  See [runtime](#runtime) for details and [select and process](#select-and-process) for an example of how to mitigate the limitation.
 
 - Generating workflows with scripts.
 
@@ -50,6 +50,12 @@ cd ComfyScript
 python -m pip install -r requirements.txt
 ```
 Minimum Python version: 3.9 (ComfyUI's minimum version is 3.8)
+
+Update:
+```sh
+cd ComfyUI/custom_nodes/ComfyScript
+git pull
+```
 
 ## Transpiler
 The transpiler can translate ComfyUI's workflows to ComfyScript.
