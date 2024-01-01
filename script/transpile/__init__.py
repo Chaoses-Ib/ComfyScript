@@ -287,9 +287,25 @@ class WorkflowToScriptTranspiler:
             yield from visit(v)
     
     def to_script(self, end_nodes: list[int | str] | None = None) -> str:
+        '''
+        - `end_nodes`: The id can be of a different type than the type used by the workflow.
+        '''
         # From leaves to roots or roots to leaves?
         # ComfyUI now executes workflows from leaves to roots, but there is a PR to change this to from roots to leaves with topological sort: https://github.com/comfyanonymous/ComfyUI/pull/931
         # To minimize future maintenance cost and suit the mental model better, we choose **from roots to leaves** too.
+
+        if end_nodes is not None and len(end_nodes) > 0:
+            if end_nodes[0] not in self.G.nodes:
+                if isinstance(end_nodes[0], str):
+                    try:
+                        end_nodes = [int(node) for node in end_nodes]
+                    except ValueError:
+                        print(f'ComfyScript: end_nodes does not exist and cannot be converted to int: {end_nodes}')
+                        end_nodes = None
+                elif isinstance(end_nodes[0], int):
+                    end_nodes = [str(node) for node in end_nodes]
+                else:
+                    raise ValueError(f'end_nodes of wrong type: {type(end_nodes[0])} {end_nodes}')
 
         self.ids = {}
         c = ''
