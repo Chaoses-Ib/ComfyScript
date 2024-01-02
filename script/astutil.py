@@ -92,6 +92,14 @@ def to_assign_target_list(t: list, fold_trailing_underscores: bool = False) -> s
     else:
         return f"{', '.join(t)}"
 
+# enum.py
+def _is_sunder(name):
+    """Returns True if a _sunder_ name, False otherwise."""
+    return (len(name) > 2 and
+            name[0] == name[-1] == '_' and
+            name[1:2] != '_' and
+            name[-2:-1] != '_')
+
 def to_str_enum(id: str, dic: dict[str, str], indent: str) -> (str, StrEnum):
     '''
     Requires: `from enum import Enum`
@@ -105,6 +113,11 @@ def to_str_enum(id: str, dic: dict[str, str], indent: str) -> (str, StrEnum):
         # 'comfy', 'comfy++'
         while k in members:
             k += '_'
+
+        # _names_ are reserved for future Enum use
+        if _is_sunder(k):
+            k += '_'
+        
         members[k] = v
         c += f'\n{indent}    {k} = {to_str(v)}'
     
