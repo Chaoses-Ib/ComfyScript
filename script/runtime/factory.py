@@ -145,6 +145,12 @@ class RuntimeFactory:
             if group is None:
                 continue
             for name, type_config in group.items():
+                '''
+                Select to add LoRA
+                Select to add Wildcard
+                '''
+                name = astutil.str_to_raw_id(name)
+
                 type_info = type_config[0]
                 config = {}
                 if len(type_config) > 1:
