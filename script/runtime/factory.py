@@ -197,11 +197,16 @@ class RuntimeFactory:
         # TODO: Display name
         # TODO: Min, max
         # TODO: Round?
-        c += (
-f"""    '''```
-    def {class_id}(
+        # TODO: Indent
+        doc = (
+f'''    def {class_id}(
         {f",{chr(10)}        ".join(inputs)}
-    ){output_type_hint}
+    ){output_type_hint}''')
+        
+        quote = "'''" if "'''" not in doc else '"""'
+        c += (
+f"""    {quote}```
+{doc}
     ```""")
         
         for i, input in reversed(list(enumerate(inputs))):
@@ -215,7 +220,7 @@ f"""    '''```
                     c += '\n    Use `None` to use default values of arguments that appear before any non-default argument.\n    '
                 break
         
-        c += "'''\n"
+        c += f'{quote}\n'
 
         # __new__
         c += f'    def __new__(cls, {", ".join(inputs)}){output_type_hint}: ...\n'
