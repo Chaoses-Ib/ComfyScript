@@ -1,4 +1,5 @@
 from __future__ import annotations
+from typing import Any
 
 from .. import astutil
 from . import nodes
@@ -94,6 +95,9 @@ class RuntimeFactory:
 
                     if default is None and len(type_info) > 0:
                         default = type_info[0]
+            elif type_info == '*':
+                t = Any
+                c = 'Any'
             elif not output and type_info == 'INT':
                 t = int
             elif not output and type_info == 'FLOAT':
@@ -141,6 +145,26 @@ class RuntimeFactory:
                 config = {}
                 if len(type_config) > 1:
                     config = type_config[1]
+                    '''
+                    "ImpactLogger": {
+                        "input": {
+                            "required": {
+                                "data": [
+                                    "*",
+                                    ""
+                                ]
+                            },
+                            "hidden": {
+                                "prompt": "PROMPT",
+                                "extra_pnginfo": "EXTRA_PNGINFO"
+                            }
+                        },
+                    }
+                    '''
+                    if not isinstance(config, dict):
+                        if config:
+                            print(f'ComfyScript: Invalid config: {config} {info}')
+                        config = {}
                 inputs.append(f'{name}: {type_and_hint(type_info, name, optional, config.get("default"))[1]}')
 
         output_types = [type_and_hint(type, output=True)[0] for type in info['output']]
@@ -201,6 +225,7 @@ f"""    '''```
     def type_stubs(self) -> str:
         c = (
 '''from __future__ import annotations
+from typing import Any
 from enum import Enum
 
 ''')
