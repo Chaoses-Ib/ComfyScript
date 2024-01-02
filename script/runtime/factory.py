@@ -1,4 +1,4 @@
-from typing import Union
+from __future__ import annotations
 
 from .. import astutil
 from . import nodes
@@ -43,14 +43,34 @@ class RuntimeFactory:
         self._vars = {}
         self._data_type_stubs = {}
         self._node_type_stubs = []
+    
+    def _get_type_or_assign_id(self, raw_id: str) -> type | str:
+        id = astutil.str_to_class_id(raw_id)
+        while id in self._vars:
+            t = self._vars[id]
+            if t._raw_id == raw_id:
+                return t
+            id += '_'
+        
+        self._vars[id] = type(id, (), { '_raw_id': raw_id })
+        return id
 
-    def add_node(self, info: dict) -> dict:
-        class_id = astutil.str_to_class_id(info['name'])
+    def _set_type(self, raw_id: str, id: str, t: type) -> None:
+        if id in self._vars:
+            assert self._vars[id]._raw_id == raw_id
+        setattr(t, '_raw_id', raw_id)
+        self._vars[id] = t
+
+    def add_node(self, info: dict) -> None:
+        class_id = self._get_type_or_assign_id(info['name'])
+        if not isinstance(class_id, str):
+            print(f'ComfyScript: Node already exists: {info}')
+            return
         enums = {}
         enum_type_stubs = ''
         input_defaults = {}
 
-        def type_and_hint(type_info: Union[str, list], name: str = None, optional: bool = False, default = None, output: bool = False) -> (type, str):
+        def type_and_hint(type_info: str | list, name: str = None, optional: bool = False, default = None, output: bool = False) -> (type, str):
             nonlocal enum_type_stubs
 
             c = None
@@ -83,14 +103,14 @@ class RuntimeFactory:
             elif not output and type_info == 'BOOLEAN':
                 t = bool
             else:
-                type_id = astutil.str_to_class_id(type_info)
-                if type_id not in self._data_type_stubs:
+                type_id = self._get_type_or_assign_id(type_info)
+                if isinstance(type_id, str):
                     self._data_type_stubs[type_id] = f'class {type_id}: ...'
 
                     t = type(type_id, (data.NodeOutput,), {})
-                    self._vars[type_id] = t
+                    self._set_type(type_info, type_id, t)
                 else:
-                    t = self._vars[type_id]
+                    t = type_id
             if c is None:
                 c = t.__name__
 
@@ -173,7 +193,7 @@ f"""    '''```
         node = nodes.Node(info, input_defaults, output_types)
         for enum_id, enum in enums.items():
             setattr(node, enum_id, enum)
-        self._vars[class_id] = node
+        self._set_type(info['name'], class_id, node)
     
     def vars(self) -> dict:
         return self._vars
