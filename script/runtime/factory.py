@@ -96,8 +96,12 @@ class RuntimeFactory:
                     if default is None and len(type_info) > 0:
                         default = type_info[0]
             elif type_info == '*':
-                t = Any
-                c = 'Any'
+                if not output:
+                    t = Any
+                    c = 'Any'
+                else:
+                    t = data.NodeOutput
+                    c = 'Any'
             elif not output and type_info == 'INT':
                 t = int
             elif not output and type_info == 'FLOAT':
