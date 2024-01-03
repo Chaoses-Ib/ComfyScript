@@ -110,13 +110,16 @@ def to_str_enum(id: str, dic: dict[str, str], indent: str) -> (str, StrEnum):
     members = {}
     for (k, v) in dic.items():
         k = str_to_raw_id(k)
-        # 'comfy', 'comfy++'
-        while k in members:
-            k += '_'
 
         # _names_ are reserved for future Enum use
         if _is_sunder(k):
             k += '_'
+
+        # 'comfy', 'comfy++'
+        while k in members:
+            k += '_'
+            if _is_sunder(k):
+                k += '_'
         
         members[k] = v
         c += f'\n{indent}    {k} = {to_str(v)}'

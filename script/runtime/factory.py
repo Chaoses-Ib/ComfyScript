@@ -15,25 +15,57 @@ def _remove_extension(path: str) -> str:
         path = path.removesuffix(ext)
     return path
 
-def is_bool_enum(enum: list[str]) -> (bool, bool):
+def is_bool_enum(enum: list[str | bool]) -> bool:
     if len(enum) != 2:
         return False
-    lower = [s.lower() for s in enum]
-    if lower == ['enable', 'disable'] or lower == ['on', 'off']:
+    if isinstance(enum[0], bool):
+        '''
+        "Absolute value": {
+            "input": {
+                "required": {
+                    "Value": [
+                        "FLOAT",
+                        {
+                            "default": 1,
+                            "min": -1.7976931348623157e+308,
+                            "max": 1.7976931348623157e+308,
+                            "step": 0.01
+                        }
+                    ],
+                    "negative_out": [
+                        [
+                            false,
+                            true
+                        ]
+                    ]
+                }
+            },
+        }
+        '''
+        assert isinstance(enum[1], bool) and enum[0] != enum[1]
         return True
-    elif lower == ['disable', 'enable'] or lower == ['off', 'on']:
-        return True
+    elif isinstance(enum[0], str):
+        lower = [s.lower() for s in enum]
+        if lower == ['enable', 'disable'] or lower == ['on', 'off']:
+            return True
+        elif lower == ['disable', 'enable'] or lower == ['off', 'on']:
+            return True
+    else:
+        print(f'ComfyScript: Invalid enum type: {enum}')
     return False
 
-def bool_enum_default(enum: list[str]) -> bool:
-    lower = enum[0].lower()
-    if lower in ('enable', 'on'):
-        return True
-    elif lower in ('disable', 'off'):
-        return False
-    raise ValueError(f'Invalid bool enum: {enum}')
+def bool_enum_default(enum: list[str | bool]) -> bool:
+    if isinstance(enum[0], bool):
+        return enum[0]
+    else:
+        lower = enum[0].lower()
+        if lower in ('enable', 'on'):
+            return True
+        elif lower in ('disable', 'off'):
+            return False
+        raise ValueError(f'Invalid bool enum: {enum}')
 
-def to_bool_enum(enum: list[str], b: bool) -> str:
+def to_bool_enum(enum: list[str | bool], b: bool) -> str:
     if bool_enum_default(enum) == b:
         return enum[0]
     else:
@@ -71,7 +103,7 @@ class RuntimeFactory:
         enum_type_stubs = ''
         input_defaults = {}
 
-        def type_and_hint(type_info: str | list, name: str = None, optional: bool = False, default = None, output: bool = False) -> (type, str):
+        def type_and_hint(type_info: str | list[str | bool], name: str = None, optional: bool = False, default = None, output: bool = False) -> (type, str):
             nonlocal enum_type_stubs
 
             c = None
@@ -195,6 +227,7 @@ class RuntimeFactory:
         # Docstring
         # TODO: Return names
         # TODO: Display name
+        # TODO: Category
         # TODO: Min, max
         # TODO: Round?
         # TODO: Indent
