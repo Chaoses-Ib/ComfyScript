@@ -23,7 +23,7 @@ try:
     from .nodes import comfyui_tooling_nodes
     NODE_CLASS_MAPPINGS.update(comfyui_tooling_nodes.NODE_CLASS_MAPPINGS)
     NODE_DISPLAY_NAME_MAPPINGS.update(comfyui_tooling_nodes.NODE_DISPLAY_NAME_MAPPINGS)
-except ImportError as e:
+except (ImportError, AttributeError) as e:
     success = False
     print(
 f'''\033[34mComfyScript: \033[91mFailed to load nodes due to missing submodules: {e}.
