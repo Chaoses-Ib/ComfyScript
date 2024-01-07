@@ -109,7 +109,7 @@ class TaskQueue:
                                         if self.queue_remaining == 0:
                                             for task in self._tasks.values():
                                                 print(f'ComfyScript: The queue is empty but {task} has not been executed')
-                                                task._set_result_threadsafe(None, {})
+                                                await task._set_result_threadsafe(None, {})
                                             self._tasks.clear()
                                         
                                         for callback in self._queue_remaining_callbacks:
@@ -120,7 +120,7 @@ class TaskQueue:
                                         outputs = {}
                                         if history is not None:
                                             outputs = history['outputs']
-                                        task._set_result_threadsafe(None, outputs, self._watch_display_task)
+                                        await task._set_result_threadsafe(None, outputs, self._watch_display_task)
                                         if self._watch_display_task:
                                             print(f'Queue remaining: {self.queue_remaining}')
                                 elif msg['type'] == 'executed':
@@ -128,7 +128,7 @@ class TaskQueue:
                                     prompt_id = data['prompt_id']
                                     task: Task = self._tasks.get(prompt_id)
                                     if task is not None:
-                                        task._set_result_threadsafe(data['node'], data['output'], self._watch_display_node)
+                                        await task._set_result_threadsafe(data['node'], data['output'], self._watch_display_node)
                                         if self._watch_display_node:
                                             print(f'Queue remaining: {self.queue_remaining}')
                                 elif msg['type'] == 'progress':
@@ -311,16 +311,23 @@ class Task:
     def __repr__(self):
         return f'Task(n={self.number}, id={self.prompt_id})'
     
-    def _set_result_threadsafe(self, node_id: str | None, output: dict, display_result: bool = False) -> None:
+    async def _set_result_threadsafe(self, node_id: str | None, output: dict, display_result: bool = False) -> None:
         if node_id is not None:
             self._new_outputs[node_id] = output
             if display_result:
                 from IPython.display import display
-                display(data.Result.from_output(output), clear=True)
+
+                display(clear=True)
+                result = data.Result.from_output(output)
+                if isinstance(result, data.ImageBatchResult):
+                    await Images(result)._display()
+                else:
+                    display(result)
         else:
             self.get_loop().call_soon_threadsafe(self._fut.set_result, output)
             if display_result:
                 from IPython.display import display
+
                 image_batches = []
                 others = []
                 # TODO: Sort by the parsed id
@@ -333,7 +340,7 @@ class Task:
                 if image_batches or others:
                     display(clear=True)
                 if image_batches:
-                    display(Images(*image_batches))
+                    await Images(*image_batches)._display()
                 if others:
                     display(*others)
     
