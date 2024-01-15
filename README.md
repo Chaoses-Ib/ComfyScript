@@ -55,6 +55,7 @@ Update:
 ```sh
 cd ComfyUI/custom_nodes/ComfyScript
 git pull
+python -m pip install -r requirements.txt
 ```
 
 ## Transpiler
