@@ -4,8 +4,12 @@ from typing import Callable
 from . import factory
 from . import data
 
+class VirtualRuntimeFactory(factory.RuntimeFactory):
+    def new_node(self, info: dict, defaults: dict, output_types: list[type]):
+        return Node(info, defaults, output_types)
+
 def load(nodes_info: dict, vars: dict | None) -> None:
-    fact = factory.RuntimeFactory()
+    fact = VirtualRuntimeFactory()
     for node_info in nodes_info.values():
         fact.add_node(node_info)
     
@@ -19,7 +23,7 @@ def load(nodes_info: dict, vars: dict | None) -> None:
         vars.update(fact.vars())
 
     # nodes.pyi
-    with open(__file__ + 'i', 'w') as f:
+    with open(__file__ + 'i', 'w', encoding='utf8') as f:
         f.write(fact.type_stubs())
 
 def _positional_args_to_keyword(node: dict, args: tuple) -> dict:

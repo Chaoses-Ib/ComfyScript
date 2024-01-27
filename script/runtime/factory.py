@@ -72,6 +72,8 @@ def to_bool_enum(enum: list[str | bool], b: bool) -> str:
         return enum[1]
 
 class RuntimeFactory:
+    '''RuntimeFactory is ignorant of runtime modes.'''
+
     def __init__(self):
         self._vars = {}
         self._data_type_stubs = {}
@@ -93,6 +95,9 @@ class RuntimeFactory:
             assert self._vars[id]._raw_id == raw_id
         setattr(t, '_raw_id', raw_id)
         self._vars[id] = t
+
+    def new_node(self, info: dict, defaults: dict, output_types: list[type]):
+        raise NotImplementedError
 
     def add_node(self, info: dict) -> None:
         class_id = self._get_type_or_assign_id(info['name'])
@@ -262,7 +267,7 @@ f"""    {quote}```
         
         self._node_type_stubs.append(c)
         
-        node = nodes.Node(info, input_defaults, output_types)
+        node = self.new_node(info, input_defaults, output_types)
         for enum_id, enum in enums.items():
             setattr(node, enum_id, enum)
         self._set_type(info['name'], class_id, node)
