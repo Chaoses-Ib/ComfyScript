@@ -4,6 +4,28 @@ from typing import Iterable
 from .. import factory
 from ..nodes import _positional_args_to_keyword
 
+def load(nodes_info: dict, vars: dict | None, naked: bool = False, callable: bool = True, callable_args_to_kwds: bool = True, callable_use_config_defaults: bool = True, callable_unpack_single_output: bool = True) -> None:
+    if not naked:
+        fact = RealRuntimeFactory(callable, callable_args_to_kwds, callable_use_config_defaults, callable_unpack_single_output)
+    else:
+        fact = RealRuntimeFactory(False, False, False, False)
+    
+    for node_info in nodes_info.values():
+        fact.add_node(node_info)
+    
+    globals().update(fact.vars())
+    __all__.extend(fact.vars().keys())
+
+    # if vars is None:
+    #     # TODO: Or __builtins__?
+    #     vars = inspect.currentframe().f_back.f_globals
+    if vars is not None:
+        vars.update(fact.vars())
+
+    # nodes.pyi
+    with open(__file__ + 'i', 'w', encoding='utf8') as f:
+        f.write(fact.type_stubs())
+
 class RealRuntimeFactory(factory.RuntimeFactory):
     def __init__(self, callable: bool, callable_args_to_kwds: bool, callable_use_config_defaults: bool, callable_unpack_single_output: bool):
         super().__init__()
@@ -60,54 +82,5 @@ class RealRuntimeFactory(factory.RuntimeFactory):
             c.__new__ = new
         
         return c
-
-def load(nodes_info: dict, vars: dict | None, callable: bool = True, callable_args_to_kwds: bool = True, callable_use_config_defaults: bool = True, callable_unpack_single_output: bool = True) -> None:
-    '''
-    - `callable`: Make the nodes callable. Such that
-      
-      ```
-      obj = MyNode()
-      getattr(obj, MyNode.FUNCTION)(args)
-      ```
-      can be written as `MyNode(args)`.
-    
-      You can still create the node object by `MyNode.create()`.
-    
-    - `callable_args_to_kwds`: Map positional arguments to keyword arguments.
-
-      Virtual mode and the generated type stubs for nodes determine the position of arguments by `INPUT_TYPES`, but it may differ from what the position `FUNCTION` actually has. To make the code in virtual mode compatible with  real mode, and reuse the type stubs, `callable_args_to_kwds` is used to map all positional arguments to keyword arguments. If `callable_args_to_kwds` is not used, keyword arguments should always be used.
-    
-    - `callable_use_config_defaults`: Use default values from `INPUT_TYPES` configs.
-
-      `FUNCTION` may have different default values from `INPUT_TYPES` configs, either missing or different values.
-    
-    - `callable_unpack_single_output`: Unpack the returned tuple if it has only one item.
-      
-      In ComfyUI, the return value of a node is a tuple even there is only one output. For example, `EmptyLatentImage()` will return `(Latent,)` instead of `Latent`. So that
-      ```python
-      latent = EmptyLatentImage()
-      ```
-      have to be replaced with
-      ```python
-      latent, = EmptyLatentImage()
-      ```
-      without `callable_unpack_single_output`.
-    '''
-    fact = RealRuntimeFactory(callable, callable_args_to_kwds, callable_use_config_defaults, callable_unpack_single_output)
-    for node_info in nodes_info.values():
-        fact.add_node(node_info)
-    
-    globals().update(fact.vars())
-    __all__.extend(fact.vars().keys())
-
-    # if vars is None:
-    #     # TODO: Or __builtins__?
-    #     vars = inspect.currentframe().f_back.f_globals
-    if vars is not None:
-        vars.update(fact.vars())
-
-    # nodes.pyi
-    with open(__file__ + 'i', 'w', encoding='utf8') as f:
-        f.write(fact.type_stubs())
 
 __all__ = []

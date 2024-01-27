@@ -1,5 +1,5 @@
 # ComfyScript
-A Python front end for [ComfyUI](https://github.com/comfyanonymous/ComfyUI).
+A Python front end and library for [ComfyUI](https://github.com/comfyanonymous/ComfyUI).
 
 ![](images/README/preview.png)
 
@@ -7,20 +7,26 @@ It has the following use cases:
 - Serving as a [human-readable format](https://github.com/comfyanonymous/ComfyUI/issues/612) for ComfyUI's workflows.
 
   This makes it easy to compare and reuse different parts of one's workflows.
+  
+  It is also possible to train LLMs to generate workflows, since many LLMs can handle Python code relatively well. This approach can be more powerful than just asking LLMs for some hardcoded parameters.
 
-  Scripts can be automatically translated from workflows. See [transpiler](#transpiler) for details.
+  Scripts can be automatically translated from ComfyUI's workflows. See [transpiler](#transpiler) for details.
 
 - Directly running the script to generate images.
 
   The main advantage of doing this is being able to mix Python code with ComfyUI's nodes, like doing loops, calling library functions, and easily encapsulating custom nodes. This also makes adding interaction easier since the UI and logic can be both written in Python. And, some people may feel more comfortable with simple Python code than a graph-based GUI.
 
-  The main limitation is that we cannot get the output of nodes from Python before running the full workflow. However, this limitation can be mitigated by expanding a workflow dynamically and run it multiple times. (If [#931](https://github.com/comfyanonymous/ComfyUI/pull/931) is someday merged into ComfyUI, this limitation can be solved, and it will be possible to use ComfyUI just like a simple Python library.)
+  See [runtime](#runtime) for details.
 
-  See [runtime](#runtime) for details and [select and process](#select-and-process) for an example of how to mitigate the limitation.
+- Using ComfyUI as a function library.
 
-- Generating workflows with scripts.
+  You can use ComfyUI's nodes as functions to do ML research, reuse nodes in other projects, debug nodes, and optimize caching to run workflows faster.
 
-  You can run scripts to generate workflows and then use them in the web UI or elsewhere. This way, you can use loops and generate huge workflows where it would be time-consuming or impractical to create them manually. See [workflow generation](#workflow-generation) for details.
+  See runtime's [real mode](script/runtime/README.md#real-mode) for details.
+
+- Generating ComfyUI's workflows with scripts.
+
+  You can run scripts to generate ComfyUI's workflows and then use them in the web UI or elsewhere. This way, you can use loops and generate huge workflows where it would be time-consuming or impractical to create them manually. See [workflow generation](script/runtime/README.md#workflow-generation) for details.
 
 - Retrieving any wanted information by running the script with some stubs.
 
@@ -165,97 +171,33 @@ A Jupyter Notebook example is available at [runtime.ipynb](runtime.ipynb).
   Workflow(cancel_all=True)
   ```
 
-### Differences from ComfyUI's web UI
-In ComfyUI, the back end and the web UI use different formats of workflows. Things like "S&R" (Search and Replace), "mute", "bypass" and "group" only exist in the web UI's format, not in the back end's API format. Before sending the workflows to the back end, the web UI will perform S&R, remove muted and bypassed nodes, and ignore groups as they are just UI elements that have no effect on the back end.
-
-In ComfyScript, S&R can be implemented with variables and [f-strings](https://docs.python.org/3/tutorial/inputoutput.html#formatted-string-literals):
-```python
-pos = 'beautiful scenery nature glass bottle landscape, , purple galaxy bottle,'
-neg = 'text, watermark'
-seed = 123
-steps = 20
-model, clip, vae = CheckpointLoaderSimple('v1-5-pruned-emaonly.ckpt')
-latent = EmptyLatentImage(512, 512, 1)
-latent = KSampler(model, seed, steps, 8, 'euler', 'normal', CLIPTextEncode(pos, clip), CLIPTextEncode(neg, clip), latent, 1)
-SaveImage(VAEDecode(latent, vae), f'{seed} {steps}')
-```
-
-For mute and bypass, you can comment the code (<kbd><kbd>Ctrl</kbd>+<kbd>/</kbd></kbd> in VS Code):
-```python
-model, clip, vae = CheckpointLoaderSimple('v1-5-pruned-emaonly.ckpt')
-conditioning = CLIPTextEncode('beautiful scenery nature glass bottle landscape, , purple galaxy bottle,', clip)
-conditioning2 = CLIPTextEncode('text, watermark', clip)
-latent = EmptyLatentImage(512, 512, 1)
-
-# "mute"
-# latent = KSampler(model, 156680208700286, 20, 8, 'euler', 'normal', conditioning, conditioning2, latent, 1)
-# image = VAEDecode(latent, vae)
-# SaveImage(image, 'ComfyUI')
-
-# "bypass"
-# latent = KSampler(model, 156680208700286, 20, 8, 'euler', 'normal', conditioning, conditioning2, latent, 1)
-image = VAEDecode(latent, vae)
-SaveImage(image, 'ComfyUI')
-```
-Or use `if`:
-```python
-sample = False
-save = True
-
-model, clip, vae = CheckpointLoaderSimple('v1-5-pruned-emaonly.ckpt')
-conditioning = CLIPTextEncode('beautiful scenery nature glass bottle landscape, , purple galaxy bottle,', clip)
-conditioning2 = CLIPTextEncode('text, watermark', clip)
-latent = EmptyLatentImage(512, 512, 1)
-if sample:
-    latent = KSampler(model, 156680208700286, 20, 8, 'euler', 'normal', conditioning, conditioning2, latent, 1)
-if save:
-    image = VAEDecode(latent, vae)
-    SaveImage(image, 'ComfyUI')
-```
-
-For groups, you can just put related code together:
-```python
-pos = 'beautiful scenery nature glass bottle landscape, , purple galaxy bottle,'
-neg = 'text, watermark'
-
-# Model
-model, clip, vae = CheckpointLoaderSimple('v1-5-pruned-emaonly.ckpt')
-
-# Sampling
-seed = 123
-steps = 20
-latent = EmptyLatentImage(512, 512, 1)
-latent = KSampler(model, seed, steps, 8, 'euler', 'normal', CLIPTextEncode(pos, clip), CLIPTextEncode(neg, clip), latent, 1)
-
-# Save
-SaveImage(VAEDecode(latent, vae), f'{seed} {steps}')
-```
-Or define functions:
-```python
-def generate_image(pos, neg, seed, steps):
-    model, clip, vae = CheckpointLoaderSimple('v1-5-pruned-emaonly.ckpt')
-    latent = EmptyLatentImage(512, 512, 1)
-    latent = KSampler(model, seed, steps, 8, 'euler', 'normal', CLIPTextEncode(pos, clip), CLIPTextEncode(neg, clip), latent, 1)
-    SaveImage(VAEDecode(latent, vae), f'{seed} {steps}')
-
-pos = 'beautiful scenery nature glass bottle landscape, , purple galaxy bottle,'
-neg = 'text, watermark'
-generate_image(pos, neg, seed=123, steps=20)
-```
-
-Also, for multiple line strings and raw strings:
-```python
-pos = '''beautiful scenery nature glass bottle landscape, 
-purple galaxy bottle,'''
-# or
-pos = (
-'''beautiful scenery nature glass bottle landscape, 
-purple galaxy bottle,''')
-
-image = LoadImageFromPath(r'ComfyUI_00001_-assets\ComfyUI_00001_.png [output]')
-```
+See [differences from ComfyUI's web UI](script/runtime/README.md#differences-from-comfyuis-web-ui) if you are a previous user of ComfyUI's web UI, and [runtime](script/runtime/README.md) for the details of runtime.
 
 ### Examples
+#### Plotting
+```python
+with Workflow():
+    seed = 0
+    pos = 'sky, 1girl, smile'
+    neg = 'embedding:easynegative'
+    model, clip, vae = CheckpointLoaderSimple(CheckpointLoaderSimple.ckpt_name.AOM3A1B_orangemixs)
+    model2, clip2, vae2 = CheckpointLoaderSimple(CheckpointLoaderSimple.ckpt_name.CounterfeitV25_25)
+    model2 = TomePatchModel(model2, 0.5)
+    for color in 'red', 'green', 'blue':
+        latent = EmptyLatentImage(440, 640)
+        latent = KSampler(model, seed, steps=15, cfg=6, sampler_name='uni_pc',
+                          positive=CLIPTextEncode(f'{color}, {pos}', clip), negative=CLIPTextEncode(neg, clip),
+                          latent_image=latent)
+        SaveImage(VAEDecode(latent, vae2), f'{seed} {color}')
+        latent = LatentUpscaleBy(latent, scale_by=2)
+        latent = KSampler(model2, seed, steps=15, cfg=6, sampler_name='uni_pc',
+                          positive=CLIPTextEncode(f'{color}, {pos}', clip2), negative=CLIPTextEncode(neg, clip2),
+                          latent_image=latent, denoise=0.6)
+        SaveImage(VAEDecode(latent, vae2), f'{seed} {color} hires')
+```
+
+![](images/README/preview.png)
+
 #### Auto queue
 Automatically queue new workflows when the queue becomes empty.
 
@@ -328,72 +270,5 @@ Screenshot:
 
 ![](images/README/select.png)
 
-### Workflow generation
-In the [runtime](#runtime), you can get a workflow's API format by calling `api_format_json()`. For example, to generate a loopback (do multiple times img2img on the same image) workflow:
-```python
-with Workflow(queue=False) as wf:
-    model, clip, vae = CheckpointLoaderSimple('v1-5-pruned-emaonly.ckpt')
-    conditioning = CLIPTextEncode('beautiful scenery nature glass bottle landscape, , purple galaxy bottle,', clip)
-    conditioning2 = CLIPTextEncode('text, watermark', clip)
-    latent = EmptyLatentImage(512, 512, 1)
-    latent = KSampler(model, 123, 20, 8, 'euler', 'normal', conditioning, conditioning2, latent, 1)
-    SaveImage(VAEDecode(latent, vae), '0')
-    for i in range(5):
-        latent = KSampler(model, 123, 20, 8, 'euler', 'normal', conditioning, conditioning2, latent, 0.8)
-        SaveImage(VAEDecode(latent, vae), f'{i}')
-
-json = wf.api_format_json()
-with open('prompt.json', 'w') as f:
-    f.write(json)
-```
-This only generates workflows in the API format. But ComfyUI can automically convert API format workflows to the web UI format when you load them ([#1932](https://github.com/comfyanonymous/ComfyUI/pull/1932)):
-
-![](images/README/load-api-format.png)
-
-You can also load workflows from images generated by ComfyScript.
-
-Note: You may get slightly different results when using the generated workflow in the web UI compared to using it in ComfyScript. See [other differences from ComfyUI's web UI](script/runtime/README.md#other-differences-from-comfyuis-web-ui) for the reason.
-
-## Other nodes
-These nodes are installed to help with ComfyScript. But if you want, you can also use them in ComfyUI's web UI.
-
-### [ComfyUI_Ib_CustomNodes](https://github.com/Chaoses-Ib/ComfyUI_Ib_CustomNodes)
-#### [Load Image From Path](https://github.com/Chaoses-Ib/ComfyUI_Ib_CustomNodes#load-image-from-path)
-```python
-def LoadImageFromPath(
-    image: str = r'ComfyUI_00001_-assets\ComfyUI_00001_.png [output]'
-) -> tuple[Image, Mask]
-```
-One use of this node is to work with Photoshop's [Quick Export](https://helpx.adobe.com/photoshop/using/export-artboards-layers.html#:~:text=in%20Photoshop.-,Quick%20Export%20As,-Use%20the%20Quick) to quickly perform img2img/inpaint on the edited image. Update: For working with Photoshop, [comfyui-photoshop](https://github.com/NimaNzrii/comfyui-photoshop) is more convenient and supports waiting for changes. See [tutorial at r/comfyui](https://www.reddit.com/r/comfyui/comments/18jygtn/new_ai_news_photoshop_to_comfyui_v1_is_finally/).
-
-### [ComfyUI Nodes for External Tooling](https://github.com/Acly/comfyui-tooling-nodes)
-Nodes for working on regions:
-```python
-def ETNCropImage(
-    image: Image,
-    x: int = 0,
-    y: int = 0,
-    width: int = 512,
-    height: int = 512
-) -> Image
-
-def ETNApplyMaskToImage(
-    image: Image,
-    mask: Mask
-) -> Image
-```
-Nodes for sending and receiving images:
-```python
-def ETNLoadImageBase64(
-    image: str
-) -> tuple[Image, Mask]
-
-def ETNLoadMaskBase64(
-    mask: str
-) -> Mask
-
-# Sends an output image over the client WebSocket connection as PNG binary data.
-def ETNSendImageWebSocket(
-    images: Image
-)
-```
+## Additional nodes
+See [nodes](nodes/README.md) for the addtional nodes installed with ComfyScript.
