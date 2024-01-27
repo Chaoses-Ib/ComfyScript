@@ -25,6 +25,4 @@ If you want to use the asynchronous APIs, you need to:
 
 ## Real mode
 Differences from virtual mode:
-- Default value may be different or missing.
-
 - No cache will be made for node outputs.
