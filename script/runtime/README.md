@@ -33,15 +33,4 @@ Differences from virtual mode:
 
 - Default value may be different or missing.
 
-- Return value is a tuple even there is only one output.
-
-  For example, `EmptyLatentImage()` will return `(Latent,)` instead of `Latent`. So that
-  ```python
-  latent = EmptyLatentImage()
-  ```
-  should be replaced with
-  ```python
-  latent, = EmptyLatentImage()
-  ```
-
 - No cache will be made for node outputs.

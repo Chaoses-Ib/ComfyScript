@@ -1,10 +1,13 @@
 from __future__ import annotations
+from typing import Iterable
+
 from .. import factory
 
 class RealRuntimeFactory(factory.RuntimeFactory):
-    def __init__(self, callable: bool):
+    def __init__(self, callable: bool, callable_unpack_single_output: bool):
         super().__init__()
         self._callable = callable
+        self._callable_unpack_single_output = callable_unpack_single_output
 
     def new_node(self, info: dict, defaults: dict, output_types: list[type]):
         import nodes
@@ -24,12 +27,19 @@ class RealRuntimeFactory(factory.RuntimeFactory):
             def new(cls, *args, comfy_script_orginal_new=c.__new__, **kwds):
                 obj = comfy_script_orginal_new(cls)
                 obj.__init__()
-                return getattr(obj, obj.FUNCTION)(*args, **kwds)
+
+                # Call the node
+                outputs = getattr(obj, obj.FUNCTION)(*args, **kwds)
+                
+                # See ComfyUI's `get_output_data()`
+                if self._callable_unpack_single_output and isinstance(outputs, Iterable) and not isinstance(outputs, dict) and len(outputs) == 1:
+                    return outputs[0]
+                return outputs
             c.__new__ = new
         
         return c
 
-def load(nodes_info: dict, vars: dict | None, callable: bool = True) -> None:
+def load(nodes_info: dict, vars: dict | None, callable: bool = True, callable_unpack_single_output: bool = True) -> None:
     '''
     - `callable`: Make the nodes callable. Such that
       
@@ -40,8 +50,20 @@ def load(nodes_info: dict, vars: dict | None, callable: bool = True) -> None:
       can be written as `MyNode(args)`.
 
       You can still create the node object by `MyNode.create()`.
+    
+    - `callable_unpack_single_output`: Unpack the returned tuple if it has only one item.
+      
+      In ComfyUI, the return value of a node is a tuple even there is only one output. For example, `EmptyLatentImage()` will return `(Latent,)` instead of `Latent`. So that
+      ```python
+      latent = EmptyLatentImage()
+      ```
+      have to be replaced with
+      ```python
+      latent, = EmptyLatentImage()
+      ```
+      without `callable_unpack_single_output`.
     '''
-    fact = RealRuntimeFactory(callable)
+    fact = RealRuntimeFactory(callable, callable_unpack_single_output)
     for node_info in nodes_info.values():
         fact.add_node(node_info)
     
