@@ -25,12 +25,6 @@ If you want to use the asynchronous APIs, you need to:
 
 ## Real mode
 Differences from virtual mode:
-- The position of parameters may be different.
-
-  Virtual mode determines the position of paramerters by `INPUT_TYPES`, but it may differ from what the position `FUNCTION` actually has. To make the code compatible with virtual mode and real mode, keyword arguments should always be used.
-
-  Note that the type stubs generated for real mode nodes also use the position of `INPUT_TYPES`. It may be fixed in future versions.
-
 - Default value may be different or missing.
 
 - No cache will be made for node outputs.
