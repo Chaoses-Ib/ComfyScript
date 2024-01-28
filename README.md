@@ -48,7 +48,9 @@ It has the following use cases:
 - Converting workflows from ComfyUI's web UI format to API format without the web UI.
 
 ## Installation
-### Package and nodes
+You can install ComfyScript in different ways.
+
+### Package and nodes with ComfyUI
 Install [ComfyUI](https://github.com/comfyanonymous/ComfyUI) first. And then:
 ```sh
 cd ComfyUI/custom_nodes
@@ -56,21 +58,28 @@ git clone --recurse-submodules https://github.com/Chaoses-Ib/ComfyScript.git
 cd ComfyScript
 python -m pip install -e .
 ```
-(If you see `ERROR: File "setup.py" or "setup.cfg" not found`, run `python -m pip install --upgrade pip` first.)
+(If you see `ERROR: File "setup.py" or "setup.cfg" not found`, run `python -m pip install -U pip` first.)
 
 Update:
 ```sh
 cd ComfyUI/custom_nodes/ComfyScript
 git pull
+git submodule update --init --recursive
 python -m pip install -e .
 ```
 
-Import example:
-```python
-import comfy_script
+### Package and nodes with ComfyUI package
+Install [ComfyUI package](https://github.com/comfyanonymous/ComfyUI/pull/298) first:
+```sh
+python -m pip install git+https://github.com/hiddenswitch/ComfyUI.git
 ```
 
-### Only nodes
+Install/update ComfyScript:
+```sh
+python -m pip install -U comfy-script
+```
+
+### Only nodes with ComfyUI
 <details>
 
 Install [ComfyUI](https://github.com/comfyanonymous/ComfyUI) first. And then:
@@ -85,6 +94,7 @@ Update:
 ```sh
 cd ComfyUI/custom_nodes/ComfyScript
 git pull
+git submodule update --init --recursive
 python -m pip install -r requirements.txt
 ```
 
@@ -103,17 +113,12 @@ import comfy_script
 <details>
 
 ```sh
-python -m pip install comfy_script
+python -m pip install comfy-script
 ```
 
 Update:
 ```sh
-python -m pip install --upgrade comfy_script
-```
-
-Import example:
-```python
-import comfy_script
+python -m pip install -U comfy-script
 ```
 
 </details>

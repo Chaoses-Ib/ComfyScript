@@ -4,6 +4,7 @@ version = "0.3.0"
 description = "A Python front end and library for ComfyUI"
 readme = "README.md"
 # ComfyUI: >=3.8
+# >=3.6 is required to preserve insertion order of input types
 requires-python = ">=3.9"
 authors = [
   { name="Chaoses-Ib", email="Chaos-es@outlook.com" },
@@ -45,3 +46,7 @@ Issues = "https://github.com/Chaoses-Ib/ComfyScript/issues"
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 # TODO: Exclude docs and examples in sdist?
+
+[project.entry-points."comfyui.custom_nodes"]
+# https://github.com/comfyanonymous/ComfyUI/pull/298
+comfy_script = "comfy_script"
