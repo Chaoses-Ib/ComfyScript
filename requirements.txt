@@ -1,2 +1,21 @@
--r script/transpile/requirements.txt
--r script/runtime/requirements.txt
+# Client (used by transpiler and runtime)
+# Already required by ComfyUI
+aiohttp
+
+# 1.5.9: https://github.com/erdewit/nest_asyncio/issues/87
+nest_asyncio ~= 1.0, >= 1.5.9
+
+
+# Transpiler
+networkx ~= 3.0
+
+# If you need the CLI:
+# click ~= 8.1
+
+
+# Runtime
+# Already required by ComfyUI
+Pillow
+
+# Jupyter
+ipywidgets ~= 8.1

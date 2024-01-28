@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 import sys
 
-from ... import api
+from ... import client
 from . import nodes
 
 def load(vars: dict | None = None, naked: bool = False, callable: bool = True, callable_args_to_kwds: bool = True, callable_use_config_defaults: bool = True, callable_unpack_single_output: bool = True):
@@ -76,7 +76,7 @@ def load(vars: dict | None = None, naked: bool = False, callable: bool = True, c
     sys.argv[1:] = orginal_argv
 
     # Import nodes
-    nodes_info = api.get_nodes_info()
+    nodes_info = client.get_nodes_info()
     print(f'Nodes: {len(nodes_info)}')
 
     nodes.load(nodes_info, vars, naked, callable, callable_args_to_kwds, callable_use_config_defaults, callable_unpack_single_output)

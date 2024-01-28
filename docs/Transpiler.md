@@ -7,7 +7,7 @@ python -m pip install click~=8.1
 
 Usage:
 ```sh
-Usage: python -m script.transpile [OPTIONS] WORKFLOW
+Usage: python -m comfy_script.transpile [OPTIONS] WORKFLOW
 
   Transpile workflow to ComfyScript.
 
@@ -18,5 +18,5 @@ Options:
 
 Example:
 ```powershell
-python -m script.transpile "D:\workflow.json"
+python -m comfy_script.transpile "D:\workflow.json"
 ```

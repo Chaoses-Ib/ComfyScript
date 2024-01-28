@@ -1,7 +1,0 @@
--r ../requirements.txt
-
-# Already required by ComfyUI
-Pillow
-
-# Jupyter
-ipywidgets ~= 8.1
