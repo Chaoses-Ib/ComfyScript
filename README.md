@@ -1,4 +1,6 @@
 # ComfyScript
+[![PyPI - Version](https://img.shields.io/pypi/v/comfy-script)](https://pypi.org/project/comfy-script) ![Python Version from PEP 621 TOML](https://img.shields.io/python/required-version-toml?tomlFilePath=https%3A%2F%2Fraw.githubusercontent.com%2FChaoses-Ib%2FComfyScript%2Fmain%2Fpyproject.toml) [![License](https://img.shields.io/pypi/l/comfy-script)](LICENSE.txt)
+
 A Python front end and library for [ComfyUI](https://github.com/comfyanonymous/ComfyUI).
 
 ![](docs/images/README/plot.png)
