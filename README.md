@@ -187,7 +187,7 @@ with Workflow():
     SaveImage(image, 'ComfyUI')
 ```
 
-A Jupyter Notebook example is available at [examples/runtime.ipynb](examples/runtime.ipynb).
+A Jupyter Notebook example is available at [`examples/runtime.ipynb`](examples/runtime.ipynb). (Files under `examples` directory will be ignored by Git and you can put your personal notebooks there.)
 
 - [Type stubs](https://typing.readthedocs.io/en/latest/source/stubs.html) will be generated at `comfy_script/runtime/nodes.pyi` after loading. Mainstream code editors (e.g. [VS Code](https://code.visualstudio.com/docs/languages/python)) can use them to help with coding:
 
