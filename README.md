@@ -48,6 +48,31 @@ It has the following use cases:
 - Converting workflows from ComfyUI's web UI format to API format without the web UI.
 
 ## Installation
+### Package and nodes
+Install [ComfyUI](https://github.com/comfyanonymous/ComfyUI) first. And then:
+```sh
+cd ComfyUI/custom_nodes
+git clone --recurse-submodules https://github.com/Chaoses-Ib/ComfyScript.git
+cd ComfyScript
+python -m pip install -e .
+```
+(If you see `ERROR: File "setup.py" or "setup.cfg" not found`, run `python -m pip install --upgrade pip` first.)
+
+Update:
+```sh
+cd ComfyUI/custom_nodes/ComfyScript
+git pull
+python -m pip install -e .
+```
+
+Import example:
+```python
+import comfy_script
+```
+
+### Only nodes
+<details>
+
 Install [ComfyUI](https://github.com/comfyanonymous/ComfyUI) first. And then:
 ```sh
 cd ComfyUI/custom_nodes
@@ -55,7 +80,6 @@ git clone --recurse-submodules https://github.com/Chaoses-Ib/ComfyScript.git
 cd ComfyScript
 python -m pip install -r requirements.txt
 ```
-Minimum Python version: 3.9 (ComfyUI's minimum version is 3.8)
 
 Update:
 ```sh
@@ -63,6 +87,36 @@ cd ComfyUI/custom_nodes/ComfyScript
 git pull
 python -m pip install -r requirements.txt
 ```
+
+If you want, you can still import the package with a hardcoded path:
+```python
+import sys
+# Or just '../src' if used in the examples directory
+sys.path.insert(0, r'D:\...\ComfyUI\custom_nodes\ComfyScript\src')
+
+import comfy_script
+```
+
+</details>
+
+### Only package
+<details>
+
+```sh
+python -m pip install comfy_script
+```
+
+Update:
+```sh
+python -m pip install --upgrade comfy_script
+```
+
+Import example:
+```python
+import comfy_script
+```
+
+</details>
 
 ## Transpiler
 The transpiler can translate ComfyUI's workflows to ComfyScript.
