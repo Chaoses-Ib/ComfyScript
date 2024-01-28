@@ -113,7 +113,29 @@ class RuntimeFactory:
 
             c = None
             if isinstance(type_info, list):
-                assert not output
+                # Output types can also be lists (#9):
+                '''
+                {
+                  "output": [
+                    [
+                      "cyberrealistic_v41BackToBasics.safetensors",
+                      "dreamshaper_8.safetensors",
+                      "realisticVisionV60B1_v20Novae.safetensors"
+                    ],
+                    ...
+                  ],
+                  "output_is_list": [
+                    false,
+                    ...,
+                  ],
+                  "output_name": [
+                    "MODEL_NAME",
+                    ...
+                  ],
+                  "name": "SDParameterGenerator",
+                  "output_node": false
+                }
+                '''
                 if is_bool_enum(type_info):
                     t = bool
                     if default is None:
@@ -160,6 +182,7 @@ class RuntimeFactory:
                 c = t.__name__
 
             if optional:
+                assert not output
                 # c = f'Optional[{c}]'
                 c = f'{c} | None'
                 if default is None:
@@ -167,7 +190,7 @@ class RuntimeFactory:
 
                     c += ' = None'
             
-            if default is not None:
+            if not output and default is not None:
                 input_defaults[name] = default
 
                 if isinstance(default, str):
@@ -214,13 +237,19 @@ class RuntimeFactory:
                         config = {}
                 inputs.append(f'{name}: {type_and_hint(type_info, name, optional, config.get("default"))[1]}')
 
-        output_types = [type_and_hint(type, output=True)[0] for type in info['output']]
+        output_name = info['output_name']
+        if len(output_name) < len(info['output']):
+            # See node_info()
+            output_name.extend(info['output'][len(output_name):])
+        output_with_name = list(zip(info['output'], output_name))
 
-        outputs = len(info['output'])
+        output_types = [type_and_hint(type, name, output=True)[0] for type, name in output_with_name]
+
+        outputs = len(output_with_name)
         if outputs >= 2:
-            output_type_hint = f' -> tuple[{", ".join(type_and_hint(type, output=True)[1] for type in info["output"])}]'
+            output_type_hint = f' -> tuple[{", ".join(type_and_hint(type, name, output=True)[1] for type, name in output_with_name)}]'
         elif outputs == 1:
-            output_type_hint = f' -> {type_and_hint(info["output"][0], output=True)[1]}'
+            output_type_hint = f' -> {type_and_hint(output_with_name[0][0], output_with_name[0][1], output=True)[1]}'
         else:
             output_type_hint = ''
 
