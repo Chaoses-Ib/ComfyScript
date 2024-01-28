@@ -1,3 +1,18 @@
+# load_as_node = False
+
+# import inspect
+
+# frame = inspect.currentframe()
+# if frame is not None:
+#     while (frame := frame.f_back) is not None:
+#         if frame.f_globals.get('__package__') == 'importlib':
+#             continue
+#         if 'NODE_CLASS_MAPPINGS' in frame.f_globals:
+#             load_as_node = True
+#         break
+
+# if load_as_node:
+
 __all__ = ['NODE_CLASS_MAPPINGS', 'NODE_DISPLAY_NAME_MAPPINGS']
 
 NODE_CLASS_MAPPINGS = {}
@@ -32,9 +47,11 @@ git -C "{Path(__file__).resolve().parent}" submodule update --init --recursive
 \033[0m''')
 
 def setup_script():
-    from .script import transpile
+    src = Path(__file__).resolve().parent / 'src'
+    sys.path.insert(0, str(src))
 
-    import inspect
+    import comfy_script.transpile as transpile
+
     import traceback
     import json
     
@@ -169,7 +186,7 @@ def setup_script():
     #     # elif 'workflow' in extra_pnginfo:
     #     #     workflow = extra_pnginfo['workflow']
     #     #     try:
-    #     #         comfy_script = script.WorkflowToScriptTranspiler(workflow).to_script()
+    #     #         comfy_script = transpile.WorkflowToScriptTranspiler(workflow).to_script()
     #     #         # print(comfy_script)
                 
     #     #         # Values in extra_pnginfo will be serialized as JSON
@@ -195,7 +212,7 @@ except ImportError as e:
     print(
 f'''\033[34mComfyScript: \033[91mFailed to setup script translation due to missing dependencies: {e}.
 If you need this feature, try to run:
-python -m pip install -r "{Path(__file__).resolve().parent / 'script' / 'transpile' / 'requirements.txt'}"
+python -m pip install -r "{Path(__file__).resolve().parent / 'requirements.txt'}"
 \033[0m''')
 
 if success:

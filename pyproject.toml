@@ -1,0 +1,47 @@
+[project]
+name = "comfy-script"
+version = "0.3.0"
+description = "A Python front end and library for ComfyUI"
+readme = "README.md"
+# ComfyUI: >=3.8
+requires-python = ">=3.9"
+authors = [
+  { name="Chaoses-Ib", email="Chaos-es@outlook.com" },
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+  # Client (used by transpiler and runtime)
+  # Already required by ComfyUI
+  "aiohttp",
+
+  # 1.5.9: https://github.com/erdewit/nest_asyncio/issues/87
+  "nest_asyncio ~= 1.0, >= 1.5.9",
+
+
+  # Transpiler
+  "networkx ~= 3.0",
+
+  # If you need the CLI:
+  # click ~= 8.1
+
+
+  # Runtime
+  # Already required by ComfyUI
+  "Pillow",
+
+  # Jupyter
+  "ipywidgets ~= 8.1",
+]
+
+[project.urls]
+Homepage = "https://github.com/Chaoses-Ib/ComfyScript"
+Issues = "https://github.com/Chaoses-Ib/ComfyScript/issues"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+# TODO: Exclude docs and examples in sdist?

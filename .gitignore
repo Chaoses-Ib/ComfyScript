@@ -2,7 +2,11 @@ private/
 *.private
 *.private.*
 
-/prompt.json
+/examples
+
+# Hatch will only respect the first .gitignore file
+/src/comfy_script/runtime/**/*.pyi
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

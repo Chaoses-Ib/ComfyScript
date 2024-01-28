@@ -1,9 +1,10 @@
 from __future__ import annotations
 import json
 from types import SimpleNamespace
+
 import networkx as nx
 
-from .. import api
+from .. import client
 from .. import astutil
 from . import passes
 
@@ -13,8 +14,8 @@ class WorkflowToScriptTranspiler:
         - `workflow`: Can be in web UI format or API format.
         '''
         if api_endpoint is not None:
-            api.set_endpoint(api_endpoint)
-        self.nodes_info = api.get_nodes_info()
+            client.set_endpoint(api_endpoint)
+        self.nodes_info = client.get_nodes_info()
 
         if isinstance(workflow, str):
             workflow = json.loads(workflow)

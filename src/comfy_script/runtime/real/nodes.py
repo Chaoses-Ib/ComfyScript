@@ -1,4 +1,5 @@
 from __future__ import annotations
+from pathlib import Path
 from typing import Iterable
 
 from .. import factory
@@ -23,7 +24,7 @@ def load(nodes_info: dict, vars: dict | None, naked: bool = False, callable: boo
         vars.update(fact.vars())
 
     # nodes.pyi
-    with open(__file__ + 'i', 'w', encoding='utf8') as f:
+    with open(Path(__file__).resolve().with_suffix('.pyi'), 'w', encoding='utf8') as f:
         f.write(fact.type_stubs())
 
 class RealRuntimeFactory(factory.RuntimeFactory):

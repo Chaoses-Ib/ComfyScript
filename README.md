@@ -1,7 +1,7 @@
 # ComfyScript
 A Python front end and library for [ComfyUI](https://github.com/comfyanonymous/ComfyUI).
 
-![](images/README/preview.png)
+![](docs/images/README/plot.png)
 
 It has the following use cases:
 - Serving as a [human-readable format](https://github.com/comfyanonymous/ComfyUI/issues/612) for ComfyUI's workflows.
@@ -16,17 +16,17 @@ It has the following use cases:
 
   The main advantage of doing this is being able to mix Python code with ComfyUI's nodes, like doing loops, calling library functions, and easily encapsulating custom nodes. This also makes adding interaction easier since the UI and logic can be both written in Python. And, some people may feel more comfortable with simple Python code than a graph-based GUI.
 
-  See [runtime](#runtime) for details.
+  See [runtime](#runtime) for details. Scripts can be executed locally or remotely with a ComfyUI server.
 
 - Using ComfyUI as a function library.
 
   You can use ComfyUI's nodes as functions to do ML research, reuse nodes in other projects, debug nodes, and optimize caching to run workflows faster.
 
-  See runtime's [real mode](script/runtime/README.md#real-mode) for details.
+  See runtime's [real mode](docs/Runtime.md#real-mode) for details.
 
 - Generating ComfyUI's workflows with scripts.
 
-  You can run scripts to generate ComfyUI's workflows and then use them in the web UI or elsewhere. This way, you can use loops and generate huge workflows where it would be time-consuming or impractical to create them manually. See [workflow generation](script/runtime/README.md#workflow-generation) for details.
+  You can run scripts to generate ComfyUI's workflows and then use them in the web UI or elsewhere. This way, you can use loops and generate huge workflows where it would be time-consuming or impractical to create them manually. See [workflow generation](docs/Runtime.md#workflow-generation) for details.
 
 - Retrieving any wanted information by running the script with some stubs.
 
@@ -48,6 +48,31 @@ It has the following use cases:
 - Converting workflows from ComfyUI's web UI format to API format without the web UI.
 
 ## Installation
+### Package and nodes
+Install [ComfyUI](https://github.com/comfyanonymous/ComfyUI) first. And then:
+```sh
+cd ComfyUI/custom_nodes
+git clone --recurse-submodules https://github.com/Chaoses-Ib/ComfyScript.git
+cd ComfyScript
+python -m pip install -e .
+```
+(If you see `ERROR: File "setup.py" or "setup.cfg" not found`, run `python -m pip install --upgrade pip` first.)
+
+Update:
+```sh
+cd ComfyUI/custom_nodes/ComfyScript
+git pull
+python -m pip install -e .
+```
+
+Import example:
+```python
+import comfy_script
+```
+
+### Only nodes
+<details>
+
 Install [ComfyUI](https://github.com/comfyanonymous/ComfyUI) first. And then:
 ```sh
 cd ComfyUI/custom_nodes
@@ -55,7 +80,6 @@ git clone --recurse-submodules https://github.com/Chaoses-Ib/ComfyScript.git
 cd ComfyScript
 python -m pip install -r requirements.txt
 ```
-Minimum Python version: 3.9 (ComfyUI's minimum version is 3.8)
 
 Update:
 ```sh
@@ -64,6 +88,36 @@ git pull
 python -m pip install -r requirements.txt
 ```
 
+If you want, you can still import the package with a hardcoded path:
+```python
+import sys
+# Or just '../src' if used in the examples directory
+sys.path.insert(0, r'D:\...\ComfyUI\custom_nodes\ComfyScript\src')
+
+import comfy_script
+```
+
+</details>
+
+### Only package
+<details>
+
+```sh
+python -m pip install comfy_script
+```
+
+Update:
+```sh
+python -m pip install --upgrade comfy_script
+```
+
+Import example:
+```python
+import comfy_script
+```
+
+</details>
+
 ## Transpiler
 The transpiler can translate ComfyUI's workflows to ComfyScript.
 
@@ -71,7 +125,7 @@ When this repository is installed, `SaveImage` and similar nodes will be hooked 
 
 For example, here is a workflow in ComfyUI:
 
-![](images/README/workflow.png)
+![](docs/images/README/workflow.png)
 
 ComfyScript translated from it:
 ```python
@@ -86,7 +140,7 @@ SaveImage(image, 'ComfyUI')
 
 If there two or more `SaveImage` nodes in one workflow, only the necessary inputs of each node will be translated to scripts. For example, here is a 2 pass txt2img (hires fix) workflow:
 
-![](images/README/workflow2.png)
+![](docs/images/README/workflow2.png)
 
 ComfyScript saved for each of the two saved image are respectively:
 1. ```python
@@ -112,16 +166,16 @@ ComfyScript saved for each of the two saved image are respectively:
 
 Comparing scripts:
 
-![](images/README/diff.png)
+![](docs/images/README/diff.png)
 
-You can also use the transpiler via the [CLI](script/transpile/README.md#cli).
+You can also use the transpiler via the [CLI](docs/Transpiler.md#cli).
 
 ## Runtime
 With the runtime, you can run ComfyScript like this:
 ```python
-from script.runtime import *
+from comfy_script.runtime import *
 load()
-from script.runtime.nodes import *
+from comfy_script.runtime.nodes import *
 
 with Workflow():
     model, clip, vae = CheckpointLoaderSimple('v1-5-pruned-emaonly.ckpt')
@@ -133,13 +187,13 @@ with Workflow():
     SaveImage(image, 'ComfyUI')
 ```
 
-A Jupyter Notebook example is available at [runtime.ipynb](runtime.ipynb).
+A Jupyter Notebook example is available at [`examples/runtime.ipynb`](examples/runtime.ipynb). (Files under `examples` directory will be ignored by Git and you can put your personal notebooks there.)
 
-- [Type stubs](https://typing.readthedocs.io/en/latest/source/stubs.html) will be generated at `script/runtime/nodes.pyi` after loading. Mainstream code editors (e.g. [VS Code](https://code.visualstudio.com/docs/languages/python)) can use them to help with coding:
+- [Type stubs](https://typing.readthedocs.io/en/latest/source/stubs.html) will be generated at `comfy_script/runtime/nodes.pyi` after loading. Mainstream code editors (e.g. [VS Code](https://code.visualstudio.com/docs/languages/python)) can use them to help with coding:
 
   | | |
   | --- | --- |
-  | ![](images/README/type-stubs.png) | ![](images/README/type-stubs2.png) |
+  | ![](docs/images/README/type-stubs.png) | ![](docs/images/README/type-stubs2.png) |
 
   [Enumerations](https://docs.python.org/3/library/enum.html) are generated for all arguments provding the value list. So instead of copying and pasting strings like `'v1-5-pruned-emaonly.ckpt'`, you can use:
   ```python
@@ -171,7 +225,7 @@ A Jupyter Notebook example is available at [runtime.ipynb](runtime.ipynb).
   Workflow(cancel_all=True)
   ```
 
-See [differences from ComfyUI's web UI](script/runtime/README.md#differences-from-comfyuis-web-ui) if you are a previous user of ComfyUI's web UI, and [runtime](script/runtime/README.md) for the details of runtime.
+See [differences from ComfyUI's web UI](docs/Runtime.md#differences-from-comfyuis-web-ui) if you are a previous user of ComfyUI's web UI, and [runtime](docs/Runtime.md) for the details of runtime.
 
 ### Examples
 #### Plotting
@@ -196,7 +250,7 @@ with Workflow():
         SaveImage(VAEDecode(latent, vae2), f'{seed} {color} hires')
 ```
 
-![](images/README/preview.png)
+![](docs/images/README/plot.png)
 
 #### Auto queue
 Automatically queue new workflows when the queue becomes empty.
@@ -219,7 +273,7 @@ queue.when_empty(f)
 ```
 Screenshot:
 
-![](images/README/auto-queue.png)
+![](docs/images/README/auto-queue.png)
 
 #### Select and process
 For example, to generate 3 images at once, and then let the user decide which ones they want to hires fix:
@@ -268,7 +322,7 @@ This example uses [ipywidgets](https://github.com/jupyter-widgets/ipywidgets) fo
 
 Screenshot:
 
-![](images/README/select.png)
+![](docs/images/README/select.png)
 
 ## Additional nodes
 See [nodes](nodes/README.md) for the addtional nodes installed with ComfyScript.
