@@ -130,6 +130,9 @@ class WorkflowToScriptTranspiler:
                 value = kwargs.get(name)
                 if value is not None:
                     args.append(value)
+                else:
+                    # Optional inputs
+                    args.append({'exp': 'None', 'value': None})
         return args
 
     def _node_to_assign_st(self, node):
