@@ -42,11 +42,21 @@ dependencies = [
 Homepage = "https://github.com/Chaoses-Ib/ComfyScript"
 Issues = "https://github.com/Chaoses-Ib/ComfyScript/issues"
 
+[project.entry-points."comfyui.custom_nodes"]
+# https://github.com/comfyanonymous/ComfyUI/pull/298
+comfy_script = "comfy_script"
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 # TODO: Exclude docs and examples in sdist?
 
-[project.entry-points."comfyui.custom_nodes"]
-# https://github.com/comfyanonymous/ComfyUI/pull/298
-comfy_script = "comfy_script"
+[tool.hatch.envs.test]
+dependencies = [
+  "pytest"
+]
+
+[tool.pytest.ini_options]
+addopts = [
+  "--import-mode=importlib",
+]
