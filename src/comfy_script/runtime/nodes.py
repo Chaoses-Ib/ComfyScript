@@ -12,7 +12,10 @@ class VirtualRuntimeFactory(factory.RuntimeFactory):
 def load(nodes_info: dict, vars: dict | None) -> None:
     fact = VirtualRuntimeFactory()
     for node_info in nodes_info.values():
-        fact.add_node(node_info)
+        try:
+            fact.add_node(node_info)
+        except Exception as e:
+            print(f'ComfyScript: Failed to load node {node_info["name"]}: {e}')
     
     globals().update(fact.vars())
     __all__.extend(fact.vars().keys())
