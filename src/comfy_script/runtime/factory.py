@@ -50,8 +50,6 @@ def is_bool_enum(enum: list[str | bool]) -> bool:
             return True
         elif lower == ['disable', 'enable'] or lower == ['off', 'on']:
             return True
-    else:
-        print(f'ComfyScript: Invalid enum type: {enum}')
     return False
 
 def bool_enum_default(enum: list[str | bool]) -> bool:
@@ -141,12 +139,25 @@ class RuntimeFactory:
                     if default is None:
                         default = bool_enum_default(type_info)
                 else:
-                    # c = 'list[str]'
+                    if len(type_info) > 0:
+                        if isinstance(type_info[0], str):
+                            # c = 'list[str]'
 
-                    # c = f'Literal[\n        {f",{chr(10)}        ".join(astutil.to_str(s) for s in type)}\n        ]'
+                            # c = f'Literal[\n        {f",{chr(10)}        ".join(astutil.to_str(s) for s in type)}\n        ]'
 
-                    # TODO: Group by directory?
-                    enum_c, t = astutil.to_str_enum(name, { _remove_extension(s): s for s in type_info }, '    ')
+                            # TODO: Group by directory?
+                            enum_c, t = astutil.to_str_enum(name, { _remove_extension(s): s for s in type_info }, '    ')
+                        elif isinstance(type_info[0], int):
+                            enum_c, t = astutil.to_int_enum(name, type_info, '    ')
+                        elif isinstance(type_info[0], float):
+                            enum_c, t = astutil.to_float_enum(name, type_info, '    ')
+                        else:
+                            print(f'ComfyScript: Invalid enum type: {type_info}')
+                            enum_c, t = astutil.to_str_enum(name, {}, '    ')
+                    else:
+                        # Empty enum
+                        enum_c, t = astutil.to_str_enum(name, {}, '    ')
+
                     enum_type_stubs += '\n' + enum_c
                     c = f'{class_id}.{name}'
 
@@ -308,7 +319,7 @@ f"""    {quote}```
         c = (
 '''from __future__ import annotations
 from typing import Any
-from enum import Enum
+from enum import Enum, IntEnum
 
 ''')
         c += '\n'.join(self._data_type_stubs.values()) + '\n\n'

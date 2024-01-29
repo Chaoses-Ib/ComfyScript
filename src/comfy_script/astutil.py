@@ -1,4 +1,7 @@
+from __future__ import annotations
+from enum import Enum, IntEnum
 import sys
+from typing import Any, Iterable
 if sys.version_info >= (3, 11):
     from enum import StrEnum
 else:
@@ -100,7 +103,7 @@ def _is_sunder(name):
             name[1:2] != '_' and
             name[-2:-1] != '_')
 
-def to_str_enum(id: str, dic: dict[str, str], indent: str) -> (str, StrEnum):
+def to_enum(id: str, dic: dict[str, Any], indent: str, enum_class: Enum = Enum) -> (str, Enum):
     '''
     Requires: `from enum import Enum`
     '''
@@ -108,7 +111,7 @@ def to_str_enum(id: str, dic: dict[str, str], indent: str) -> (str, StrEnum):
     c = f'{indent}class {id}(Enum):'
 
     members = {}
-    for (k, v) in dic.items():
+    for k, v in dic.items():
         k = str_to_raw_id(k)
 
         # _names_ are reserved for future Enum use
@@ -122,13 +125,31 @@ def to_str_enum(id: str, dic: dict[str, str], indent: str) -> (str, StrEnum):
                 k += '_'
         
         members[k] = v
-        c += f'\n{indent}    {k} = {to_str(v)}'
+        c += f'\n{indent}    {k} = {to_str(v) if isinstance(v, str) else repr(v)}'
     
     if len(members) == 0:
         c += f'\n{indent}    pass'
     c += '\n'
     
-    return c, StrEnum(id, members)
+    return c, enum_class(id, members)
+
+def to_str_enum(id: str, dic: dict[str, str], indent: str) -> (str, StrEnum):
+    '''
+    Requires: `from enum import Enum`
+    '''
+    return to_enum(id, dic, indent, StrEnum)
+
+def to_int_enum(id: str, values: Iterable[int], indent: str) -> (str, IntEnum):
+    '''
+    Requires: `from enum import IntEnum`
+    '''
+    return to_enum(id, { str(v): v for v in values }, indent, IntEnum)
+
+def to_float_enum(id: str, values: Iterable[float], indent: str) -> (str, Enum):
+    '''
+    Requires: `from enum import Enum`
+    '''
+    return to_enum(id, { str(v): v for v in values }, indent)
 
 __all__ = [
     # 'is_xid_start',
@@ -145,4 +166,6 @@ __all__ = [
     'to_str',
     'to_assign_target_list',
     'to_str_enum',
+    'to_int_enum',
+    'to_float_enum',
 ]
