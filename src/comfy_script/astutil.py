@@ -67,6 +67,9 @@ def str_to_const_id(s: str) -> str:
     return id_to_upper(str_to_raw_id(s))
 
 def to_str(s: str) -> str:
+    if s == '':
+        return "''"
+    
     c = ''
     if '\\' in s:
         c += 'r'
@@ -76,6 +79,7 @@ def to_str(s: str) -> str:
     else:
         # TODO: What if s contains '''?
         # TODO: Fold trailing line feeds to \n?
+        s = re.sub(r"'+$", lambda m: "\\'" * len(m.group(0)), s)
         c += f"'''{s}'''"
     return c
 
