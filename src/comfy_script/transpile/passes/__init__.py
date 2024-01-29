@@ -16,6 +16,11 @@ def reroute_elimination(ctx: AssignContext):
     assert re.fullmatch(r'(?:# )?(?:_ = Reroute\(\S+\)|(\S+) = Reroute\(\1\))\s*', ctx.c), ctx.c
     ctx.c = ''
 
+def bypass_move_elimination(ctx: AssignContext):
+    if not re.fullmatch(r'(?:# )?(.+?) = \1\s*', ctx.c):
+        return
+    ctx.c = ''
+
 def primitive_node_elimination(ctx: AssignContext):
     # TODO: Embed primitive into args if only used by one node?
     if ctx.v.type != 'PrimitiveNode':
@@ -134,6 +139,7 @@ def multiplexer_node_elimination(ctx: AssignContext):
 
 ASSIGN_PASSES = (
     reroute_elimination,
+    bypass_move_elimination,
     primitive_node_elimination,
     switch_node_elimination,
     multiplexer_node_elimination,

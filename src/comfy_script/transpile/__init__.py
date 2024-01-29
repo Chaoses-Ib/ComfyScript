@@ -142,6 +142,15 @@ class WorkflowToScriptTranspiler:
         v = node['v']
         # print(v.id)
 
+        # Modes
+        # 0: Always
+        # 1: On Event
+        # 2: Never
+        # 3: On Trigger
+        # 4: Bypass
+        # TODO: 1~3
+        mode = v.mode
+
         class_id = self._declare_id(astutil.str_to_class_id(v.type))
         
         args = {}
@@ -186,6 +195,7 @@ class WorkflowToScriptTranspiler:
         args_of_any_type = [arg for arg in args if arg.get('type', None) == '*']
 
         vars = []
+        vars_args_of_same_type = []
         vars_used = False
         if hasattr(v, 'outputs'):
             # Unused outputs have no slot_index.
@@ -214,6 +224,9 @@ class WorkflowToScriptTranspiler:
                     # How to make this transitive?
                     
                     args_of_same_type = [arg for arg in args if arg.get('type') == output.type and arg['exp'] != '_']
+                    if len(args_of_same_type) == 1:
+                        vars_args_of_same_type.append(args_of_same_type[0])
+                    
                     if len(args_of_same_type) == 1 and args_of_same_type[0]['move']:
                         id = args_of_same_type[0]['exp']
                     elif len(v.outputs) == 1 and len(args_of_any_type) == 1:
@@ -237,7 +250,16 @@ class WorkflowToScriptTranspiler:
             c += '# '
         if len(vars) != 0:
             c += f"{astutil.to_assign_target_list(vars)} = "
-        c += f"{class_id}({', '.join(arg['exp'] for arg in args)})\n"
+        if mode != 4:
+            c += f"{class_id}({', '.join(arg['exp'] for arg in args)})"
+        else:
+            # Bypass
+            if len(vars) > 0 and len(vars_args_of_same_type) == len(vars):
+                c += f"{', '.join(arg['exp'] for arg in vars_args_of_same_type)}"
+            else:
+                # Bypass an output node, or missing inputs to bypass
+                return ''
+        c += '\n'
         
         ctx = passes.AssignContext(
             node=node,
