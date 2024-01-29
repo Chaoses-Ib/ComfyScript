@@ -42,7 +42,7 @@ def load(vars: dict | None = None, naked: bool = False, callable: bool = True, c
       without `callable_unpack_single_output`.
     '''
 
-    comfy_ui = Path(__file__).resolve().parents[5]
+    comfy_ui = Path(__file__).resolve().parents[6]
     print(f'ComfyScript: Importing ComfyUI from {comfy_ui}')
     sys.path.insert(0, str(comfy_ui))
 
