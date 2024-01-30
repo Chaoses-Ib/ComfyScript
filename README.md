@@ -332,4 +332,4 @@ Screenshot:
 ![](docs/images/README/select.png)
 
 ## Additional nodes
-See [nodes](nodes/README.md) for the addtional nodes installed with ComfyScript.
+See [nodes](nodes/README.md) for the additional nodes installed with ComfyScript.
