@@ -26,10 +26,9 @@ async def response_to_str(response: aiohttp.ClientResponse) -> str:
     return f'{response}{msg}'
 
 async def _get_nodes_info() -> dict:
-    try:
-        import nodes
-        from nodes import NODE_CLASS_MAPPINGS, NODE_DISPLAY_NAME_MAPPINGS
-
+    # Don't use `import nodes` with `except ImportError`, `nodes` may be in `sys.path` but not loaded (#15)
+    nodes = sys.modules.get('nodes')
+    if nodes is not None and 'NODE_CLASS_MAPPINGS' in vars(nodes) and 'NODE_DISPLAY_NAME_MAPPINGS' in vars(nodes):
         # https://github.com/comfyanonymous/ComfyUI/blob/1b103e0cb2d7aeb05fc8b7e006d4438e7bceca20/server.py#L393-L422
         def node_info(node_class):
             obj_class = nodes.NODE_CLASS_MAPPINGS[node_class]
@@ -58,8 +57,6 @@ async def _get_nodes_info() -> dict:
                 print(f"[ERROR] An error occurred while retrieving information for the '{x}' node.", file=sys.stderr)
                 traceback.print_exc()
         return out
-    except ImportError:
-        pass
 
     async with aiohttp.ClientSession() as session:
     # http://127.0.0.1:8188/object_info
