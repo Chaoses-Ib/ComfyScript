@@ -47,19 +47,29 @@ class RealRuntimeFactory(factory.RuntimeFactory):
         # Directly modify class or subclass?
         # Subclass will add another layer of abstraction, which is the opposite to the goal of real mode.
         if self._callable:
+            orginal_new = c.__new__
+            kwdefaults = getattr(orginal_new, '__kwdefaults__', None)
+            if kwdefaults is not None:
+                _comfy_script_v = kwdefaults.get('_comfy_script_v')
+                if _comfy_script_v is not None:
+                    # c or its base class has been modified (#18)
+                    if _comfy_script_v[1]['name'] == info['name']:
+                        return c
+                    else:
+                        orginal_new = _comfy_script_v[0]
+
             if not hasattr(c, 'create'):
-                def create(comfy_script_c=c, comfy_script_orginal_new=c.__new__):
-                    obj = comfy_script_orginal_new(comfy_script_c)
+                def create(_comfy_script_c=c, _comfy_script_orginal_new=orginal_new):
+                    obj = _comfy_script_orginal_new(_comfy_script_c)
                     obj.__init__()
                     return obj
                 setattr(c, 'create', create)
 
-            orginal_new = c.__new__
             args_to_kwds = self._callable_args_to_kwds
             use_config_defaults = self._callable_use_config_defaults
             unpack_single_output = self._callable_unpack_single_output
-            def new(cls, *args, comfy_script_v=(orginal_new, info, defaults, args_to_kwds, use_config_defaults, unpack_single_output), **kwds):
-                orginal_new, info, defaults, args_to_kwds, use_config_defaults, unpack_single_output = comfy_script_v
+            def new(cls, *args, _comfy_script_v=(orginal_new, info, defaults, args_to_kwds, use_config_defaults, unpack_single_output), **kwds):
+                orginal_new, info, defaults, args_to_kwds, use_config_defaults, unpack_single_output = _comfy_script_v
 
                 obj = orginal_new(cls)
                 obj.__init__()
