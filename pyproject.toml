@@ -44,7 +44,7 @@ Issues = "https://github.com/Chaoses-Ib/ComfyScript/issues"
 
 [project.entry-points."comfyui.custom_nodes"]
 # https://github.com/comfyanonymous/ComfyUI/pull/298
-comfy_script = "comfy_script"
+comfy_script = "comfy_script.nodes"
 
 [build-system]
 requires = ["hatchling"]

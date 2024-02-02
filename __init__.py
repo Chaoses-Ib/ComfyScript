@@ -1,8 +1,5 @@
 __all__ = ['NODE_CLASS_MAPPINGS', 'NODE_DISPLAY_NAME_MAPPINGS']
 
-NODE_CLASS_MAPPINGS = {}
-NODE_DISPLAY_NAME_MAPPINGS = {}
-
 success = True
 
 import sys
@@ -38,8 +35,9 @@ git -C "{root}" submodule update --init --recursive
 \033[0m''')
 
 sys.path.insert(0, str(root / 'src'))
-import comfy_script
-success &= comfy_script.import_as_node
+import comfy_script.nodes
+from comfy_script.nodes import NODE_CLASS_MAPPINGS, NODE_DISPLAY_NAME_MAPPINGS
+success &= comfy_script.nodes.success
 
 if success:
     print('\033[34mComfyScript: \033[92mLoaded\033[0m')

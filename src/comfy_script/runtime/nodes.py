@@ -1,5 +1,6 @@
 from __future__ import annotations
 from pathlib import Path
+import traceback
 from typing import Callable
 
 from . import factory
@@ -15,8 +16,8 @@ def load(nodes_info: dict, vars: dict | None) -> None:
         try:
             fact.add_node(node_info)
         except Exception as e:
-            print(f'ComfyScript: Failed to load node {node_info["name"]}: {e}')
-            # raise
+            print(f'ComfyScript: Failed to load node {node_info["name"]}')
+            traceback.print_exc()
     
     globals().update(fact.vars())
     __all__.extend(fact.vars().keys())
