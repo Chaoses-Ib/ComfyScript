@@ -12,6 +12,7 @@ from pathlib import Path
 def setup():
     from .. import transpile
 
+    import inspect
     import traceback
     import json
     
