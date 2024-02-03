@@ -11,33 +11,24 @@ if sys.version_info < (3, 9):
 
 root = Path(__file__).resolve().parent
 
-# Replaced by prestartup_script.py
-# try:
-#     print('\033[34mComfyScript: \033[93mLoading nodes...\033[0m')
-#     # If there are conflicts, the later one will override the former one.
-
-#     from .nodes import ComfyUI_Ib_CustomNodes
-#     NODE_CLASS_MAPPINGS.update(ComfyUI_Ib_CustomNodes.NODE_CLASS_MAPPINGS)
-#     NODE_DISPLAY_NAME_MAPPINGS.update(ComfyUI_Ib_CustomNodes.NODE_DISPLAY_NAME_MAPPINGS)
-# except (ImportError, AttributeError) as e:
-#     success = False
-#     print(
-# f'''\033[34mComfyScript: \033[91mFailed to load additional nodes due to missing submodules: {e}.
-# If you need them, try to run:
-# git -C "{root}" submodule update --init --recursive
-# \033[0m''')
-
-if not (root / 'nodes' / 'ComfyUI_Ib_CustomNodes' / '__init__.py').exists():
-    success = False
-    print(
-f'''\033[34mComfyScript: \033[91mFailed to load additional nodes due to missing submodules. If you need them, try to run:
-git -C "{root}" submodule update --init --recursive
-\033[0m''')
-
 sys.path.insert(0, str(root / 'src'))
 import comfy_script.nodes
 from comfy_script.nodes import NODE_CLASS_MAPPINGS, NODE_DISPLAY_NAME_MAPPINGS
 success &= comfy_script.nodes.success
+
+# Load comfyui-legacy custom nodes
+import importlib.metadata
+import importlib.util
+import traceback
+
+import nodes
+for entry_point in importlib.metadata.entry_points(group='comfyui_legacy.custom_nodes'):
+    try:
+        spec = importlib.util.find_spec(entry_point.module)
+        nodes.load_custom_node(spec.submodule_search_locations[0])
+    except Exception as e:
+        print(f'ComfyScript: Failed to load legacy custom nodes from {entry_point}: {e}')
+        traceback.print_exc()
 
 if success:
     print('\033[34mComfyScript: \033[92mLoaded\033[0m')

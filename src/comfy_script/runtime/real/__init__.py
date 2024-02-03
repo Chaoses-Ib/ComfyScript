@@ -148,24 +148,11 @@ def load(comfyui: Path | str = None, argv: list[str] = [], vars: dict | None = N
     else:
         print(f'ComfyScript: Importing ComfyUI from comfyui package')
 
+        import importlib.metadata
+        import traceback
         import types
 
-        # Postpone custom nodes loading until polyfills are added
-        import comfy.nodes.package
-        import_all_nodes_in_workspace = comfy.nodes.package.import_all_nodes_in_workspace
-        def import_base_and_extra_nodes():
-            return reduce(lambda x, y: x.update(y),
-                map(_import_and_enumerate_nodes_in_module, [
-                    # this is the list of default nodes to import
-                    base_nodes,
-                    comfy_extras_nodes
-                ]),
-                ExportedNodes())
-        
-        import_all_nodes_in_workspace_code = import_all_nodes_in_workspace.__code__
-        import_all_nodes_in_workspace.__code__ = import_base_and_extra_nodes.__code__
         import comfy.cmd.main as main
-        import_all_nodes_in_workspace.__code__ = import_all_nodes_in_workspace_code
 
         # Polyfills
         for name in 'cuda_malloc', 'execution', 'folder_paths', 'latent_preview', 'main', 'server':
@@ -174,27 +161,36 @@ def load(comfyui: Path | str = None, argv: list[str] = [], vars: dict | None = N
             globals()[name] = module
         
         main.server = main.server_module
-        main.init_custom_nodes = lambda: None
 
         import comfy.cmd.server
         import comfy.nodes.common
         nodes = types.ModuleType('nodes')
-        base_and_extra_nodes = comfy.cmd.server.nodes
-        setattr(nodes, 'NODE_CLASS_MAPPINGS', base_and_extra_nodes.NODE_CLASS_MAPPINGS)
-        setattr(nodes, 'NODE_DISPLAY_NAME_MAPPINGS', base_and_extra_nodes.NODE_DISPLAY_NAME_MAPPINGS)
-        setattr(nodes, 'EXTENSION_WEB_DIRS', base_and_extra_nodes.EXTENSION_WEB_DIRS)
+        exported_nodes = comfy.cmd.server.nodes
+        setattr(nodes, 'NODE_CLASS_MAPPINGS', exported_nodes.NODE_CLASS_MAPPINGS)
+        setattr(nodes, 'NODE_DISPLAY_NAME_MAPPINGS', exported_nodes.NODE_DISPLAY_NAME_MAPPINGS)
+        setattr(nodes, 'EXTENSION_WEB_DIRS', exported_nodes.EXTENSION_WEB_DIRS)
         setattr(nodes, 'MAX_RESOLUTION', comfy.nodes.common.MAX_RESOLUTION)
         # TODO: load_custom_node, load_custom_nodes
         sys.modules['nodes'] = nodes
         globals()['nodes'] = nodes
 
-        # Load custom nodes
-        exported_nodes = import_all_nodes_in_workspace()
-        comfy.cmd.server.nodes = exported_nodes
+        def init_custom_nodes():
+            # Load comfyui-legacy custom nodes
+            import comfy.nodes.package
+            for entry_point in importlib.metadata.entry_points(group='comfyui_legacy.custom_nodes'):
+                try:
+                    module = entry_point.load()
+                    if isinstance(module, types.ModuleType):
+                        exported_nodes.update(
+                        comfy.nodes.package._import_and_enumerate_nodes_in_module(module, print_import_times=True))
+                except Exception as e:
+                    print(f'ComfyScript: Failed to load legacy custom nodes from {entry_point}: {e}')
+                    traceback.print_exc()
 
-        nodes.NODE_CLASS_MAPPINGS.update(exported_nodes.NODE_CLASS_MAPPINGS)
-        nodes.NODE_DISPLAY_NAME_MAPPINGS.update(exported_nodes.NODE_DISPLAY_NAME_MAPPINGS)
-        nodes.EXTENSION_WEB_DIRS.update(exported_nodes.EXTENSION_WEB_DIRS)
+            nodes.NODE_CLASS_MAPPINGS.update(exported_nodes.NODE_CLASS_MAPPINGS)
+            nodes.NODE_DISPLAY_NAME_MAPPINGS.update(exported_nodes.NODE_DISPLAY_NAME_MAPPINGS)
+            nodes.EXTENSION_WEB_DIRS.update(exported_nodes.EXTENSION_WEB_DIRS)
+        main.init_custom_nodes = init_custom_nodes
     
     # Included in `import main`
     # execute_prestartup_script()

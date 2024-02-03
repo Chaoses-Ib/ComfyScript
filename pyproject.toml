@@ -9,6 +9,7 @@ requires-python = ">=3.9"
 authors = [
   { name="Chaoses-Ib", email="Chaos-es@outlook.com" },
 ]
+keywords = ["comfyui"]
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
@@ -34,8 +35,13 @@ dependencies = [
   # Already required by ComfyUI
   "Pillow",
 
+  # TODO: Optional?
   # Jupyter
   "ipywidgets ~= 8.1",
+
+  # Nodes
+  "ComfyUI_Ib_CustomNodes",
+  "comfyui-tooling-nodes",
 ]
 
 [project.urls]

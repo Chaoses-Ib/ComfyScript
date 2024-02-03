@@ -19,3 +19,8 @@ Pillow
 
 # Jupyter
 ipywidgets ~= 8.1
+
+
+# Nodes
+ComfyUI_Ib_CustomNodes
+comfyui-tooling-nodes
