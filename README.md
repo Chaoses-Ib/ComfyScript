@@ -80,6 +80,12 @@ Install/update ComfyScript:
 python -m pip install -U comfy-script
 ```
 
+### Only package
+Install/update:
+```sh
+python -m pip install -U comfy-script
+```
+
 ### Only nodes with ComfyUI
 <details>
 
@@ -105,16 +111,6 @@ import sys
 sys.path.insert(0, r'D:\...\ComfyUI\custom_nodes\ComfyScript\src')
 
 import comfy_script
-```
-
-</details>
-
-### Only package
-<details>
-
-Install/update:
-```sh
-python -m pip install -U comfy-script
 ```
 
 </details>
@@ -326,4 +322,4 @@ Screenshot:
 ![](docs/images/README/select.png)
 
 ## Additional nodes
-See [nodes](nodes/README.md) for the additional nodes installed with ComfyScript.
+See [nodes](docs/Nodes/README.md) for the additional nodes installed with ComfyScript.
