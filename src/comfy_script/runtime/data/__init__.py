@@ -1,7 +1,6 @@
 from __future__ import annotations
 import asyncio
 import builtins
-from enum import Enum
 import inspect
 import json
 from typing import Iterable
@@ -65,9 +64,7 @@ class NodeOutput:
         inputs = self.node_prompt['inputs']
         prompt_inputs = {}
         for k, v in inputs.items():
-            if isinstance(v, Enum):
-                prompt_inputs[k] = v.value
-            elif v is True or v is False:
+            if v is True or v is False:
                 input_type = None
                 for group in 'required', 'optional':
                     group: dict = self.node_info['input'].get(group)

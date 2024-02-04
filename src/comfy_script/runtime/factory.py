@@ -319,7 +319,7 @@ f"""    {quote}```
         c = (
 '''from __future__ import annotations
 from typing import Any
-from enum import Enum, IntEnum
+from enum import Enum as StrEnum, IntEnum, Enum as FloatEnum
 
 ''')
         c += '\n'.join(self._data_type_stubs.values()) + '\n\n'

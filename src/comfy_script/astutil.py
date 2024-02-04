@@ -2,10 +2,15 @@ from __future__ import annotations
 from enum import Enum, IntEnum
 import sys
 from typing import Any, Iterable
+
 if sys.version_info >= (3, 11):
     from enum import StrEnum
 else:
-    from enum import Enum as StrEnum
+    class StrEnum(str, Enum):
+        pass
+
+class FloatEnum(str, Enum):
+        pass
 
 import re
 import keyword
@@ -108,11 +113,7 @@ def _is_sunder(name):
             name[-2:-1] != '_')
 
 def to_enum(id: str, dic: dict[str, Any], indent: str, enum_class: Enum = Enum) -> (str, Enum):
-    '''
-    Requires: `from enum import Enum`
-    '''
-    # TODO: Change to StrEnum if >= Python 3.11
-    c = f'{indent}class {id}(Enum):'
+    c = f'{indent}class {id}({enum_class.__name__}):'
 
     members = {}
     for k, v in dic.items():
@@ -139,8 +140,9 @@ def to_enum(id: str, dic: dict[str, Any], indent: str, enum_class: Enum = Enum) 
 
 def to_str_enum(id: str, dic: dict[str, str], indent: str) -> (str, StrEnum):
     '''
-    Requires: `from enum import Enum`
+    Requires: `from enum import Enum as StrEnum`
     '''
+    # TODO: Change to StrEnum if >= Python 3.11
     return to_enum(id, dic, indent, StrEnum)
 
 def to_int_enum(id: str, values: Iterable[int], indent: str) -> (str, IntEnum):
@@ -149,11 +151,11 @@ def to_int_enum(id: str, values: Iterable[int], indent: str) -> (str, IntEnum):
     '''
     return to_enum(id, { str(v): v for v in values }, indent, IntEnum)
 
-def to_float_enum(id: str, values: Iterable[float], indent: str) -> (str, Enum):
+def to_float_enum(id: str, values: Iterable[float], indent: str) -> (str, FloatEnum):
     '''
-    Requires: `from enum import Enum`
+    Requires: `from enum import Enum as FloatEnum`
     '''
-    return to_enum(id, { str(v): v for v in values }, indent)
+    return to_enum(id, { str(v): v for v in values }, indent, FloatEnum)
 
 __all__ = [
     # 'is_xid_start',
@@ -169,6 +171,9 @@ __all__ = [
     'str_to_const_id',
     'to_str',
     'to_assign_target_list',
+    'StrEnum',
+    'IntEnum',
+    'FloatEnum',
     'to_str_enum',
     'to_int_enum',
     'to_float_enum',
