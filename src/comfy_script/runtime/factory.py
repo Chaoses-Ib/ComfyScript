@@ -1,4 +1,5 @@
 from __future__ import annotations
+from enum import Enum
 from typing import Any
 
 from .. import astutil
@@ -73,15 +74,17 @@ class RuntimeFactory:
     '''RuntimeFactory is ignorant of runtime modes.'''
 
     def __init__(self):
-        self._vars = {}
+        self._vars = { id: None for k, dic in self.GLOBAL_ENUMS.items() for id in dic.values() }
         self._data_type_stubs = {}
+        self._enum_values = {}
+        self._enum_type_stubs = {}
         self._node_type_stubs = []
     
     def _get_type_or_assign_id(self, raw_id: str) -> type | str:
         id = astutil.str_to_class_id(raw_id)
         while id in self._vars:
             t = self._vars[id]
-            if t._raw_id == raw_id:
+            if getattr(t, '_raw_id', None) == raw_id:
                 return t
             id += '_'
         
@@ -93,6 +96,74 @@ class RuntimeFactory:
             assert self._vars[id]._raw_id == raw_id
         setattr(t, '_raw_id', raw_id)
         self._vars[id] = t
+
+    # Sync with docs/Runtime.md
+    GLOBAL_ENUMS = {
+        # checkpoints
+        'CheckpointLoaderSimple': {'ckpt_name': 'Checkpoints'},
+        # clip
+        'CLIPLoader': {'clip_name': 'CLIPs'},
+        # clip_vision
+        'CLIPVisionLoader': {'clip_name': 'CLIPVisions'},
+        # configs
+        # 'CheckpointLoader': {'config_name': 'Configs'},
+        # controlnet
+        'ControlNetLoader': {'control_net_name': 'ControlNets'},
+        # diffusers
+        'DiffusersLoader': {'model_path': 'Diffusers'},
+        # embeddings
+        # gligen
+        'GLIGENLoader': {'gligen_name': 'GLIGENs'},
+        # hypernetworks
+        'HypernetworkLoader': {'hypernetwork_name': 'Hypernetworks'},
+        # loras
+        'LoraLoader': {'lora_name': 'Loras'},
+        # mmdets
+        # onnx
+        # photomaker
+        'PhotoMakerLoader': {'photomaker_model_name': 'PhotoMakers'},
+        # sams
+        # style_models
+        'StyleModelLoader': {'style_model_name': 'StyleModels'},
+        # ultralytics
+        # unet
+        'UNETLoader': {'unet_name': 'UNETs'},
+        # upscale_models
+        'UpscaleModelLoader': {'model_name': 'UpscaleModels'},
+        # vae + vae_approx
+        'VAELoader': {'vae_name': 'VAEs'},
+        
+        'KSampler': {
+            # comfy.samplers.KSampler.SAMPLERS
+            'sampler_name': 'Samplers',
+            # comfy.samplers.KSampler.SCHEDULERS
+            'scheduler': 'Schedulers'
+        },
+        # 'LatentUpscaleBy': {'upscale_method': 'UpscaleMethods'},
+    }
+
+    def get_global_enum(self, info: dict, name: str, values: list[str | bool]) -> (str, Enum) | None:
+        global_enum = self.GLOBAL_ENUMS.get(info['name'])
+        if global_enum is not None:
+            id = global_enum.get(name)
+            if id is not None:
+                enum_c, t = astutil.to_str_enum(id, { _remove_extension(s): s for s in values }, '')
+                self._enum_type_stubs[id] = enum_c
+
+                self._vars[id] = t
+                self._enum_values[id] = values
+
+                return id, t
+
+        if len(values) > 0:
+            for id, id_values in self._enum_values.items():
+                if id_values == values:
+                    return id, self._vars[id]
+        else:
+            # If the list is empty, being able to get global enum or not doesn't matter
+            pass
+
+        return None
 
     def new_node(self, info: dict, defaults: dict, output_types: list[type]):
         raise NotImplementedError
@@ -141,29 +212,38 @@ class RuntimeFactory:
                     if default is None:
                         default = bool_enum_default(type_info)
                 else:
-                    if len(type_info) > 0:
-                        if isinstance(type_info[0], str):
-                            # c = 'list[str]'
+                    global_enum = self.get_global_enum(info, name, type_info)
+                    if global_enum is not None:
+                        c, t = global_enum
 
-                            # c = f'Literal[\n        {f",{chr(10)}        ".join(astutil.to_str(s) for s in type)}\n        ]'
-
-                            # TODO: Group by directory?
-                            enum_c, t = astutil.to_str_enum(id, { _remove_extension(s): s for s in type_info }, '    ')
-                        elif isinstance(type_info[0], int):
-                            enum_c, t = astutil.to_int_enum(id, type_info, '    ')
-                        elif isinstance(type_info[0], float):
-                            enum_c, t = astutil.to_float_enum(id, type_info, '    ')
-                        else:
-                            print(f'ComfyScript: Invalid enum type: {type_info}')
-                            enum_c, t = astutil.to_str_enum(id, {}, '    ')
+                        # For backward compatibility
+                        enum_type_stubs += '\n' + f'    {id} = {c}\n'
+                        # c += f' | {class_id}.{id}'
+                        enums[id] = t
                     else:
-                        # Empty enum
-                        enum_c, t = astutil.to_str_enum(id, {}, '    ')
+                        if len(type_info) > 0:
+                            if isinstance(type_info[0], str):
+                                # c = 'list[str]'
 
-                    enum_type_stubs += '\n' + enum_c
-                    c = f'{class_id}.{id}'
+                                # c = f'Literal[\n        {f",{chr(10)}        ".join(astutil.to_str(s) for s in type)}\n        ]'
 
-                    enums[id] = t
+                                # TODO: Group by directory?
+                                enum_c, t = astutil.to_str_enum(id, { _remove_extension(s): s for s in type_info }, '    ')
+                            elif isinstance(type_info[0], int):
+                                enum_c, t = astutil.to_int_enum(id, type_info, '    ')
+                            elif isinstance(type_info[0], float):
+                                enum_c, t = astutil.to_float_enum(id, type_info, '    ')
+                            else:
+                                print(f'ComfyScript: Invalid enum type: {type_info}')
+                                enum_c, t = astutil.to_str_enum(id, {}, '    ')
+                        else:
+                            # Empty enum
+                            enum_c, t = astutil.to_str_enum(id, {}, '    ')
+
+                        enum_type_stubs += '\n' + enum_c
+                        c = f'{class_id}.{id}'
+
+                        enums[id] = t
 
                     if default is None and len(type_info) > 0:
                         default = type_info[0]
@@ -344,6 +424,7 @@ from enum import Enum as StrEnum, IntEnum, Enum as FloatEnum
 
 ''')
         c += '\n'.join(self._data_type_stubs.values()) + '\n\n'
+        c += '\n'.join(self._enum_type_stubs.values()) + '\n\n'
         c += '\n'.join(self._node_type_stubs)
         return c
 

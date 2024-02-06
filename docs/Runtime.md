@@ -1,4 +1,45 @@
 # Runtime
+## Enumerations
+[Python enumerations](https://docs.python.org/3/howto/enum.html) are generated for all arguments provding the value list. So instead of copying and pasting strings like `'v1-5-pruned-emaonly.ckpt'`, you can use:
+
+```python
+CheckpointLoaderSimple.ckpt_name.v1_5_pruned_emaonly
+```
+
+Because this form is a bit tedious, some enums are also available in a shorter form. For example:
+```python
+Checkpoints.v1_5_pruned_emaonly
+```
+These enums are called "global enums". See the following section for all global enums.
+
+### Global enums
+Models:
+
+Enum id | Models folder | sd-webui folder (`extra_model_paths.yaml`)
+--- | --- | ---
+`Checkpoints` | `checkpoints` | `Stable-diffusion`
+`CLIPs` | `clip`
+`CLIPVisions` | `clip_vision`
+N/A <br />(`CheckpointLoader.config_name`) | `configs` | `Stable-diffusion`
+`ControlNets` | `controlnet` | `ControlNet`
+`Diffusers` | `diffusers`
+N/A | `embeddings` | `embeddings`
+`GLIGENs` | `gligen`
+`Hypernetworks` | `hypernetworks` | `hypernetworks`
+`Loras` | `loras` | `Lora`, `LyCORIS`
+`PhotoMakers` | `photomaker`
+`StyleModels` | `style_models`
+`UNETs` | `unet`
+`UpscaleModels` | `upscale_models` | `ESRGAN`, `RealESRGAN`, `SwinIR`
+`VAEs` | `vae`, `vae_approx` | `VAE`
+
+Others:
+
+Enum id | Local enum | ComfyUI id
+--- | --- | ---
+`Samplers` | `KSampler.sampler_name` | `comfy.samplers.KSampler.SAMPLERS`
+`Schedulers` | `KSampler.scheduler` | `comfy.samplers.KSampler.SCHEDULERS`
+
 ## Virtual mode
 In the default mode - virtual mode, scripts are executed by a ComfyUI server, locally or remotely.
 

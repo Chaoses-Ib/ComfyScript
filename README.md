@@ -192,10 +192,13 @@ A Jupyter Notebook example is available at [`examples/runtime.ipynb`](examples/r
   | --- | --- |
   | ![](docs/images/README/type-stubs.png) | ![](docs/images/README/type-stubs2.png) |
 
-  [Enumerations](https://docs.python.org/3/library/enum.html) are generated for all arguments provding the value list. So instead of copying and pasting strings like `'v1-5-pruned-emaonly.ckpt'`, you can use:
+  [Python enumerations](https://docs.python.org/3/howto/enum.html) are generated for all arguments provding the value list. So instead of copying and pasting strings like `'v1-5-pruned-emaonly.ckpt'`, you can use:
   ```python
+  Checkpoints.v1_5_pruned_emaonly
+  # or
   CheckpointLoaderSimple.ckpt_name.v1_5_pruned_emaonly
   ```
+  See [enumerations](docs/Runtime.md#enumerations) for details.
 
 - The runtime is asynchronous by default. You can queue multiple tasks without waiting for the first one to finish. A daemon thread will watch and report the remaining tasks in the queue and the current progress, for example:
   ```

@@ -112,8 +112,10 @@ def _is_sunder(name):
             name[1:2] != '_' and
             name[-2:-1] != '_')
 
-def to_enum(id: str, dic: dict[str, Any], indent: str, enum_class: Enum = Enum) -> (str, Enum):
-    c = f'{indent}class {id}({enum_class.__name__}):'
+def to_enum(id: str, dic: dict[str, Any], indent: str, enum_class: Enum = Enum, enum_class_c: str | None = None) -> (str, Enum):
+    if enum_class_c is None:
+        enum_class_c = enum_class.__name__
+    c = f'{indent}class {id}({enum_class_c}):'
 
     members = {}
     for k, v in dic.items():
@@ -174,6 +176,7 @@ __all__ = [
     'StrEnum',
     'IntEnum',
     'FloatEnum',
+    'to_enum',
     'to_str_enum',
     'to_int_enum',
     'to_float_enum',
