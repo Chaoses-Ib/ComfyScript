@@ -198,6 +198,9 @@ A Jupyter Notebook example is available at [`examples/runtime.ipynb`](examples/r
   # or
   CheckpointLoaderSimple.ckpt_name.v1_5_pruned_emaonly
   ```
+  
+  Embeddings can also be referenced as `Embeddings.my_embedding`, which is equivalent to `'embedding:my-embedding'`.
+
   See [enumerations](docs/Runtime.md#enumerations) for details.
 
 - The runtime is asynchronous by default. You can queue multiple tasks without waiting for the first one to finish. A daemon thread will watch and report the remaining tasks in the queue and the current progress, for example:

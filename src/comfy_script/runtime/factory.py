@@ -3,7 +3,7 @@ from enum import Enum
 from typing import Any
 
 from .. import astutil
-from . import nodes
+from .. import client
 from . import data
 
 def _remove_extension(path: str) -> str:
@@ -81,6 +81,26 @@ class RuntimeFactory:
         self._enum_type_stubs = {}
         self._node_type_stubs = []
     
+    async def init(self) -> None:
+        try:
+            id = 'Embeddings'
+            embeddings = await client._get_embeddings()
+            
+            enum_c, t = astutil.to_str_enum(id, { s: f'embedding:{s}' for s in embeddings }, '')
+
+            enum_c += f'\n    def name(self) -> str: ...\n'
+            def name(self):
+                s: str = self.value
+                return s.removeprefix('embedding:')
+            setattr(t, 'name', name)
+
+            self._enum_type_stubs[id] = enum_c
+
+            self._vars[id] = t
+            self._enum_values[id] = embeddings
+        except Exception as e:
+            print(f'ComfyScript: Failed to get embeddings: {e}')
+
     def _get_type_or_assign_id(self, raw_id: str) -> type | str:
         id = astutil.str_to_class_id(raw_id)
         while id in self._vars:

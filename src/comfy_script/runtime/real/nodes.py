@@ -7,8 +7,10 @@ from . import RealModeConfig
 from .. import factory
 from ..nodes import _positional_args_to_keyword
 
-def load(nodes_info: dict, vars: dict | None, config: RealModeConfig) -> None:
+async def load(nodes_info: dict, vars: dict | None, config: RealModeConfig) -> None:
     fact = RealRuntimeFactory(config)
+    await fact.init()
+
     for node_info in nodes_info.values():
         try:
             fact.add_node(node_info)

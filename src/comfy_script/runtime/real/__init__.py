@@ -1,4 +1,5 @@
 from __future__ import annotations
+import asyncio
 from dataclasses import dataclass
 import itertools
 import os
@@ -196,7 +197,7 @@ def load(comfyui: Path | str = None, argv: list[str] = [], vars: dict | None = N
         config = RealModeConfig.naked()
     elif config is None:
         config = RealModeConfig()
-    runtime_nodes.load(nodes_info, vars, config)
+    asyncio.run(runtime_nodes.load(nodes_info, vars, config))
 
 class Workflow:
     def __init__(self):

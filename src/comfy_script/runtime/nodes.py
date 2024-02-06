@@ -10,8 +10,10 @@ class VirtualRuntimeFactory(factory.RuntimeFactory):
     def new_node(self, info: dict, defaults: dict, output_types: list[type]):
         return Node(info, defaults, output_types)
 
-def load(nodes_info: dict, vars: dict | None) -> None:
+async def load(nodes_info: dict, vars: dict | None) -> None:
     fact = VirtualRuntimeFactory()
+    await fact.init()
+    
     for node_info in nodes_info.values():
         try:
             fact.add_node(node_info)

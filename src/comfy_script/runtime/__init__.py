@@ -26,7 +26,7 @@ async def _load(api_endpoint: str = 'http://127.0.0.1:8188/', vars: dict | None 
     nodes_info = await client._get_nodes_info()
     print(f'Nodes: {len(nodes_info)}')
 
-    nodes.load(nodes_info, vars)
+    await nodes.load(nodes_info, vars)
     
     # TODO: Stop watch if watch turns to False
     if watch:

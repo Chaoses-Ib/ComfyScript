@@ -1,4 +1,5 @@
 import json
+import os
 import sys
 import traceback
 
@@ -69,9 +70,28 @@ async def _get_nodes_info() -> dict:
 def get_nodes_info() -> dict:
     return asyncio.run(_get_nodes_info())
 
+async def _get_embeddings() -> list[str]:
+    folder_paths = sys.modules.get('folder_paths')
+    if folder_paths is not None and 'get_filename_list' in vars(folder_paths):
+        embeddings = folder_paths.get_filename_list("embeddings")
+        return list(map(lambda a: os.path.splitext(a)[0], embeddings))
+    
+    async with aiohttp.ClientSession() as session:
+    # http://127.0.0.1:8188/embeddings
+        async with session.get(f'{endpoint}embeddings') as response:
+            if response.status == 200:
+                return await response.json()
+            else:
+                raise Exception(f'ComfyScript: Failed to get embeddings: {await response_to_str(response)}')
+
+def get_embeddings() -> list[str]:
+    return asyncio.run(_get_embeddings())
+
 __all__ = [
     'endpoint'
     'set_endpoint',
     '_get_nodes_info',
     'get_nodes_info',
+    '_get_embeddings',
+    'get_embeddings'
 ]

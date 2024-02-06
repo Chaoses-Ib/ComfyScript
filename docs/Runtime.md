@@ -23,7 +23,7 @@ Enum id | Models folder | sd-webui folder (`extra_model_paths.yaml`)
 N/A <br />(`CheckpointLoader.config_name`) | `configs` | `Stable-diffusion`
 `ControlNets` | `controlnet` | `ControlNet`
 `Diffusers` | `diffusers`
-N/A | `embeddings` | `embeddings`
+`Embeddings` | `embeddings` | `embeddings`
 `GLIGENs` | `gligen`
 `Hypernetworks` | `hypernetworks` | `hypernetworks`
 `Loras` | `loras` | `Lora`, `LyCORIS`
@@ -32,6 +32,8 @@ N/A | `embeddings` | `embeddings`
 `UNETs` | `unet`
 `UpscaleModels` | `upscale_models` | `ESRGAN`, `RealESRGAN`, `SwinIR`
 `VAEs` | `vae`, `vae_approx` | `VAE`
+
+(Note that for convenience, the values of `Embeddings` are in the format of `embedding:my-embedding`. The name itself (`my-embedding`) can be obtained from `Embeddings.my_embedding.name()`.)
 
 Others:
 
