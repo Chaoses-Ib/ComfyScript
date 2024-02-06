@@ -109,6 +109,8 @@ class RuntimeFactory:
         def type_and_hint(type_info: str | list[str | bool], name: str = None, optional: bool = False, default = None, output: bool = False) -> (type, str):
             nonlocal enum_type_stubs
 
+            id = astutil.str_to_raw_id(name)
+
             c = None
             if isinstance(type_info, list):
                 # Output types can also be lists (#9):
@@ -146,22 +148,22 @@ class RuntimeFactory:
                             # c = f'Literal[\n        {f",{chr(10)}        ".join(astutil.to_str(s) for s in type)}\n        ]'
 
                             # TODO: Group by directory?
-                            enum_c, t = astutil.to_str_enum(name, { _remove_extension(s): s for s in type_info }, '    ')
+                            enum_c, t = astutil.to_str_enum(id, { _remove_extension(s): s for s in type_info }, '    ')
                         elif isinstance(type_info[0], int):
-                            enum_c, t = astutil.to_int_enum(name, type_info, '    ')
+                            enum_c, t = astutil.to_int_enum(id, type_info, '    ')
                         elif isinstance(type_info[0], float):
-                            enum_c, t = astutil.to_float_enum(name, type_info, '    ')
+                            enum_c, t = astutil.to_float_enum(id, type_info, '    ')
                         else:
                             print(f'ComfyScript: Invalid enum type: {type_info}')
-                            enum_c, t = astutil.to_str_enum(name, {}, '    ')
+                            enum_c, t = astutil.to_str_enum(id, {}, '    ')
                     else:
                         # Empty enum
-                        enum_c, t = astutil.to_str_enum(name, {}, '    ')
+                        enum_c, t = astutil.to_str_enum(id, {}, '    ')
 
                     enum_type_stubs += '\n' + enum_c
-                    c = f'{class_id}.{name}'
+                    c = f'{class_id}.{id}'
 
-                    enums[name] = t
+                    enums[id] = t
 
                     if default is None and len(type_info) > 0:
                         default = type_info[0]
@@ -197,12 +199,12 @@ class RuntimeFactory:
                 # c = f'Optional[{c}]'
                 c = f'{c} | None'
                 if default is None:
-                    input_defaults[name] = None
+                    input_defaults[id] = None
 
                     c += ' = None'
             
             if not output and default is not None:
-                input_defaults[name] = default
+                input_defaults[id] = default
 
                 if isinstance(default, str):
                     default = astutil.to_str(default)
@@ -220,7 +222,7 @@ class RuntimeFactory:
                 Select to add LoRA
                 Select to add Wildcard
                 '''
-                name = astutil.str_to_raw_id(name)
+                input_id = astutil.str_to_raw_id(name)
 
                 type_info = type_config[0]
                 config = {}
@@ -246,9 +248,28 @@ class RuntimeFactory:
                         if config:
                             print(f'ComfyScript: Invalid config: {config} {info}')
                         config = {}
-                inputs.append(f'{name}: {type_and_hint(type_info, name, optional, config.get("default"))[1]}')
+                inputs.append(f'{input_id}: {type_and_hint(type_info, name, optional, config.get("default"))[1]}')
 
         output_name = info['output_name']
+        for i, name in enumerate(output_name):
+            if name is None:
+                '''
+                "MultiAreaConditioning": {
+                    "output": [
+                        "CONDITIONING",
+                        "INT",
+                        "INT"
+                    ],
+                    "output_name": [
+                        null,
+                        "resolutionX",
+                        "resolutionY"
+                    ],
+                    "name": "MultiAreaConditioning",
+                    "category": "Davemane42",
+                }
+                '''
+                output_name[i] = info['output'][i]
         if len(output_name) < len(info['output']):
             # See node_info()
             output_name.extend(info['output'][len(output_name):])
