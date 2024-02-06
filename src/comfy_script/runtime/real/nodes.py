@@ -3,15 +3,12 @@ from pathlib import Path
 import traceback
 from typing import Iterable
 
+from . import RealModeConfig
 from .. import factory
 from ..nodes import _positional_args_to_keyword
 
-def load(nodes_info: dict, vars: dict | None, naked: bool = False, callable: bool = True, callable_args_to_kwds: bool = True, callable_use_config_defaults: bool = True, callable_unpack_single_output: bool = True) -> None:
-    if not naked:
-        fact = RealRuntimeFactory(callable, callable_args_to_kwds, callable_use_config_defaults, callable_unpack_single_output)
-    else:
-        fact = RealRuntimeFactory(False, False, False, False)
-    
+def load(nodes_info: dict, vars: dict | None, config: RealModeConfig) -> None:
+    fact = RealRuntimeFactory(config)
     for node_info in nodes_info.values():
         try:
             fact.add_node(node_info)
@@ -33,55 +30,48 @@ def load(nodes_info: dict, vars: dict | None, naked: bool = False, callable: boo
         f.write(fact.type_stubs())
 
 class RealRuntimeFactory(factory.RuntimeFactory):
-    def __init__(self, callable: bool, callable_args_to_kwds: bool, callable_use_config_defaults: bool, callable_unpack_single_output: bool):
+    def __init__(self, config: RealModeConfig):
         super().__init__()
-        self._callable = callable
-        self._callable_args_to_kwds = callable_args_to_kwds
-        self._callable_use_config_defaults = callable_use_config_defaults
-        self._callable_unpack_single_output = callable_unpack_single_output
+        self._config = config
 
     def new_node(self, info: dict, defaults: dict, output_types: list[type]):
         import nodes
 
         c = nodes.NODE_CLASS_MAPPINGS[info['name']]
 
-        # Directly modify class or subclass?
-        # Subclass will add another layer of abstraction, which is the opposite to the goal of real mode.
-        if self._callable:
+        config = self._config
+        if config.callable:
             orginal_new = c.__new__
-            kwdefaults = getattr(orginal_new, '__kwdefaults__', None)
-            if kwdefaults is not None:
-                _comfy_script_v = kwdefaults.get('_comfy_script_v')
-                if _comfy_script_v is not None:
-                    # c or its base class has been modified (#18)
-                    if _comfy_script_v[1]['name'] == info['name']:
-                        return c
-                    else:
-                        orginal_new = _comfy_script_v[0]
+            if not config.wrapper:
+                kwdefaults = getattr(orginal_new, '__kwdefaults__', None)
+                if kwdefaults is not None:
+                    _comfy_script_v = kwdefaults.get('_comfy_script_v')
+                    if _comfy_script_v is not None:
+                        # c or its base class has been modified (#18)
+                        if _comfy_script_v[1]['name'] == info['name']:
+                            return c
+                        else:
+                            orginal_new = _comfy_script_v[0]
 
-            if not hasattr(c, 'create'):
-                def create(_comfy_script_c=c, _comfy_script_orginal_new=orginal_new):
-                    obj = _comfy_script_orginal_new(_comfy_script_c)
-                    obj.__init__()
-                    return obj
-                setattr(c, 'create', create)
+            def create(_comfy_script_c=c, _comfy_script_orginal_new=orginal_new):
+                obj = _comfy_script_orginal_new(_comfy_script_c)
+                obj.__init__()
+                return obj
 
-            args_to_kwds = self._callable_args_to_kwds
-            use_config_defaults = self._callable_use_config_defaults
-            unpack_single_output = self._callable_unpack_single_output
-            def new(cls, *args, _comfy_script_v=(orginal_new, info, defaults, args_to_kwds, use_config_defaults, unpack_single_output), **kwds):
-                orginal_new, info, defaults, args_to_kwds, use_config_defaults, unpack_single_output = _comfy_script_v
+            def new(cls, *args, _comfy_script_v=(orginal_new, info, defaults, config), **kwds):
+                orginal_new, info, defaults, config = _comfy_script_v
+                config: RealModeConfig
 
                 obj = orginal_new(cls)
                 obj.__init__()
 
-                if args_to_kwds:
+                if config.args_to_kwds:
                     # kwds should take precedence over args
                     kwds = _positional_args_to_keyword(info, args) | kwds
                     args = ()
 
-                if use_config_defaults:
-                    if args_to_kwds:
+                if config.use_config_defaults:
+                    if config.args_to_kwds:
                         kwds = defaults | kwds
                     else:
                         pos_kwds = _positional_args_to_keyword(info, args)
@@ -91,11 +81,21 @@ class RealRuntimeFactory(factory.RuntimeFactory):
                 outputs = getattr(obj, obj.FUNCTION)(*args, **kwds)
                 
                 # See ComfyUI's `get_output_data()`
-                if unpack_single_output and isinstance(outputs, Iterable) and not isinstance(outputs, dict) and len(outputs) == 1:
+                if config.unpack_single_output and isinstance(outputs, Iterable) and not isinstance(outputs, dict) and len(outputs) == 1:
                     return outputs[0]
                 
                 return outputs
-            c.__new__ = new
+            
+            if not config.wrapper:
+                c.__new__ = new
+                if not hasattr(c, 'create'):
+                    setattr(c, 'create', create)
+            else:
+                # TODO: functools.update_wrapper?
+                c = type(c.__name__, (c,), {
+                    '__new__': new,
+                    'create': create,
+                })
         
         return c
 
