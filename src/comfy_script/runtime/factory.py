@@ -9,8 +9,9 @@ from . import data
 def _remove_extension(path: str) -> str:
     for ext in (
         # `supported_pt_extensions`
-        '.ckpt', '.pt', '.bin', '.pth', '.safetensors',
         '.vae.pt', '.vae.safetensors',
+        
+        '.ckpt', '.pt', '.bin', '.pth', '.safetensors',
         '.yaml'
     ):
         path = path.removesuffix(ext)
