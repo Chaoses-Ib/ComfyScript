@@ -74,12 +74,18 @@ def to_bool_enum(enum: list[str | bool], b: bool) -> str:
 class RuntimeFactory:
     '''RuntimeFactory is ignorant of runtime modes.'''
 
-    def __init__(self):
+    def __init__(self, import_fullname_types: bool = False):
+        '''
+        - `import_fullname_types`: WIP.
+        '''
         self._vars = { id: None for k, dic in self.GLOBAL_ENUMS.items() for id in dic.values() }
         self._data_type_stubs = {}
         self._enum_values = {}
         self._enum_type_stubs = {}
         self._node_type_stubs = []
+
+        self._import_modules = set() if import_fullname_types else None
+        '''WIP.'''
     
     async def init(self) -> None:
         try:
@@ -284,14 +290,32 @@ class RuntimeFactory:
             elif not output and type_info == 'BOOLEAN':
                 t = bool
             else:
-                type_id = self._get_type_or_assign_id(type_info)
-                if isinstance(type_id, str):
-                    self._data_type_stubs[type_id] = f'class {type_id}: ...'
+                if self._import_modules is not None and '.' in name:
+                    # TODO: list[]
+                    spec = astutil.find_spec_from_fullname(name)
+                    if spec is not None:
+                        try:
+                            package = __import__(spec.name)
+                            self._vars[package.__name__] = package
+                        except Exception as e:
+                            print(f'ComfyScript: Failed to import {spec.name}: {e}')
 
-                    t = type(type_id, (data.NodeOutput,), {})
-                    self._set_type(type_info, type_id, t)
+                        if spec.name not in self._import_modules:
+                            self._import_modules.add(spec.name)
+                        
+                        c = name
+                    else:
+                        c = '.'.join([astutil.str_to_raw_id(part) for part in name.split('.')])
+                    t = None
                 else:
-                    t = type_id
+                    type_id = self._get_type_or_assign_id(type_info)
+                    if isinstance(type_id, str):
+                        self._data_type_stubs[type_id] = f'class {type_id}: ...'
+
+                        t = type(type_id, (data.NodeOutput,), {})
+                        self._set_type(type_info, type_id, t)
+                    else:
+                        t = type_id
             if c is None:
                 c = t.__name__
 
@@ -444,6 +468,8 @@ from typing import Any
 from enum import Enum as StrEnum, IntEnum, Enum as FloatEnum
 
 ''')
+        if self._import_modules is not None:
+            c += '\n'.join(f'import {module}' for module in self._import_modules) + '\n\n'
         c += '\n'.join(self._data_type_stubs.values()) + '\n\n'
         c += '\n'.join(self._enum_type_stubs.values()) + '\n\n'
         c += '\n'.join(self._node_type_stubs)

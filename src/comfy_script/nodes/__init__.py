@@ -16,7 +16,7 @@ def setup():
     import traceback
     import json
     
-    import PIL
+    import PIL.PngImagePlugin
 
     # pnginfo_add_text_original = PIL.PngImagePlugin.PngInfo.add_text
     # def pnginfo_add_text_hook(self, key, value, zip=False):

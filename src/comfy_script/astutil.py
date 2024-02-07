@@ -1,5 +1,6 @@
 from __future__ import annotations
 from enum import Enum, IntEnum
+import importlib.util
 import sys
 from typing import Any, Iterable
 
@@ -159,6 +160,18 @@ def to_float_enum(id: str, values: Iterable[float], indent: str) -> (str, FloatE
     '''
     return to_enum(id, { str(v): v for v in values }, indent, FloatEnum)
 
+def find_spec_from_fullname(fullname: str) -> importlib.ModuleSpec | None:
+    module, _, _ = fullname.rpartition('.')
+    while module != '':
+        try:
+            spec = importlib.util.find_spec(module)
+            if spec is not None:
+                return spec
+        except Exception as e:
+            pass
+        module, _, _ = module.rpartition('.')
+    return None
+
 __all__ = [
     # 'is_xid_start',
     # 'is_xid_continue',
@@ -180,4 +193,5 @@ __all__ = [
     'to_str_enum',
     'to_int_enum',
     'to_float_enum',
+    'find_spec_from_fullname',
 ]
