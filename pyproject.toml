@@ -40,7 +40,7 @@ dependencies = [
   "ipywidgets ~= 8.1",
 
   # Nodes
-  "ComfyUI_Ib_CustomNodes",
+  "ComfyUI_Ib_CustomNodes >= 0.2.0",
   "comfyui-tooling-nodes",
 ]
 

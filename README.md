@@ -327,5 +327,8 @@ Screenshot:
 
 ![](docs/images/README/select.png)
 
-## Additional nodes
-See [nodes](docs/Nodes/README.md) for the additional nodes installed with ComfyScript.
+## Documentation
+- [Runtime](docs/Runtime.md)
+- [Transpiler](docs/Transpiler.md)
+- [Additional Nodes](docs/Nodes/README.md)
+- [Images](docs/Image/README.md)
