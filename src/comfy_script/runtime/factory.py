@@ -1,5 +1,6 @@
 from __future__ import annotations
 from enum import Enum
+import textwrap
 from typing import Any
 
 from .. import astutil
@@ -417,21 +418,26 @@ class RuntimeFactory:
 
         # Docstring
         # TODO: Return names
-        # TODO: Display name
-        # TODO: Category
         # TODO: Min, max
         # TODO: Round?
-        # TODO: Indent
+        # TODO: Package (real mode)
         doc = (
-f'''    def {class_id}(
-        {f",{chr(10)}        ".join(inputs)}
-    ){output_type_hint}''')
+f'''```
+def {class_id}(
+    {f",{chr(10)}    ".join(inputs)}
+){output_type_hint}
+```''')
+        if info['display_name'] != class_id:
+            doc += f"\n{info['display_name']}\n"
         
-        quote = "'''" if "'''" not in doc else '"""'
-        c += (
-f"""    {quote}```
-{doc}
-    ```""")
+        # Almost no node has description
+        if info['description'] != '':
+            doc += f"\n{info['description']}\n"
+        
+        doc += f"\nCategory: {info['category']}\n"
+
+        if info['output_node']:
+            doc += '\nOutput node.\n'
         
         for i, input in reversed(list(enumerate(inputs))):
             if '=' not in input:
@@ -441,10 +447,11 @@ f"""    {quote}```
                         inputs[j] = input[:input.index('=')].rstrip() + ' | None'
                         removed = True
                 if removed:
-                    c += '\n    Use `None` to use default values of arguments that appear before any non-default argument.\n    '
+                    doc += '\nUse `None` to use default values of arguments that appear before any non-default argument.\n'
                 break
-        
-        c += f'{quote}\n'
+
+        quote = "'''" if "'''" not in doc else '"""'
+        c += f"""{textwrap.indent(f'{quote}{doc}{quote}', '    ')}\n"""
 
         # __new__
         c += f'    def __new__(cls, {", ".join(inputs)}){output_type_hint}: ...\n'
