@@ -339,6 +339,7 @@ class RuntimeFactory:
             return t, c
 
         inputs = []
+        input_configs = {}
         for (group, optional) in ('required', False), ('optional', True):
             group: dict = info['input'].get(group)
             if group is None:
@@ -374,6 +375,8 @@ class RuntimeFactory:
                         if config:
                             print(f'ComfyScript: Invalid config: {config} {info}')
                         config = {}
+                    
+                    input_configs[input_id] = config
                 inputs.append(f'{input_id}: {type_and_hint(type_info, name, optional, config.get("default"))[1]}')
 
         output_name = info['output_name']
@@ -418,8 +421,6 @@ class RuntimeFactory:
 
         # Docstring
         # TODO: Return names
-        # TODO: Min, max
-        # TODO: Round?
         # TODO: Package (real mode)
         doc = (
 f'''```
@@ -435,6 +436,21 @@ def {class_id}(
             doc += f"\n{info['description']}\n"
         
         doc += f"\nCategory: {info['category']}\n"
+
+        input_doc = False
+        for input_id, config in input_configs.items():
+            if 'min' in config or 'max' in config or 'round' in config:
+                doc += f'\n- `{input_id}`: '
+                if 'min' in config:
+                    doc += f'{config["min"]} ≤ '
+                doc += f'`{input_id}`'
+                if 'max' in config:
+                    doc += f' ≤ {config["max"]}'
+                if 'round' in config:
+                    doc += f' (rounded to {config["round"]})'
+                input_doc = True
+        if input_doc:
+            doc += '\n'
 
         if info['output_node']:
             doc += '\nOutput node.\n'
