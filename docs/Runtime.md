@@ -127,6 +127,10 @@ Differences from virtual mode:
 
   This may be changed in future versions.
 
+- Each node's module name will be added to their docstrings in the type stubs.
+
+  This can be used to figure out where a node came from.
+
 A complete example:
 ```python
 from comfy_script.runtime.real import *

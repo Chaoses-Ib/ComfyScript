@@ -1,7 +1,7 @@
 from __future__ import annotations
 from pathlib import Path
 import traceback
-from typing import Iterable
+from typing import Any, Iterable
 
 from . import RealModeConfig
 from .. import factory
@@ -11,9 +11,11 @@ async def load(nodes_info: dict, vars: dict | None, config: RealModeConfig) -> N
     fact = RealRuntimeFactory(config)
     await fact.init()
 
+    import nodes
     for node_info in nodes_info.values():
         try:
-            fact.add_node(node_info)
+            cls = nodes.NODE_CLASS_MAPPINGS[node_info['name']]
+            fact.add_node(node_info, cls)
         except Exception as e:
             print(f'ComfyScript: Failed to load node {node_info["name"]}')
             traceback.print_exc()
@@ -36,27 +38,23 @@ class RealRuntimeFactory(factory.RuntimeFactory):
         super().__init__()
         self._config = config
 
-    def new_node(self, info: dict, defaults: dict, output_types: list[type]):
-        import nodes
-
-        c = nodes.NODE_CLASS_MAPPINGS[info['name']]
-
+    def new_node(self, info: dict, defaults: dict, output_types: list[type], cls: Any = None):
         config = self._config
         if config.callable:
-            orginal_new = c.__new__
+            orginal_new = cls.__new__
             if not config.wrapper:
                 kwdefaults = getattr(orginal_new, '__kwdefaults__', None)
                 if kwdefaults is not None:
                     _comfy_script_v = kwdefaults.get('_comfy_script_v')
                     if _comfy_script_v is not None:
-                        # c or its base class has been modified (#18)
+                        # cls or its base class has been modified (#18)
                         if _comfy_script_v[1]['name'] == info['name']:
-                            return c
+                            return cls
                         else:
                             orginal_new = _comfy_script_v[0]
 
-            def create(_comfy_script_c=c, _comfy_script_orginal_new=orginal_new):
-                obj = _comfy_script_orginal_new(_comfy_script_c)
+            def create(_comfy_script_cls=cls, _comfy_script_orginal_new=orginal_new):
+                obj = _comfy_script_orginal_new(_comfy_script_cls)
                 obj.__init__()
                 return obj
 
@@ -89,16 +87,16 @@ class RealRuntimeFactory(factory.RuntimeFactory):
                 return outputs
             
             if not config.wrapper:
-                c.__new__ = new
-                if not hasattr(c, 'create'):
-                    setattr(c, 'create', create)
+                cls.__new__ = new
+                if not hasattr(cls, 'create'):
+                    setattr(cls, 'create', create)
             else:
                 # TODO: functools.update_wrapper?
-                c = type(c.__name__, (c,), {
+                cls = type(cls.__name__, (cls,), {
                     '__new__': new,
                     'create': create,
                 })
         
-        return c
+        return cls
 
 __all__ = []

@@ -1,5 +1,6 @@
 from __future__ import annotations
 from enum import Enum
+from pathlib import Path
 import textwrap
 from typing import Any
 
@@ -193,10 +194,10 @@ class RuntimeFactory:
 
         return None
 
-    def new_node(self, info: dict, defaults: dict, output_types: list[type]):
+    def new_node(self, info: dict, defaults: dict, output_types: list[type], cls: Any = None):
         raise NotImplementedError
 
-    def add_node(self, info: dict) -> None:
+    def add_node(self, info: dict, cls: Any = None) -> None:
         class_id = self._get_type_or_assign_id(info['name'])
         if not isinstance(class_id, str):
             print(f'ComfyScript: Node already exists: {info}')
@@ -434,6 +435,14 @@ def {class_id}(
         # Almost no node has description
         if info['description'] != '':
             doc += f"\n{info['description']}\n"
+
+        if cls is not None:
+            module = cls.__module__
+            if '/' in module or '\\' in module:
+                # D:\ComfyUI\comfy_extras\nodes_latent
+                module = Path(module)
+                module = f'{module.parent.name}/{module.name}'
+            doc += f"\nModule: `{module}`\n"
         
         doc += f"\nCategory: {info['category']}\n"
 
@@ -476,7 +485,7 @@ def {class_id}(
         
         self._node_type_stubs.append(c)
         
-        node = self.new_node(info, input_defaults, output_types)
+        node = self.new_node(info, input_defaults, output_types, cls)
         for enum_id, enum in enums.items():
             setattr(node, enum_id, enum)
         self._set_type(info['name'], class_id, node)

@@ -1,13 +1,13 @@
 from __future__ import annotations
 from pathlib import Path
 import traceback
-from typing import Callable
+from typing import Any, Callable
 
 from . import factory
 from . import data
 
 class VirtualRuntimeFactory(factory.RuntimeFactory):
-    def new_node(self, info: dict, defaults: dict, output_types: list[type]):
+    def new_node(self, info: dict, defaults: dict, output_types: list[type], cls: Any = None):
         return Node(info, defaults, output_types)
 
 async def load(nodes_info: dict, vars: dict | None) -> None:
