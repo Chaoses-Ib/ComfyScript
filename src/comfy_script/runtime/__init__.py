@@ -39,7 +39,8 @@ async def _load(comfyui: str | Path = None, args: ComfyUIArgs | None = None, var
     if comfyui is None:
         try:
             nodes_info = await client._get_nodes_info()
-            print(f'ComfyScript: Using ComfyUI from {client.endpoint}')
+            if comfyui_server != client.endpoint:
+                print(f'ComfyScript: Using ComfyUI from {client.endpoint}')
         except Exception as e:
             # To avoid "During handling of the above exception, another exception occurred"
             pass
@@ -147,8 +148,13 @@ class ComfyUIArgs:
     def to_argv(self) -> list[str]:
         return self.argv
 
+comfyui_started = False
+comfyui_server = None
+
 def start_comfyui(comfyui: Path | str = None, args: ComfyUIArgs | None = None, no_server: bool = False, autonomy: bool = False):
     '''
+    Start ComfyUI. Immediately return if ComfyUI is already started.
+
     - `comfyui`: Path to ComfyUI directory.
     
       The default path is `ComfyScript/../..`, which only works if ComfyScript is installed at `ComfyUI/custom_nodes/ComfyScript`.
@@ -161,6 +167,12 @@ def start_comfyui(comfyui: Path | str = None, args: ComfyUIArgs | None = None, n
 
     - `autonomy`: If enabled, currently, the server will not be started even if `no_server=False`.
     '''
+    global comfyui_started, comfyui_server
+    if comfyui_started and (comfyui_server is not None or no_server):
+        return
+    comfyui_started = False
+    comfyui_server = None
+    
     if comfyui is None:
         default_comfyui = Path(__file__).resolve().parents[5]
         if (default_comfyui / 'main.py').exists():
@@ -307,7 +319,8 @@ def start_comfyui(comfyui: Path | str = None, args: ComfyUIArgs | None = None, n
         if not no_server:
             threading.Thread(target=main.server.loop.run_until_complete, args=(main.server.publish_loop(),), daemon=True).start()
 
-            client.set_endpoint(f'http://127.0.0.1:{main.args.port}/')
+            comfyui_server = f'http://127.0.0.1:{main.args.port}/'
+            client.set_endpoint(comfyui_server)
     else:
         if comfyui != 'comfyui':
             print(f'ComfyScript: Importing ComfyUI from {comfyui}')
@@ -347,6 +360,8 @@ def start_comfyui(comfyui: Path | str = None, args: ComfyUIArgs | None = None, n
         # TODO: hijack_progress
 
     sys.argv[1:] = orginal_argv
+
+    comfyui_started = True
 
 def _print_progress(iteration, total, prefix = '', suffix = '', decimals = 0, length = 50, fill = '█', printEnd = '\r'):
     """
