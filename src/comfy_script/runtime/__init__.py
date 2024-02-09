@@ -17,16 +17,41 @@ nest_asyncio.apply()
 _client_id = str(uuid.uuid4())
 _save_script_source = True
 
-def load(api_endpoint: str = 'http://127.0.0.1:8188/', vars: dict | None = None, watch: bool = True, save_script_source: bool = True):
-    asyncio.run(_load(api_endpoint, vars, watch, save_script_source))
+def load(comfyui: str | Path = None, args: ComfyUIArgs | None = None, vars: dict | None = None, watch: bool = True, save_script_source: bool = True):
+    '''
+    - `comfyui`: A URL of the ComfyUI server API, or a path to the ComfyUI directory, or `'comfyui'` to use the [`comfyui` package](https://github.com/comfyanonymous/ComfyUI/pull/298).
 
-async def _load(api_endpoint: str = 'http://127.0.0.1:8188/', vars: dict | None = None, watch: bool = True, save_script_source: bool = True):
+      If not specified, the following ones will be tried in order:
+      1. Local server API: http://127.0.0.1:8188/
+      2. Parent ComfyUI directory: The default path is `ComfyScript/../..`, which only works if ComfyScript is installed at `ComfyUI/custom_nodes/ComfyScript`.
+      3. `comfyui` package
+    
+    - `comfyui_args`: CLI arguments to be passed to ComfyUI, if the value of `comfyui` is not an API. See `ComfyUIArgs` for details.
+    '''
+    asyncio.run(_load(comfyui, args, vars, watch, save_script_source))
+
+async def _load(comfyui: str | Path = None, args: ComfyUIArgs | None = None, vars: dict | None = None, watch: bool = True, save_script_source: bool = True):
     global _save_script_source, queue
 
     _save_script_source = save_script_source
 
-    client.set_endpoint(api_endpoint)
-    nodes_info = await client._get_nodes_info()
+    nodes_info = None
+    if comfyui is None:
+        try:
+            nodes_info = await client._get_nodes_info()
+            print(f'ComfyScript: Using ComfyUI from {client.endpoint}')
+        except Exception as e:
+            # To avoid "During handling of the above exception, another exception occurred"
+            pass
+        if nodes_info is None:
+            start_comfyui(comfyui, args)
+    elif isinstance(comfyui, str) and (comfyui.startswith('http://') or comfyui.startswith('https://')):
+        client.set_endpoint(comfyui)
+    else:
+        start_comfyui(comfyui, args)
+    
+    if nodes_info is None:
+        nodes_info = await client._get_nodes_info()
     print(f'Nodes: {len(nodes_info)}')
 
     await nodes.load(nodes_info, vars)
@@ -122,7 +147,7 @@ class ComfyUIArgs:
     def to_argv(self) -> list[str]:
         return self.argv
 
-def start_comfyui(comfyui: Path | str = None, args: ComfyUIArgs | None = None):
+def start_comfyui(comfyui: Path | str = None, args: ComfyUIArgs | None = None, no_server: bool = False, autonomy: bool = False):
     '''
     - `comfyui`: Path to ComfyUI directory.
     
@@ -131,6 +156,10 @@ def start_comfyui(comfyui: Path | str = None, args: ComfyUIArgs | None = None):
       If the default path does not exist, or the value of this argument is `'comfyui'`, then the runtime will try to load ComfyUI from the [`comfyui` package](https://github.com/comfyanonymous/ComfyUI/pull/298).
     
     - `args`: CLI arguments to be passed to ComfyUI. See `ComfyUIArgs` for details.
+
+    - `no_server`: Do not start the server.
+
+    - `autonomy`: If enabled, currently, the server will not be started even if `no_server=False`.
     '''
     if comfyui is None:
         default_comfyui = Path(__file__).resolve().parents[5]
@@ -146,28 +175,36 @@ def start_comfyui(comfyui: Path | str = None, args: ComfyUIArgs | None = None):
 
     orginal_argv = sys.argv[1:]
     sys.argv[1:] = argv
-    if comfyui != 'comfyui':
-        print(f'ComfyScript: Importing ComfyUI from {comfyui}')
-        sys.path.insert(0, str(comfyui))
-        import main
-    else:
-        print(f'ComfyScript: Importing ComfyUI from comfyui package')
 
+    def setup_comfyui_polyfills(main_locals: dict = None):
+        '''
+        Should be called after `comfy.cmd.main.main()`.
+
+        - `main_locals`: Currently not used.
+        '''
         import importlib.metadata
         import traceback
         import types
 
-        import comfy.cmd.main as main
-
-        # Polyfills
         for name in 'cuda_malloc', 'execution', 'folder_paths', 'latent_preview', 'main', 'server':
             module = sys.modules[f'comfy.cmd.{name}']
             sys.modules[name] = module
             # globals()[name] = module
         
-        main.server = main.server_module
-
         import comfy.cmd.server
+        server = getattr(comfy.cmd.server.PromptServer, 'instance', None)
+        if server is None:
+            main.server = main.server_module
+            # TODO: Hook something to get other variables?
+        else:
+            main.server = server
+            main.loop = server.loop
+            main.q = server.prompt_queue
+        
+        # if main_locals is not None:
+        #     for name in 'loop', 'server', 'q', 'extra_model_paths_config_path':
+        #         setattr(main, name, main_locals[name])
+        
         import comfy.nodes.common
         nodes = types.ModuleType('nodes')
         exported_nodes = comfy.cmd.server.nodes
@@ -196,32 +233,118 @@ def start_comfyui(comfyui: Path | str = None, args: ComfyUIArgs | None = None):
             nodes.NODE_DISPLAY_NAME_MAPPINGS.update(exported_nodes.NODE_DISPLAY_NAME_MAPPINGS)
             nodes.EXTENSION_WEB_DIRS.update(exported_nodes.EXTENSION_WEB_DIRS)
         main.init_custom_nodes = init_custom_nodes
+
+    if not autonomy:
+        sys.argv.append('--quick-test-for-ci')
+        def exit_hook(code = None):
+            if code != 0:
+                exit(code)
+            
+            outer = inspect.currentframe().f_back
+
+            if comfyui == 'comfyui':
+                setup_comfyui_polyfills(outer.f_locals)
+
+            args = outer.f_globals['args']
+            async def run(server, address='', port=8188, verbose=True, call_on_start=None):
+                # await asyncio.gather(server.start(address, port, verbose, call_on_start), server.publish_loop())
+
+                if no_server:
+                    return
+
+                try:
+                    await server.start(address, port, verbose, call_on_start)
+                except OSError:
+                    def dynamic_port_hook(address: str, port: int) -> int:
+                        locals = inspect.currentframe().f_back.f_locals
+                        site = locals['site']
+
+                        _, port = site._server.sockets[0].getsockname()
+
+                        args.port = port
+                        # comfyui
+                        if hasattr(server, 'port'):
+                            server.port = port
+
+                        if verbose:
+                            print("Starting server\n")
+                            print("To see the GUI go to: http://{}:{}".format(address, port))
+                        if call_on_start is not None:
+                            call_on_start(address, port)
+
+                    await server.start(address, 0, False, dynamic_port_hook)
+            outer.f_globals['run'] = run
+
+        if comfyui != 'comfyui':
+            print(f'ComfyScript: Importing ComfyUI from {comfyui}')
+            sys.path.insert(0, str(comfyui))
+
+            # main: dict = runpy.run_module('main', {'exit': exit_hook}, '__main__')
+            import comfy.options
+            enable_args_parsing = comfy.options.enable_args_parsing
+            def enable_args_parsing_hook():
+                globals = inspect.currentframe().f_back.f_globals
+                globals['__name__'] = '__main__'
+                globals['exit'] = exit_hook
+
+                enable_args_parsing()
+            comfy.options.enable_args_parsing = enable_args_parsing_hook
+
+            import main
+
+            del main.exit
+            main.__name__ = 'main'
+            comfy.options.enable_args_parsing = enable_args_parsing
+        else:
+            print(f'ComfyScript: Importing ComfyUI from comfyui package')
+
+            import comfy.cmd.main as main
+
+            main.exit = exit_hook
+            main.main()
+            del main.exit
+        
+        if not no_server:
+            threading.Thread(target=main.server.loop.run_until_complete, args=(main.server.publish_loop(),), daemon=True).start()
+
+            client.set_endpoint(f'http://127.0.0.1:{main.args.port}/')
+    else:
+        if comfyui != 'comfyui':
+            print(f'ComfyScript: Importing ComfyUI from {comfyui}')
+            sys.path.insert(0, str(comfyui))
+            import main
+        else:
+            print(f'ComfyScript: Importing ComfyUI from comfyui package')
+
+            import comfy.cmd.main as main
+
+            setup_comfyui_polyfills()
     
-    # Included in `import main`
-    # execute_prestartup_script()
+        # Included in `import main`
+        # execute_prestartup_script()
 
-    # This server is not used by real mode, but some nodes require it to load
-    main.server = main.server.PromptServer(None)
-    main.server.add_routes()
+        # This server is not used by real mode, but some nodes require it to load
+        main.server = main.server.PromptServer(None)
+        main.server.add_routes()
 
-    # TODO: temp_directory, output_directory, input_directory
+        # TODO: temp_directory, output_directory, input_directory
 
-    # extra_model_paths
-    import os
-    import itertools
-    extra_model_paths_config_path = os.path.join(os.path.dirname(os.path.realpath(main.__file__)), 'extra_model_paths.yaml')
-    if os.path.isfile(extra_model_paths_config_path):
-        main.load_extra_path_config(extra_model_paths_config_path)
+        # extra_model_paths
+        import os
+        import itertools
+        extra_model_paths_config_path = os.path.join(os.path.dirname(os.path.realpath(main.__file__)), 'extra_model_paths.yaml')
+        if os.path.isfile(extra_model_paths_config_path):
+            main.load_extra_path_config(extra_model_paths_config_path)
 
-    if main.args.extra_model_paths_config:
-        for config_path in itertools.chain(*main.args.extra_model_paths_config):
-            main.load_extra_path_config(config_path)
+        if main.args.extra_model_paths_config:
+            for config_path in itertools.chain(*main.args.extra_model_paths_config):
+                main.load_extra_path_config(config_path)
 
-    main.init_custom_nodes()
+        main.init_custom_nodes()
 
-    main.cuda_malloc_warning()
+        main.cuda_malloc_warning()
 
-    # TODO: hijack_progress
+        # TODO: hijack_progress
 
     sys.argv[1:] = orginal_argv
 

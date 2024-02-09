@@ -3,7 +3,7 @@ import asyncio
 from dataclasses import dataclass
 from pathlib import Path
 
-def load(comfyui: Path | str = None, args: ComfyUIArgs | None = None, vars: dict | None = None, naked: bool = False, config: RealModeConfig | None = None):
+def load(comfyui: Path | str = None, args: ComfyUIArgs | None = None, vars: dict | None = None, naked: bool = False, config: RealModeConfig | None = None, no_server: bool = True):
     '''
     - `comfyui`: Path to ComfyUI directory.
     
@@ -18,7 +18,7 @@ def load(comfyui: Path | str = None, args: ComfyUIArgs | None = None, vars: dict
     - `config`: Real mode configuration. See `RealModeConfig` for details.
     '''
 
-    start_comfyui(comfyui, args)
+    start_comfyui(comfyui, args, no_server=no_server)
 
     # Import nodes
     nodes_info = client.get_nodes_info()
