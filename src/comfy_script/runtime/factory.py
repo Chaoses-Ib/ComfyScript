@@ -380,7 +380,8 @@ class RuntimeFactory:
                     input_configs[input_id] = config
                 inputs.append(f'{input_id}: {type_and_hint(type_info, name, optional, config.get("default"))[1]}')
 
-        output_name = info['output_name']
+        # info['output_name'] may be a tuple (WAS_Latent_Size_To_Number)
+        output_name = list(info['output_name'])
         for i, name in enumerate(output_name):
             if name is None:
                 '''
