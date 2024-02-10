@@ -261,7 +261,15 @@ class RuntimeFactory:
                                 # c = f'Literal[\n        {f",{chr(10)}        ".join(astutil.to_str(s) for s in type)}\n        ]'
 
                                 # TODO: Group by directory?
-                                enum_c, t = astutil.to_str_enum(id, { _remove_extension(s): s for s in type_info }, '    ')
+                                dic = {}
+                                for s in type_info:
+                                    if isinstance(s, str):
+                                        dic[_remove_extension(s)] = s
+                                    else:
+                                        # Ignore invalid str enum values
+                                        # - Mitigate VideoHelperSuite's hacks (#22)
+                                        print(f'ComfyScript: {info["name"]}: Invalid enum value: {s}')
+                                enum_c, t = astutil.to_str_enum(id, dic, '    ')
                             elif isinstance(type_info[0], int):
                                 enum_c, t = astutil.to_int_enum(id, type_info, '    ')
                             elif isinstance(type_info[0], float):
