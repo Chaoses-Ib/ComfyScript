@@ -82,6 +82,7 @@ def setup():
                         workflow, zip = self._texts['workflow' if 'workflow' in self._texts else 'prompt']
                         
                         end_nodes = None
+                        # TODO: UNIQUE_ID
                         frame = inspect.currentframe()
                         while frame := frame.f_back:
                             if 'unique_id' in frame.f_locals:

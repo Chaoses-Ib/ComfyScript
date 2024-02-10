@@ -2,10 +2,11 @@ from __future__ import annotations
 from pathlib import Path
 import traceback
 from typing import Any, Iterable
+import wrapt
 
 from . import RealModeConfig
 from .. import factory
-from ..nodes import _positional_args_to_keyword
+from ..nodes import _positional_args_to_keyword, Node as VirtualNode
 
 async def load(nodes_info: dict, vars: dict | None, config: RealModeConfig) -> None:
     fact = RealRuntimeFactory(config)
@@ -31,10 +32,20 @@ async def load(nodes_info: dict, vars: dict | None, config: RealModeConfig) -> N
     with open(Path(__file__).resolve().with_suffix('.pyi'), 'w', encoding='utf8') as f:
         f.write(fact.type_stubs())
 
+class RealNodeOutputWrapper(wrapt.ObjectProxy):
+    def __repr__(self):
+        return repr(self.__wrapped__)
+    
+    def type(self):
+        return type(self.__wrapped__)
+
 class RealRuntimeFactory(factory.RuntimeFactory):
     def __init__(self, config: RealModeConfig):
         super().__init__(hidden_inputs=True)
         self._config = config
+
+        if config.track_workflow:
+            config.args_to_kwds = True
 
     def new_node(self, info: dict, defaults: dict, output_types: list[type]):
         cls = info['_cls']
@@ -58,18 +69,24 @@ class RealRuntimeFactory(factory.RuntimeFactory):
                 obj.__init__()
                 return obj
 
-            def new(cls, *args, _comfy_script_v=(orginal_new, info, defaults, config), **kwds):
-                orginal_new, info, defaults, config = _comfy_script_v
+            virtual_node = None
+            if config.track_workflow:
+                virtual_node = VirtualNode(info, defaults, output_types, pack_single_output=True)
+
+            def new(cls, *args, _comfy_script_v=(orginal_new, info, defaults, config, virtual_node), **kwds):
+                orginal_new, info, defaults, config, virtual_node = _comfy_script_v
                 config: RealModeConfig
 
                 obj = orginal_new(cls)
                 obj.__init__()
 
+                # TODO: LazyCell
                 if config.args_to_kwds:
                     # kwds should take precedence over args
                     kwds = _positional_args_to_keyword(info, args) | kwds
                     args = ()
-
+                
+                kwds_without_defaults = kwds
                 if config.use_config_defaults:
                     if config.args_to_kwds:
                         kwds = defaults | kwds
@@ -77,9 +94,52 @@ class RealRuntimeFactory(factory.RuntimeFactory):
                         pos_kwds = _positional_args_to_keyword(info, args)
                         kwds = { k: v for k, v in defaults.items() if k not in pos_kwds } | kwds
 
+                if config.track_workflow:
+                    virtual_kwds = {}
+                    for k, v in kwds.items():
+                        virtual_v = getattr(v, '_self_virtual_output', None)
+                        virtual_kwds[k] = virtual_v if virtual_v is not None else v
+                    
+                    virtual_outputs = None
+                    try:
+                        virtual_outputs = virtual_node(**virtual_kwds)
+                    except Exception as e:
+                        print(f'ComfyScript: track_workflow: Failed to call {info["name"]}: {e}')
+
+                    if virtual_outputs is not None and config.trace_workflow_inject_inputs:
+                        hidden = info['input'].get('hidden')
+                        if hidden is not None:
+                            # TODO: LazyCell
+                            prompt, id = None, None
+                            for k, v in hidden.items():
+                                if k in kwds_without_defaults:
+                                    continue
+                                if v == 'PROMPT':
+                                    if prompt is None:
+                                        prompt, id = virtual_outputs[0]._get_prompt_and_id()
+                                        unique_id = id.get_id(virtual_outputs[0].node_prompt)
+                                    kwds[k] = prompt
+                                elif v == 'UNIQUE_ID':
+                                    if prompt is None:
+                                        prompt, id = virtual_outputs[0]._get_prompt_and_id()
+                                        unique_id = id.get_id(virtual_outputs[0].node_prompt)
+                                    kwds[k] = unique_id
+                                # TODO: EXTRA_PNGINFO: ComfyScriptSource
+
                 # Call the node
                 outputs = getattr(obj, obj.FUNCTION)(*args, **kwds)
-                
+
+                if config.track_workflow and virtual_outputs is not None:
+                    if isinstance(outputs, Iterable) and not isinstance(outputs, dict):
+                        if len(outputs) != len(virtual_outputs):
+                            print(f'ComfyScript: track_workflow: {info["name"]} has different number of real and virtual outputs: {len(outputs)} != {len(virtual_outputs)}')
+                        wrapped_outputs = []
+                        for output, virtual_output in zip(outputs, virtual_outputs):
+                            wrapped_output = RealNodeOutputWrapper(output)
+                            wrapped_output._self_virtual_output = virtual_output
+                            wrapped_outputs.append(wrapped_output)
+                        outputs = wrapped_outputs
+
                 # See ComfyUI's `get_output_data()`
                 if config.unpack_single_output and isinstance(outputs, Iterable) and not isinstance(outputs, dict) and len(outputs) == 1:
                     return outputs[0]

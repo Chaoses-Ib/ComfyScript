@@ -53,10 +53,12 @@ def _positional_args_to_keyword(node: dict, args: tuple) -> dict:
 class Node:
     output_hook: Callable[[data.NodeOutput | list[data.NodeOutput]], None] | None = None
 
-    def __init__(self, info: dict, defaults: dict, output_types: list[type]):
+    def __init__(self, info: dict, defaults: dict, output_types: list[type], pack_single_output: bool = False):
         self.info = info
         self.defaults = defaults
         self.output_types = output_types
+
+        self._pack_single_output = pack_single_output
     
     def __call__(self, *args, **kwds):
         # print(self.info['name'], args, kwds)
@@ -86,6 +88,10 @@ class Node:
         if self.info.get('output_node') is True and self.output_hook is not None:
             self.output_hook(r)
 
+        if self._pack_single_output:
+            if not isinstance(r, list):
+                r = [r]
+        
         return r
 
     @classmethod

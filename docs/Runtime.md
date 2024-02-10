@@ -207,6 +207,25 @@ with Workflow():
     # ]}}
 ```
 
+Note that although workflows will be automatically tracked and saved to images, changes to inputs made by user code instead of nodes will not be tracked. This means the saved workflows are not guaranteed to be able to reproduce the same results. If user code changes have to be made, one can add some custom metadata to keep the results reproducible, for example:
+
+```python
+positive = 'beautiful scenery nature glass bottle landscape, , purple galaxy bottle,'
+negative = 'text, watermark'
+model, clip, vae = CheckpointLoaderSimple(Checkpoints.v1_5_pruned_emaonly)
+latent = EmptyLatentImage(512, 512, 1)
+latent = KSampler(model, 156680208700286, 20, 8, 'euler', 'normal', CLIPTextEncode(positive, clip), CLIPTextEncode(negative, clip), latent)
+image = VAEDecode(latent, vae)
+SaveImage(image, 'ComfyUI', extra_pnginfo={'myfield': {'positive': positive, 'negative': negative}})
+```
+```python
+from PIL import Image
+image = Image.open(r'D:\ComfyUI\output\ComfyUI_00001_.png')
+print(image.info['myfield'])
+# {"positive": "beautiful scenery nature glass bottle landscape, , purple galaxy bottle,", "negative": "text, watermark"}
+```
+(This example just shows how to add custom metadata, it does not make any user code changes.)
+
 ## Naked mode
 If you have ever gotten to know the internals of ComfyUI, you will realize that real mode is not completely real. Some changes were made to nodes to improve the development experience and keep the code compatible with virtual mode. If you want the real real mode, you can enable naked mode by `load(naked=True)`.
 

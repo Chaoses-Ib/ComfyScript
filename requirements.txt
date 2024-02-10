@@ -17,6 +17,8 @@ networkx[default] ~= 3.0
 # Already required by ComfyUI
 Pillow
 
+wrapt ~= 1.0
+
 # Jupyter
 ipywidgets ~= 8.1
 

@@ -41,6 +41,8 @@ runtime = [
   # Already required by ComfyUI
   "Pillow",
 
+  "wrapt ~= 1.0",
+
   "comfy-script[client]",
 
   # Used to save script to images

@@ -32,7 +32,7 @@ class IdManager:
         return str(id) if id is not None else None
     
     def get_obj(self, id: str) -> object | None:
-        return self._id_obj_map.get(int(id))
+        return self._id_obj_map.get(id)
 
 class NodeOutput:
     '''
