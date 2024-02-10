@@ -16,33 +16,73 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
-dependencies = [
-  # Client (used by transpiler and runtime)
+
+[project.optional-dependencies]
+# There is no mandatory dependencies
+
+client = [
   # Already required by ComfyUI
   "aiohttp",
 
   # 1.5.9: https://github.com/erdewit/nest_asyncio/issues/87
   "nest_asyncio ~= 1.0, >= 1.5.9",
+]
 
+# Transpiler
+transpile = [
+  "networkx[default] ~= 3.0",
 
-  # Transpiler
-  "networkx ~= 3.0",
+  # Used to get nodes info
+  "comfy-script[client]",
+]
 
-  # If you need the CLI:
-  # click ~= 8.1
-
-
-  # Runtime
+# Runtime
+runtime = [
   # Already required by ComfyUI
   "Pillow",
 
-  # TODO: Optional?
-  # Jupyter
-  "ipywidgets ~= 8.1",
+  "comfy-script[client]",
 
-  # Nodes
+  # Used to save script to images
+  "comfy-script[transpile]",
+]
+
+# Addtional nodes
+nodes = [
   "ComfyUI_Ib_CustomNodes >= 0.2.1",
   "comfyui-tooling-nodes",
+]
+
+# Everything except UI (Jupyter and CLI)
+no-ui = [
+  "comfy-script[client]",
+  "comfy-script[transpile]",
+  "comfy-script[runtime]",
+  "comfy-script[nodes]",
+]
+
+# Jupyter Notebook UI
+jupyter = [
+  "ipywidgets ~= 8.1",
+
+  # Already required by ComfyUI
+  "Pillow",
+]
+
+default = [
+  "comfy-script[no-ui]",
+  "comfy-script[jupyter]",
+]
+
+# CLI
+# Currently, only transpiler has CLI.
+cli = [
+  "click ~= 8.1",
+]
+
+all = [
+  "comfy-script[default]",
+  "comfy-script[cli]",
 ]
 
 [project.urls]
