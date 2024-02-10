@@ -194,10 +194,10 @@ class RuntimeFactory:
 
         return None
 
-    def new_node(self, info: dict, defaults: dict, output_types: list[type], cls: Any = None):
+    def new_node(self, info: dict, defaults: dict, output_types: list[type]):
         raise NotImplementedError
 
-    def add_node(self, info: dict, cls: Any = None) -> None:
+    def add_node(self, info: dict) -> None:
         class_id = self._get_type_or_assign_id(info['name'])
         if not isinstance(class_id, str):
             print(f'ComfyScript: Node already exists: {info}')
@@ -437,6 +437,7 @@ def {class_id}(
         if info['description'] != '':
             doc += f"\n{info['description']}\n"
 
+        cls = info.get('_cls')
         if cls is not None:
             module = cls.__module__
             if '/' in module or '\\' in module:
@@ -486,7 +487,7 @@ def {class_id}(
         
         self._node_type_stubs.append(c)
         
-        node = self.new_node(info, input_defaults, output_types, cls)
+        node = self.new_node(info, input_defaults, output_types)
         for enum_id, enum in enums.items():
             setattr(node, enum_id, enum)
         self._set_type(info['name'], class_id, node)

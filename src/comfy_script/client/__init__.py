@@ -49,6 +49,10 @@ async def _get_nodes_info() -> dict:
 
             if hasattr(obj_class, 'CATEGORY'):
                 info['category'] = obj_class.CATEGORY
+            
+            # For internal use
+            info['_cls'] = obj_class
+
             return info
         out = {}
         for x in nodes.NODE_CLASS_MAPPINGS:

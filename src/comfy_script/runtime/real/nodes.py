@@ -11,11 +11,9 @@ async def load(nodes_info: dict, vars: dict | None, config: RealModeConfig) -> N
     fact = RealRuntimeFactory(config)
     await fact.init()
 
-    import nodes
     for node_info in nodes_info.values():
         try:
-            cls = nodes.NODE_CLASS_MAPPINGS[node_info['name']]
-            fact.add_node(node_info, cls)
+            fact.add_node(node_info)
         except Exception as e:
             print(f'ComfyScript: Failed to load node {node_info["name"]}')
             traceback.print_exc()
@@ -38,7 +36,9 @@ class RealRuntimeFactory(factory.RuntimeFactory):
         super().__init__()
         self._config = config
 
-    def new_node(self, info: dict, defaults: dict, output_types: list[type], cls: Any = None):
+    def new_node(self, info: dict, defaults: dict, output_types: list[type]):
+        cls = info['_cls']
+
         config = self._config
         if config.callable:
             orginal_new = cls.__new__

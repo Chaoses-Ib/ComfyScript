@@ -42,6 +42,21 @@ Enum id | Local enum | ComfyUI id
 `Samplers` | `KSampler.sampler_name` | `comfy.samplers.KSampler.SAMPLERS`
 `Schedulers` | `KSampler.scheduler` | `comfy.samplers.KSampler.SCHEDULERS`
 
+## Standalone runtime vs client runtime
+To execute a workflow, the runtime can start a ComfyUI server by itself, or connect to an existing server. The former is called "standalone runtime", and the latter is called "client runtime".
+
+| | Standalone runtime | Client runtime
+| --- | --- | ---
+| [Virtual mode](#virtual-mode) | ✔️ | ✔️
+| [Real mode](#real-mode) | ✔️ | ❌
+
+Virtual mode can be used with both client and standalone runtime. By default, if the server is not available at `http://127.0.0.1:8188/`, virtual mode will try to start a ComfyUI server by itself (see `load()` for details). But real mode can only be used with standalone runtime.
+
+Some features are only available in standalone runtime:
+- Each node's module name will be added to their docstrings in the type stubs.
+
+  This can be used to figure out where a node came from.
+
 ## Virtual mode
 In the default mode - virtual mode, scripts are executed by a ComfyUI server, locally or remotely.
 
@@ -126,10 +141,6 @@ Differences from virtual mode:
 - The outputs of output nodes (e.g. `SaveImage`) is not converted to result classes (e.g. `ImageBatchResult`).
 
   This may be changed in future versions.
-
-- Each node's module name will be added to their docstrings in the type stubs.
-
-  This can be used to figure out where a node came from.
 
 A complete example:
 ```python

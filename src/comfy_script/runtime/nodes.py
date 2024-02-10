@@ -7,7 +7,7 @@ from . import factory
 from . import data
 
 class VirtualRuntimeFactory(factory.RuntimeFactory):
-    def new_node(self, info: dict, defaults: dict, output_types: list[type], cls: Any = None):
+    def new_node(self, info: dict, defaults: dict, output_types: list[type]):
         return Node(info, defaults, output_types)
 
 async def load(nodes_info: dict, vars: dict | None) -> None:
