@@ -76,8 +76,10 @@ def to_bool_enum(enum: list[str | bool], b: bool) -> str:
 class RuntimeFactory:
     '''RuntimeFactory is ignorant of runtime modes.'''
 
-    def __init__(self, import_fullname_types: bool = False):
+    def __init__(self, hidden_inputs: bool = False, import_fullname_types: bool = False):
         '''
+        - `hidden_inputs`: Show hidden inputs.
+        
         - `import_fullname_types`: WIP.
         '''
         self._vars = { id: None for k, dic in self.GLOBAL_ENUMS.items() for id in dic.values() }
@@ -85,6 +87,8 @@ class RuntimeFactory:
         self._enum_values = {}
         self._enum_type_stubs = {}
         self._node_type_stubs = []
+
+        self._hidden_inputs = hidden_inputs
 
         self._import_modules = set() if import_fullname_types else None
         '''WIP.'''
@@ -341,7 +345,10 @@ class RuntimeFactory:
 
         inputs = []
         input_configs = {}
-        for (group, optional) in ('required', False), ('optional', True):
+        for (group, optional) in ('required', False), ('optional', True), ('hidden', True):
+            if group == 'hidden' and not self._hidden_inputs:
+                continue
+
             group: dict = info['input'].get(group)
             if group is None:
                 continue
@@ -352,32 +359,36 @@ class RuntimeFactory:
                 '''
                 input_id = astutil.str_to_raw_id(name)
 
-                type_info = type_config[0]
                 config = {}
-                if len(type_config) > 1:
-                    config = type_config[1]
-                    '''
-                    "ImpactLogger": {
-                        "input": {
-                            "required": {
-                                "data": [
-                                    "*",
-                                    ""
-                                ]
+                if isinstance(type_config, str):
+                    # hidden
+                    type_info = type_config
+                else:
+                    type_info = type_config[0]
+                    if len(type_config) > 1:
+                        config = type_config[1]
+                        '''
+                        "ImpactLogger": {
+                            "input": {
+                                "required": {
+                                    "data": [
+                                        "*",
+                                        ""
+                                    ]
+                                },
+                                "hidden": {
+                                    "prompt": "PROMPT",
+                                    "extra_pnginfo": "EXTRA_PNGINFO"
+                                }
                             },
-                            "hidden": {
-                                "prompt": "PROMPT",
-                                "extra_pnginfo": "EXTRA_PNGINFO"
-                            }
-                        },
-                    }
-                    '''
-                    if not isinstance(config, dict):
-                        if config:
-                            print(f'ComfyScript: Invalid config: {config} {info}')
-                        config = {}
-                    
-                    input_configs[input_id] = config
+                        }
+                        '''
+                        if not isinstance(config, dict):
+                            if config:
+                                print(f'ComfyScript: Invalid config: {config} {info}')
+                            config = {}
+                        
+                        input_configs[input_id] = config
                 inputs.append(f'{input_id}: {type_and_hint(type_info, name, optional, config.get("default"))[1]}')
 
         # info['output_name'] may be a tuple (WAS_Latent_Size_To_Number)

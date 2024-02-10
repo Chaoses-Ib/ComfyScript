@@ -33,7 +33,7 @@ async def load(nodes_info: dict, vars: dict | None, config: RealModeConfig) -> N
 
 class RealRuntimeFactory(factory.RuntimeFactory):
     def __init__(self, config: RealModeConfig):
-        super().__init__()
+        super().__init__(hidden_inputs=True)
         self._config = config
 
     def new_node(self, info: dict, defaults: dict, output_types: list[type]):
