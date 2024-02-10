@@ -4,7 +4,7 @@ Requirement:
 ```sh
 python -m pip install click~=8.1
 ```
-(or `pip install -e .[default,cli]` or `pip install comfy-script[default,cli]` when installing)
+(or `pip install -e ".[default,cli]"` or `pip install "comfy-script[default,cli]"` when installing)
 
 Usage:
 ```sh

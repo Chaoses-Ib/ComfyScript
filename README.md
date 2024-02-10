@@ -45,7 +45,7 @@ Install [ComfyUI](https://github.com/comfyanonymous/ComfyUI) first. And then:
 cd ComfyUI/custom_nodes
 git clone https://github.com/Chaoses-Ib/ComfyScript.git
 cd ComfyScript
-python -m pip install -e .[default]
+python -m pip install -e ".[default]"
 ```
 (If you see `ERROR: File "setup.py" or "setup.cfg" not found`, run `python -m pip install -U pip` first.)
 
@@ -53,7 +53,7 @@ Update:
 ```sh
 cd ComfyUI/custom_nodes/ComfyScript
 git pull
-python -m pip install -e .[default]
+python -m pip install -e ".[default]"
 ```
 
 ### Package and nodes with ComfyUI package
@@ -64,7 +64,7 @@ python -m pip install git+https://github.com/hiddenswitch/ComfyUI.git
 
 Install/update ComfyScript:
 ```sh
-python -m pip install -U comfy-script[default]
+python -m pip install -U "comfy-script[default]"
 ```
 
 (`[default]` is necessary to install common dependencies. See [`pyproject.toml`](pyproject.toml) for other options. If no option is specified, `comfy-script` will be installed without any dependencies.)
@@ -72,7 +72,7 @@ python -m pip install -U comfy-script[default]
 ### Only package
 Install/update:
 ```sh
-python -m pip install -U comfy-script[default]
+python -m pip install -U "comfy-script[default]"
 ```
 
 ### Only nodes with ComfyUI
