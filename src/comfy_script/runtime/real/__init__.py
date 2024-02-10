@@ -20,6 +20,12 @@ def load(comfyui: Path | str = None, args: ComfyUIArgs | None = None, vars: dict
 
     start_comfyui(comfyui, args, no_server=no_server)
 
+    # hijack_progress()
+    # import server
+    # server.PromptServer.instance.last_prompt_id = 'https://github.com/Chaoses-Ib/ComfyScript'
+    import comfy.utils
+    comfy.utils.set_progress_bar_global_hook(None)
+
     # Import nodes
     nodes_info = client.get_nodes_info()
     print(f'Nodes: {len(nodes_info)}')
