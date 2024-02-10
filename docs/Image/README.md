@@ -92,7 +92,7 @@ def ImageToPIL(
 ) -> PilImage
 ```
 
-### To animate
+### To animation
 ```python
 def SaveAnimatedWEBP(
     images: Image,
