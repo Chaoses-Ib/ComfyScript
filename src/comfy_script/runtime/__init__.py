@@ -1,5 +1,5 @@
 from __future__ import annotations
-import dataclasses
+from dataclasses import dataclass
 import inspect
 import json
 from pathlib import Path
@@ -61,11 +61,11 @@ async def _load(comfyui: str | Path = None, args: ComfyUIArgs | None = None, var
     if watch:
         queue.start_watch()
 
-@dataclasses.dataclass
+@dataclass
 class ComfyUIArgs:
     '''CLI arguments to be passed to ComfyUI.'''
 
-    argv: list[str] = dataclasses.field(default_factory=list)
+    argv: list[str]
     '''```sh
     usage: [-h] [--listen [IP]] [--port PORT] [--enable-cors-header [ORIGIN]] [--max-upload-size MAX_UPLOAD_SIZE] [--extra-model-paths-config PATH [PATH ...]] [--output-directory OUTPUT_DIRECTORY]
                 [--temp-directory TEMP_DIRECTORY] [--input-directory INPUT_DIRECTORY] [--auto-launch] [--disable-auto-launch] [--cuda-device DEVICE_ID] [--cuda-malloc | --disable-cuda-malloc]
@@ -144,6 +144,12 @@ class ComfyUIArgs:
     --disable-metadata    Disable saving prompt metadata in files.
     --multi-user          Enables per-user storage.
     ```'''
+
+    def __init__(self, *argv: str):
+        for arg in argv:
+            if not isinstance(arg, str):
+                raise TypeError(f'ComfyScript: Invalid argv type: {arg}')
+        self.argv = list(argv)
 
     def to_argv(self) -> list[str]:
         return self.argv
@@ -854,6 +860,8 @@ from .data import *
 
 __all__ = [
     'load',
+    'ComfyUIArgs',
+    'start_comfyui',
     'TaskQueue',
     'queue',
     'Task',
