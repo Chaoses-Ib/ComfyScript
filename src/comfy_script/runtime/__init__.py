@@ -190,6 +190,9 @@ def start_comfyui(comfyui: Path | str = None, args: ComfyUIArgs | None = None, n
                 raise ImportError(f'ComfyUI is not found at {default_comfyui} and comfyui package')
 
     argv = args.to_argv() if args is not None else []
+    if sys.modules.get('torch') is not None and '--disable-cuda-malloc' not in argv:
+        print('ComfyScript: PyTorch is imported before start ComfyUI, PyTorch config will be skipped. If it is possible, you should only `import torch` after start_comfyui()/load() is called.')
+        argv.append('--disable-cuda-malloc')
 
     orginal_argv = sys.argv[1:]
     sys.argv[1:] = argv
