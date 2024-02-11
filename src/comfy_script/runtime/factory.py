@@ -49,11 +49,10 @@ def is_bool_enum(enum: list[str | bool]) -> bool:
         assert isinstance(enum[1], bool) and enum[0] != enum[1]
         return True
     elif isinstance(enum[0], str):
-        lower = [s.lower() for s in enum]
-        if lower == ['enable', 'disable'] or lower == ['on', 'off']:
+        lower = {s.lower() for s in enum}
+        if lower in ({'enable', 'disable'}, {'on', 'off'}, {'true', 'false'}, {'yes', 'no'}):
             return True
-        elif lower == ['disable', 'enable'] or lower == ['off', 'on']:
-            return True
+    # print(enum)
     return False
 
 def bool_enum_default(enum: list[str | bool]) -> bool:
@@ -61,9 +60,9 @@ def bool_enum_default(enum: list[str | bool]) -> bool:
         return enum[0]
     else:
         lower = enum[0].lower()
-        if lower in ('enable', 'on'):
+        if lower in ('enable', 'on', 'true', 'yes'):
             return True
-        elif lower in ('disable', 'off'):
+        elif lower in ('disable', 'off', 'false', 'no'):
             return False
         raise ValueError(f'Invalid bool enum: {enum}')
 
