@@ -75,7 +75,7 @@ def to_bool_enum(enum: list[str | bool], b: bool) -> str:
 class RuntimeFactory:
     '''RuntimeFactory is ignorant of runtime modes.'''
 
-    def __init__(self, *, hidden_inputs: bool = False, max_enum_values: int = 1000, import_fullname_types: bool = False):
+    def __init__(self, *, hidden_inputs: bool = False, max_enum_values: int = 2000, import_fullname_types: bool = False):
         '''
         - `hidden_inputs`: Show hidden inputs.
         
