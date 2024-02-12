@@ -4,6 +4,7 @@ import pytest
 import comfy_script.astutil as astutil
 
 @pytest.mark.parametrize('s, id', [
+    ('', '_'),
     (':<', '_'),
     (':|', '_'),
     (':/', '_'),

@@ -24,7 +24,8 @@ def is_xid_continue(s: str) -> bool:
 
 def str_to_raw_id(s: str) -> str:
     s = s.lstrip()
-    assert s != ''
+    if s == '':
+        return '_'
 
     if s.isascii():
         s = re.sub(r'[^A-Za-z_0-9]', '_', s)
