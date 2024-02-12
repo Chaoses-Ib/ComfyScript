@@ -157,7 +157,7 @@ class ComfyUIArgs:
 comfyui_started = False
 comfyui_server = None
 
-def start_comfyui(comfyui: Path | str = None, args: ComfyUIArgs | None = None, *, no_server: bool = False, autonomy: bool = False):
+def start_comfyui(comfyui: Path | str = None, args: ComfyUIArgs | None = None, *, no_server: bool = False, join_at_exit: bool = True, autonomy: bool = False):
     '''
     Start ComfyUI. Immediately return if ComfyUI is already started.
 
@@ -170,6 +170,8 @@ def start_comfyui(comfyui: Path | str = None, args: ComfyUIArgs | None = None, *
     - `args`: CLI arguments to be passed to ComfyUI. See `ComfyUIArgs` for details.
 
     - `no_server`: Do not start the server.
+
+    - `join_at_exit`: Join ComfyUI (wait for all tasks to be done) at process exit.
 
     - `autonomy`: If enabled, currently, the server will not be started even if `no_server=False`.
     '''
@@ -380,6 +382,26 @@ def start_comfyui(comfyui: Path | str = None, args: ComfyUIArgs | None = None, *
     sys.argv[1:] = orginal_argv
 
     comfyui_started = True
+
+    if not no_server and join_at_exit:
+        import atexit
+        atexit.register(join_comfyui)
+
+def join_comfyui():
+    '''Wait for all tasks to be done.'''
+
+    import server
+    server = getattr(server.PromptServer, 'instance', None)
+    if server is None:
+        return
+    
+    prompt_queue = getattr(server, 'prompt_queue', None)
+    if prompt_queue is None:
+        return
+
+    import time
+    while prompt_queue.get_tasks_remaining() != 0:
+        time.sleep(0.1)
 
 def _print_progress(iteration, total, prefix = '', suffix = '', decimals = 0, length = 50, fill = '█', printEnd = '\r'):
     """
