@@ -157,7 +157,7 @@ class ComfyUIArgs:
 comfyui_started = False
 comfyui_server = None
 
-def start_comfyui(comfyui: Path | str = None, args: ComfyUIArgs | None = None, no_server: bool = False, autonomy: bool = False):
+def start_comfyui(comfyui: Path | str = None, args: ComfyUIArgs | None = None, *, no_server: bool = False, autonomy: bool = False):
     '''
     Start ComfyUI. Immediately return if ComfyUI is already started.
 
@@ -296,6 +296,13 @@ def start_comfyui(comfyui: Path | str = None, args: ComfyUIArgs | None = None, n
                     await server.start(address, 0, False, dynamic_port_hook)
             outer.f_globals['run'] = run
 
+        # The original event loop should be restored after start comfyui (#23)
+        original_loop = None
+        try:
+            original_loop = asyncio.get_event_loop_policy().get_event_loop()
+        except Exception as e:
+            pass
+
         if comfyui != 'comfyui':
             print(f'ComfyScript: Importing ComfyUI from {comfyui}')
             sys.path.insert(0, str(comfyui))
@@ -324,6 +331,8 @@ def start_comfyui(comfyui: Path | str = None, args: ComfyUIArgs | None = None, n
             main.exit = exit_hook
             main.main()
             del main.exit
+        
+        asyncio.get_event_loop_policy().set_event_loop(original_loop)
         
         if not no_server:
             threading.Thread(target=main.server.loop.run_until_complete, args=(main.server.publish_loop(),), daemon=True).start()
