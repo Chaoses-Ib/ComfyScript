@@ -3,6 +3,14 @@ import pytest
 
 import comfy_script.astutil as astutil
 
+@pytest.mark.parametrize('s, id', [
+    (':<', '_'),
+    (':|', '_'),
+    (':/', '_'),
+])
+def test_str_to_raw_id(s, id):
+    assert astutil.str_to_raw_id(s) == id
+
 @pytest.mark.parametrize('s, c', [
     ('', "''"),
     ("'", "'''\\''''"),

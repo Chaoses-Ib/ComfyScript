@@ -35,7 +35,9 @@ def str_to_raw_id(s: str) -> str:
             s = f'_{s}'
     s = re.sub(r'__+', '_', s)
     s = s.rstrip('_')
-    
+    if s == '':
+        s = '_'
+
     if keyword.iskeyword(s):
         s += '_'
     
