@@ -139,6 +139,7 @@ def to_enum(id: str, dic: dict[str, Any], indent: str, enum_class: Enum = Enum, 
         c += f'\n{indent}    pass'
     c += '\n'
     
+    # ~0.5s / 1000 members
     return c, enum_class(id, members)
 
 def to_str_enum(id: str, dic: dict[str, str], indent: str) -> (str, StrEnum):

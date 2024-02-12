@@ -75,7 +75,7 @@ def to_bool_enum(enum: list[str | bool], b: bool) -> str:
 class RuntimeFactory:
     '''RuntimeFactory is ignorant of runtime modes.'''
 
-    def __init__(self, hidden_inputs: bool = False, import_fullname_types: bool = False):
+    def __init__(self, *, hidden_inputs: bool = False, max_enum_values: int = 1000, import_fullname_types: bool = False):
         '''
         - `hidden_inputs`: Show hidden inputs.
         
@@ -88,6 +88,7 @@ class RuntimeFactory:
         self._node_type_stubs = []
 
         self._hidden_inputs = hidden_inputs
+        self._max_enum_values = max_enum_values
 
         self._import_modules = set() if import_fullname_types else None
         '''WIP.'''
@@ -254,6 +255,10 @@ class RuntimeFactory:
                         enums[id] = t
                     else:
                         if len(type_info) > 0:
+                            if len(type_info) > self._max_enum_values:
+                                print(f'ComfyScript: {info["name"]}.{name}: Too many enum values: {len(type_info)}, truncating to {self._max_enum_values}')
+                                type_info = type_info[:self._max_enum_values]
+
                             if isinstance(type_info[0], str):
                                 # c = 'list[str]'
 
@@ -267,14 +272,14 @@ class RuntimeFactory:
                                     else:
                                         # Ignore invalid str enum values
                                         # - Mitigate VideoHelperSuite's hacks (#22)
-                                        print(f'ComfyScript: {info["name"]}: Invalid enum value: {s}')
+                                        print(f'ComfyScript: {info["name"]}.{name}: Invalid enum value: {s}')
                                 enum_c, t = astutil.to_str_enum(id, dic, '    ')
                             elif isinstance(type_info[0], int):
                                 enum_c, t = astutil.to_int_enum(id, type_info, '    ')
                             elif isinstance(type_info[0], float):
                                 enum_c, t = astutil.to_float_enum(id, type_info, '    ')
                             else:
-                                print(f'ComfyScript: Invalid enum type: {type_info}')
+                                print(f'ComfyScript: {info["name"]}.{name}: Invalid enum type: {type_info}')
                                 enum_c, t = astutil.to_str_enum(id, {}, '    ')
                         else:
                             # Empty enum
