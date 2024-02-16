@@ -838,7 +838,7 @@ class Workflow:
         return self._get_prompt_and_id()[0]
     
     def api_format_json(self) -> str:
-        return json.dumps(self.api_format(), indent=2)
+        return json.dumps(self.api_format(), indent=2, cls=client.WorkflowJSONEncoder)
     
     async def _queue(self, source = None) -> Task | None:
         global queue

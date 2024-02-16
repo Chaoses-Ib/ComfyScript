@@ -5,6 +5,7 @@ import inspect
 import json
 from typing import Iterable
 
+from ... import client
 from .. import factory
 
 class IdManager:
@@ -54,7 +55,7 @@ class NodeOutput:
         return self._get_prompt_and_id()[0]
     
     def api_format_json(self) -> str:
-        return json.dumps(self.api_format())
+        return json.dumps(self.api_format(), indent=2, cls=client.WorkflowJSONEncoder)
     
     def _update_prompt(self, prompt: dict, id: IdManager) -> str:
         prompt_id = id.get_id(self.node_prompt)
@@ -78,6 +79,7 @@ class NodeOutput:
             elif isinstance(v, NodeOutput):
                 prompt_inputs[k] = [v._update_prompt(prompt, id), v.output_slot]
             else:
+                # Other convertions are done in client.WorkflowJSONEncoder
                 prompt_inputs[k] = v
         
         new_id = id.assign_id(self.node_prompt)

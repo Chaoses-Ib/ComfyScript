@@ -1,5 +1,6 @@
 import json
 import os
+from pathlib import PurePath
 import sys
 import traceback
 
@@ -90,6 +91,12 @@ async def _get_embeddings() -> list[str]:
 
 def get_embeddings() -> list[str]:
     return asyncio.run(_get_embeddings())
+
+class WorkflowJSONEncoder(json.JSONEncoder):
+    def default(self, o):
+        if isinstance(o, PurePath):
+            return str(o)
+        return super().default(o)
 
 __all__ = [
     'endpoint'
