@@ -105,6 +105,7 @@ MULTIPLEXER_NODES = {
         'image2': {'blend_mode': 'normal', 'blend_factor': 1},
     }),
     'LatentBlend': ('LATENT', {
+        # `blend_mode` was removed in https://github.com/comfyanonymous/ComfyUI/commit/fa962e86c1cdc3bb9dd57ac028fba0e577346983
         'samples1': {'blend_mode': 'normal', 'blend_factor': 1},
         'samples2': {'blend_mode': 'normal', 'blend_factor': 0},
     }),
@@ -124,7 +125,8 @@ def multiplexer_node_input_filter(node, widget_values: dict):
         return v.inputs
     for input_name, values in multiplexer_inputs[1].items():
         for k, value in values.items():
-            if widget_values[k] != value:
+            # Input may be removed. If so, its value should not matter and be ignored.
+            if k in widget_values and widget_values[k] != value:
                 break
         else:
             node['multiplexer_node_elimination'] = True
