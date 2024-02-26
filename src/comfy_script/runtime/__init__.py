@@ -331,7 +331,13 @@ def start_comfyui(comfyui: Path | str = None, args: ComfyUIArgs | None = None, *
             import comfy.cmd.main as main
 
             main.exit = exit_hook
-            main.main()
+            # or hasattr(main, 'entrypoint')
+            if inspect.iscoroutinefunction(main.main):
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                loop.run_until_complete(main.main())
+            else:
+                main.main()
             del main.exit
         
         asyncio.get_event_loop_policy().set_event_loop(original_loop)
