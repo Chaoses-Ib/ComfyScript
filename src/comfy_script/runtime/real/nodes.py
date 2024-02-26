@@ -93,7 +93,9 @@ class RealRuntimeFactory(factory.RuntimeFactory):
                     else:
                         pos_kwds = _positional_args_to_keyword(info, args)
                         kwds = { k: v for k, v in defaults.items() if k not in pos_kwds } | kwds
-
+                
+                # TODO: Bool enum, path
+                
                 if config.track_workflow:
                     virtual_kwds = {}
                     for k, v in kwds.items():
