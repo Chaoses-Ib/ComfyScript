@@ -39,6 +39,12 @@ import comfy_script
 
 </details>
 
+### Uninstallation
+```sh
+python -m pip uninstall comfy-script
+```
+And delete the `ComfyScript` directory if you have cloned it to `ComfyUI/custom_nodes`.
+
 ## Workflow information retrieval
 It is possible to retrieve any wanted information by running the script with some stubs. For example, to get all positive prompt texts, one can define:
 

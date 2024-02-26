@@ -76,7 +76,7 @@ python -m pip install -U "comfy-script[default]"
 (`[default]` is necessary to install common dependencies. See [`pyproject.toml`](pyproject.toml) for other options. If no option is specified, `comfy-script` will be installed without any dependencies.)
 
 ### Other ways
-ComfyScript can also be used without installed ComfyUI. See [only ComfyScript package](docs/README.md#only-comfyscript-package) for details.
+ComfyScript can also be used without installed ComfyUI. See [only ComfyScript package](docs/README.md#only-comfyscript-package) for details. And see [uninstallation](docs/README.md#uninstallation) for how to uninstall.
 
 ## Transpiler
 The transpiler can translate ComfyUI's workflows to ComfyScript.
