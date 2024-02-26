@@ -37,10 +37,8 @@ It has the following use cases:
 - Converting workflows from ComfyUI's web UI format to API format without the web UI.
 
 ## Installation
-ComfyScript can be installed in different ways.
-
-### Package and nodes with ComfyUI
-Install [ComfyUI](https://github.com/comfyanonymous/ComfyUI) first. And then:
+### With ComfyUI
+Install [ComfyUI](https://github.com/comfyanonymous/ComfyUI#installing) first. And then run the following commands:
 ```sh
 cd ComfyUI/custom_nodes
 git clone https://github.com/Chaoses-Ib/ComfyScript.git
@@ -56,11 +54,19 @@ git pull
 python -m pip install -e ".[default]"
 ```
 
-### Package and nodes with ComfyUI package
-Install [ComfyUI package](https://github.com/comfyanonymous/ComfyUI/pull/298) first:
-```sh
-python -m pip install git+https://github.com/hiddenswitch/ComfyUI.git
-```
+### With ComfyUI package
+Install [ComfyUI package](https://github.com/hiddenswitch/ComfyUI) first:
+- If PyTorch is not installed:
+
+  ```sh
+  python -m pip install git+https://github.com/hiddenswitch/ComfyUI.git
+  ```
+- If PyTorch is already installed (e.g. Google Colab):
+
+  ```sh
+  python -m pip install wheel
+  python -m pip install --no-build-isolation git+https://github.com/hiddenswitch/ComfyUI.git
+  ```
 
 Install/update ComfyScript:
 ```sh
@@ -69,40 +75,8 @@ python -m pip install -U "comfy-script[default]"
 
 (`[default]` is necessary to install common dependencies. See [`pyproject.toml`](pyproject.toml) for other options. If no option is specified, `comfy-script` will be installed without any dependencies.)
 
-### Only package
-Install/update:
-```sh
-python -m pip install -U "comfy-script[default]"
-```
-
-### Only nodes with ComfyUI
-<details>
-
-Install [ComfyUI](https://github.com/comfyanonymous/ComfyUI) first. And then:
-```sh
-cd ComfyUI/custom_nodes
-git clone https://github.com/Chaoses-Ib/ComfyScript.git
-cd ComfyScript
-python -m pip install -r requirements.txt
-```
-
-Update:
-```sh
-cd ComfyUI/custom_nodes/ComfyScript
-git pull
-python -m pip install -r requirements.txt
-```
-
-If you want, you can still import the package with a hardcoded path:
-```python
-import sys
-# Or just '../src' if used in the examples directory
-sys.path.insert(0, r'D:\...\ComfyUI\custom_nodes\ComfyScript\src')
-
-import comfy_script
-```
-
-</details>
+### Other ways
+ComfyScript can also be used without installed ComfyUI. See [only ComfyScript package](docs/README.md#only-comfyscript-package) for details.
 
 ## Transpiler
 The transpiler can translate ComfyUI's workflows to ComfyScript.
