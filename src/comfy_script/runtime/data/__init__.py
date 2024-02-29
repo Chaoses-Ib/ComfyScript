@@ -135,6 +135,7 @@ class Result:
     def from_output(cls, output: dict) -> Result:
         if 'images' in output:
             return ImageBatchResult(output)
+        return Result(output)
 
 from .Images import ImageBatchResult, Images
 
