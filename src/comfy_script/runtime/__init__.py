@@ -722,6 +722,8 @@ class Task:
                     display(*others)
     
     async def _wait(self) -> list[data.Result]:
+        '''`Task` can be directly awaited like `await task`. This method is for internal use only.'''
+
         outputs: dict = await self._fut
         return [data.Result.from_output(output) for output in outputs.values()]
     

@@ -90,6 +90,8 @@ class NodeOutput:
         return new_id
 
     async def _wait(self, source = None) -> Result | None:
+        '''`NodeOutput` can be directly awaited like `await node_output`. This method should only be used if one need to specify `source`.'''
+
         if self.task is None:
             from ...runtime import queue
             self.task = await queue._put(self, source)
