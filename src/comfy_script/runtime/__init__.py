@@ -26,7 +26,7 @@ def load(comfyui: str | Path = None, args: ComfyUIArgs | None = None, vars: dict
       2. Parent ComfyUI directory: The default path is `ComfyScript/../..`, which only works if ComfyScript is installed at `ComfyUI/custom_nodes/ComfyScript`.
       3. `comfyui` package
     
-    - `comfyui_args`: CLI arguments to be passed to ComfyUI, if the value of `comfyui` is not an API. See `ComfyUIArgs` for details.
+    - `args`: CLI arguments to be passed to ComfyUI, if the value of `comfyui` is not an API. See `ComfyUIArgs` for details.
     '''
     asyncio.run(_load(comfyui, args, vars, watch, save_script_source))
 

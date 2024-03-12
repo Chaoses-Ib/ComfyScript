@@ -99,8 +99,11 @@ class RealRuntimeFactory(factory.RuntimeFactory):
                 if config.track_workflow:
                     virtual_kwds = {}
                     for k, v in kwds.items():
-                        virtual_v = getattr(v, '_self_virtual_output', None)
-                        virtual_kwds[k] = virtual_v if virtual_v is not None else v
+                        if isinstance(v, RealNodeOutputWrapper):
+                            virtual_kwds[k] = v._self_virtual_output
+                            kwds[k] = v.__wrapped__
+                        else:
+                            virtual_kwds[k] = v
                     
                     virtual_outputs = None
                     try:
