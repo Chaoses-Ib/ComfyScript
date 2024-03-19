@@ -51,7 +51,7 @@ runtime = [
 
 # Addtional nodes
 nodes = [
-  "ComfyUI_Ib_CustomNodes >= 0.2.1",
+  "ComfyUI_Ib_CustomNodes >= 0.2.2",
   "comfyui-tooling-nodes",
 ]
 
