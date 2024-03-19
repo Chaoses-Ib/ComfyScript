@@ -23,6 +23,9 @@ class ImageBatchResult(Result):
             return [await self._get_image(image) for image in self._output['images']]
         return f(self).__await__()
     
+    def wait(self) -> list[Image.Image | None]:
+        return asyncio.run(self)
+    
     async def get(self, i: int) -> Image.Image | None:
         return await self._get_image(self._output['images'][i])
     
