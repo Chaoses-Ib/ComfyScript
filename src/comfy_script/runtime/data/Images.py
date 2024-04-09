@@ -10,8 +10,8 @@ from . import Result
 class ImageBatchResult(Result):
     # TODO: Lazy cell
     async def _get_image(self, image: dict) -> Image.Image | None:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(f'{client.endpoint}view', params=image) as response:
+        async with client.client.session() as session:
+            async with session.get(f'{client.client.base_url}view', params=image) as response:
                 if response.status == 200:
                     return Image.open(io.BytesIO(await response.read()))
                 else:

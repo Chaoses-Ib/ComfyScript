@@ -1,24 +1,54 @@
+from __future__ import annotations
 import json
 import os
 from pathlib import PurePath
 import sys
 import traceback
+from typing import Callable
 
 import asyncio
 import nest_asyncio
 import aiohttp
+from yarl import URL
 
 nest_asyncio.apply()
 
-endpoint = 'http://127.0.0.1:8188/'
+client: Client | None = None
+'''The global client object.'''
 
-def set_endpoint(api_endpoint: str):
-    global endpoint
-    if not api_endpoint.startswith('http://'):
-        api_endpoint = 'http://' + api_endpoint
-    if not api_endpoint.endswith('/'):
-        api_endpoint += '/'
-    endpoint = api_endpoint
+class Client:
+    def __init__(
+        self,
+        base_url: str | URL = 'http://127.0.0.1:8188/',
+        *,
+        session_factory: Callable[[], aiohttp.ClientSession] = aiohttp.ClientSession
+    ):
+        '''
+        - `base_url`: The base URL of the ComfyUI server API.
+
+          e.g. `'http://127.0.0.1:8188/'`
+
+        - `session_factory`: A callable factory that returns a new [`aiohttp.ClientSession`](https://docs.aiohttp.org/en/latest/client_reference.html#aiohttp.ClientSession) object. 
+
+          e.g. `lambda: aiohttp.ClientSession(auth=aiohttp.BasicAuth('Aladdin', 'open sesame'))`
+        '''
+        if base_url is None:
+            base_url = 'http://127.0.0.1:8188/'
+        elif not isinstance(base_url, str):
+            base_url = str(base_url)
+        
+        if not base_url.startswith('http://'):
+            base_url = 'http://' + base_url
+        if not base_url.endswith('/'):
+            base_url += '/'
+        self.base_url = base_url
+
+        # Do not pass base_url to ClientSession, as it only supports absolute URLs without path part
+        self._session_factory = session_factory
+    
+    def session(self) -> aiohttp.ClientSession:
+        '''Because `aiohttp.ClientSession` is not event-loop-safe (thread-safe), a new session should be created for each request to avoid potential issues. Also, `aiohttp.ClientSession` cannot be closed in a sync manner.'''
+        return self._session_factory()
 
 async def response_to_str(response: aiohttp.ClientResponse) -> str:
     try:
@@ -64,9 +94,9 @@ async def _get_nodes_info() -> dict:
                 traceback.print_exc()
         return out
 
-    async with aiohttp.ClientSession() as session:
-    # http://127.0.0.1:8188/object_info
-        async with session.get(f'{endpoint}object_info') as response:
+    async with client.session() as session:
+        # http://127.0.0.1:8188/object_info
+        async with session.get(f'{client.base_url}object_info') as response:
             if response.status == 200:
                 return await response.json()
             else:
@@ -81,9 +111,9 @@ async def _get_embeddings() -> list[str]:
         embeddings = folder_paths.get_filename_list("embeddings")
         return list(map(lambda a: os.path.splitext(a)[0], embeddings))
     
-    async with aiohttp.ClientSession() as session:
-    # http://127.0.0.1:8188/embeddings
-        async with session.get(f'{endpoint}embeddings') as response:
+    async with client.session() as session:
+        # http://127.0.0.1:8188/embeddings
+        async with session.get(f'{client.base_url}embeddings') as response:
             if response.status == 200:
                 return await response.json()
             else:
@@ -99,8 +129,8 @@ class WorkflowJSONEncoder(json.JSONEncoder):
         return super().default(o)
 
 __all__ = [
-    'endpoint'
-    'set_endpoint',
+    'client',
+    'Client',
     '_get_nodes_info',
     'get_nodes_info',
     '_get_embeddings',

@@ -17,9 +17,9 @@ nest_asyncio.apply()
 _client_id = str(uuid.uuid4())
 _save_script_source = True
 
-def load(comfyui: str | Path = None, args: ComfyUIArgs | None = None, vars: dict | None = None, watch: bool = True, save_script_source: bool = True):
+def load(comfyui: str | Client | Path = None, args: ComfyUIArgs | None = None, vars: dict | None = None, watch: bool = True, save_script_source: bool = True):
     '''
-    - `comfyui`: A URL of the ComfyUI server API, or a path to the ComfyUI directory, or `'comfyui'` to use the [`comfyui` package](https://github.com/comfyanonymous/ComfyUI/pull/298).
+    - `comfyui`: The base URL of the ComfyUI server API, or a `Client` object, or a path to the ComfyUI directory, or `'comfyui'` to use the [`comfyui` package](https://github.com/comfyanonymous/ComfyUI/pull/298).
 
       If not specified, the following ones will be tried in order:
       1. Local server API: http://127.0.0.1:8188/
@@ -30,7 +30,7 @@ def load(comfyui: str | Path = None, args: ComfyUIArgs | None = None, vars: dict
     '''
     asyncio.run(_load(comfyui, args, vars, watch, save_script_source))
 
-async def _load(comfyui: str | Path = None, args: ComfyUIArgs | None = None, vars: dict | None = None, watch: bool = True, save_script_source: bool = True):
+async def _load(comfyui: str | Client | Path = None, args: ComfyUIArgs | None = None, vars: dict | None = None, watch: bool = True, save_script_source: bool = True):
     global _save_script_source, queue
 
     _save_script_source = save_script_source
@@ -39,15 +39,17 @@ async def _load(comfyui: str | Path = None, args: ComfyUIArgs | None = None, var
     if comfyui is None:
         try:
             nodes_info = await client._get_nodes_info()
-            if comfyui_server != client.endpoint:
-                print(f'ComfyScript: Using ComfyUI from {client.endpoint}')
+            if comfyui_base_url != client.client.base_url:
+                print(f'ComfyScript: Using ComfyUI from {client.client.base_url}')
         except Exception as e:
             # To avoid "During handling of the above exception, another exception occurred"
             pass
         if nodes_info is None:
             start_comfyui(comfyui, args)
     elif isinstance(comfyui, str) and (comfyui.startswith('http://') or comfyui.startswith('https://')):
-        client.set_endpoint(comfyui)
+        client.client = client.Client(comfyui)
+    elif isinstance(comfyui, client.Client):
+        client.client = comfyui
     else:
         start_comfyui(comfyui, args)
     
@@ -155,7 +157,7 @@ class ComfyUIArgs:
         return self.argv
 
 comfyui_started = False
-comfyui_server = None
+comfyui_base_url = None
 
 def start_comfyui(comfyui: Path | str = None, args: ComfyUIArgs | None = None, *, no_server: bool = False, join_at_exit: bool = True, autonomy: bool = False):
     '''
@@ -175,11 +177,11 @@ def start_comfyui(comfyui: Path | str = None, args: ComfyUIArgs | None = None, *
 
     - `autonomy`: If enabled, currently, the server will not be started even if `no_server=False`.
     '''
-    global comfyui_started, comfyui_server
-    if comfyui_started and (comfyui_server is not None or no_server):
+    global comfyui_started, comfyui_base_url
+    if comfyui_started and (comfyui_base_url is not None or no_server):
         return
     comfyui_started = False
-    comfyui_server = None
+    comfyui_base_url = None
     
     if comfyui is None:
         default_comfyui = Path(__file__).resolve().parents[5]
@@ -345,8 +347,8 @@ def start_comfyui(comfyui: Path | str = None, args: ComfyUIArgs | None = None, *
         if not no_server:
             threading.Thread(target=main.server.loop.run_until_complete, args=(main.server.publish_loop(),), daemon=True).start()
 
-            comfyui_server = f'http://127.0.0.1:{main.args.port}/'
-            client.set_endpoint(comfyui_server)
+            comfyui_base_url = f'http://127.0.0.1:{main.args.port}/'
+            client.client = client.Client(comfyui_base_url)
     else:
         if comfyui != 'comfyui':
             print(f'ComfyScript: Importing ComfyUI from {comfyui}')
@@ -443,8 +445,8 @@ class TaskQueue:
         self.queue_remaining = 0
 
     async def _get_history(self, prompt_id: str) -> dict | None:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(f'{client.endpoint}history/{prompt_id}') as response:
+        async with client.client.session() as session:
+            async with session.get(f'{client.client.base_url}history/{prompt_id}') as response:
                 if response.status == 200:
                     json = await response.json()
                     # print(json)
@@ -455,8 +457,8 @@ class TaskQueue:
     async def _watch(self):
         while True:
             try:
-                async with aiohttp.ClientSession() as session:
-                    async with session.ws_connect(f'{client.endpoint}ws', params={'clientId': _client_id}) as ws:
+                async with client.client.session() as session:
+                    async with session.ws_connect(f'{client.client.base_url}ws', params={'clientId': _client_id}) as ws:
                         self.queue_remaining = 0
                         executing = False
                         async for msg in ws:
@@ -582,7 +584,7 @@ class TaskQueue:
             raise TypeError(f'ComfyScript: Invalid workflow type: {workflow}')
         # print(prompt)
 
-        async with aiohttp.ClientSession() as session:
+        async with client.client.session() as session:
             extra_data = {}
             if _save_script_source:
                 extra_data = {
@@ -590,7 +592,7 @@ class TaskQueue:
                         'ComfyScriptSource': source
                     }
                 }
-            async with session.post(f'{client.endpoint}prompt', json={
+            async with session.post(f'{client.client.base_url}prompt', json={
                 'prompt': prompt,
                 'extra_data': extra_data,
                 'client_id': _client_id,
@@ -648,8 +650,8 @@ class TaskQueue:
         '''Interrupt the current task'''
         return asyncio.run(self._cancel_current())
     async def _cancel_current(self):
-        async with aiohttp.ClientSession() as session:
-            async with session.post(f'{client.endpoint}interrupt', json={
+        async with client.client.session() as session:
+            async with session.post(f'{client.client.base_url}interrupt', json={
                 'client_id': _client_id,
             }) as response:
                 if response.status != 200:
@@ -659,8 +661,8 @@ class TaskQueue:
         '''Clear the queue'''
         return asyncio.run(self._cancel_remaining())
     async def _cancel_remaining(self):
-        async with aiohttp.ClientSession() as session:
-            async with session.post(f'{client.endpoint}queue', json={
+        async with client.client.session() as session:
+            async with session.post(f'{client.client.base_url}queue', json={
                 'clear': True,
                 'client_id': _client_id,
             }) as response:
@@ -754,8 +756,8 @@ class Task:
     # def wait(self):
     #     return asyncio.run(self._wait())
     # async def _wait(self):
-    #     async with aiohttp.ClientSession() as session:
-    #         async with session.ws_connect(f'{client.endpoint}ws?clientId={_client_id}') as ws:
+    #     async with client.client.session() as session:
+    #         async with session.ws_connect(f'{client.client.base_url}ws?clientId={_client_id}') as ws:
     #             async for msg in ws:
     #                 if msg.type == aiohttp.WSMsgType.TEXT:
     #                     msg = msg.json()
@@ -896,12 +898,14 @@ class Workflow:
 queue = TaskQueue()
 
 from .. import client
+from ..client import Client
 from . import nodes
 from . import data
 from .data import *
 
 __all__ = [
     'load',
+    'Client',
     'ComfyUIArgs',
     'start_comfyui',
     'TaskQueue',

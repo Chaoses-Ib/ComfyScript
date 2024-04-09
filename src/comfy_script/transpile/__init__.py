@@ -14,7 +14,7 @@ class WorkflowToScriptTranspiler:
         - `workflow`: Can be in web UI format or API format.
         '''
         if api_endpoint is not None:
-            client.set_endpoint(api_endpoint)
+            client.client = client.Client(api_endpoint)
         self.nodes_info = client.get_nodes_info()
 
         if isinstance(workflow, str):
