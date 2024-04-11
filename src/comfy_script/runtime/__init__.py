@@ -232,7 +232,9 @@ def start_comfyui(comfyui: Path | str = None, args: ComfyUIArgs | None = None, *
         
         import comfy.nodes.common
         nodes = types.ModuleType('nodes')
-        exported_nodes = comfy.cmd.server.nodes
+        exported_nodes = getattr(server, 'nodes', None)
+        if exported_nodes is None:
+            exported_nodes = comfy.cmd.server.nodes
         setattr(nodes, 'NODE_CLASS_MAPPINGS', exported_nodes.NODE_CLASS_MAPPINGS)
         setattr(nodes, 'NODE_DISPLAY_NAME_MAPPINGS', exported_nodes.NODE_DISPLAY_NAME_MAPPINGS)
         setattr(nodes, 'EXTENSION_WEB_DIRS', exported_nodes.EXTENSION_WEB_DIRS)

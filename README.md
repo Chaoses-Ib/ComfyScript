@@ -73,7 +73,12 @@ Install/update ComfyScript:
 python -m pip install -U "comfy-script[default]"
 ```
 
-(`[default]` is necessary to install common dependencies. See [`pyproject.toml`](pyproject.toml) for other options. If no option is specified, `comfy-script` will be installed without any dependencies.)
+`[default]` is necessary to install common dependencies. See [`pyproject.toml`](pyproject.toml) for other options. If no option is specified, `comfy-script` will be installed without any dependencies.
+
+If there are problems with the latest ComfyUI package, one can use the last tested version:
+```
+python -m pip install --no-build-isolation git+https://github.com/hiddenswitch/ComfyUI.git@e49c662c7f026f05a5e082d48b629e2b977c0441
+```
 
 ### Other ways
 ComfyScript can also be used without installed ComfyUI. See [only ComfyScript package](docs/README.md#only-comfyscript-package) for details. And see [uninstallation](docs/README.md#uninstallation) for how to uninstall.
