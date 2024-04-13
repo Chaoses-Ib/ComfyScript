@@ -13,9 +13,6 @@ from yarl import URL
 
 nest_asyncio.apply()
 
-client: Client | None = None
-'''The global client object.'''
-
 class Client:
     def __init__(
         self,
@@ -49,6 +46,9 @@ class Client:
     def session(self) -> aiohttp.ClientSession:
         '''Because `aiohttp.ClientSession` is not event-loop-safe (thread-safe), a new session should be created for each request to avoid potential issues. Also, `aiohttp.ClientSession` cannot be closed in a sync manner.'''
         return self._session_factory()
+
+client: Client = Client()
+'''The global client object.'''
 
 async def response_to_str(response: aiohttp.ClientResponse) -> str:
     try:
