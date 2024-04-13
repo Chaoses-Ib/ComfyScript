@@ -216,7 +216,8 @@ class RuntimeFactory:
             id = astutil.str_to_raw_id(name)
 
             c = None
-            if isinstance(type_info, list):
+            # Standalone runtime: Some nodes may use tuple for enum values, possibly for bypassing validation
+            if isinstance(type_info, list) or isinstance(type_info, tuple):
                 # Output types can also be lists (#9):
                 '''
                 {

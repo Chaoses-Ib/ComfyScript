@@ -23,6 +23,9 @@ def is_xid_continue(s: str) -> bool:
     return f'_{s}'.isidentifier()
 
 def str_to_raw_id(s: str) -> str:
+    if not isinstance(s, str):
+        raise TypeError(f'Expected str, got {type(s)}: {s}')
+
     s = s.lstrip()
     if s == '':
         return '_'

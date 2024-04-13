@@ -58,6 +58,10 @@ async def response_to_str(response: aiohttp.ClientResponse) -> str:
     return f'{response}{msg}'
 
 async def _get_nodes_info() -> dict:
+    '''
+    When used with standalone runtime:
+    - The result may contain tuples intead of lists.
+    '''
     # Don't use `import nodes` with `except ImportError`, `nodes` may be in `sys.path` but not loaded (#15)
     nodes = sys.modules.get('nodes')
     if nodes is not None and 'NODE_CLASS_MAPPINGS' in vars(nodes) and 'NODE_DISPLAY_NAME_MAPPINGS' in vars(nodes):
@@ -103,6 +107,10 @@ async def _get_nodes_info() -> dict:
                 raise Exception(f'ComfyScript: Failed to get nodes info: {await response_to_str(response)}')
 
 def get_nodes_info() -> dict:
+    '''
+    When used with standalone runtime:
+    - The result may contain tuples intead of lists.
+    '''
     return asyncio.run(_get_nodes_info())
 
 async def _get_embeddings() -> list[str]:
