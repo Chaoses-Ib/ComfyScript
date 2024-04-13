@@ -185,7 +185,7 @@ def start_comfyui(comfyui: Path | str = None, args: ComfyUIArgs | None = None, *
     
     if comfyui is None:
         default_comfyui = Path(__file__).resolve().parents[5]
-        if (default_comfyui / 'main.py').exists():
+        if (default_comfyui / 'comfy_extras').exists() and (default_comfyui / 'main.py').exists():
             comfyui = default_comfyui
         else:
             try:
