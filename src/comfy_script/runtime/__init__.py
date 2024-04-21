@@ -5,12 +5,15 @@ import json
 from pathlib import Path
 import sys
 import threading
+import traceback
 from typing import Callable, Iterable
 import uuid
+from warnings import warn
 
 import asyncio
 import nest_asyncio
 import aiohttp
+from PIL import Image
 
 nest_asyncio.apply()
 
@@ -443,6 +446,7 @@ class TaskQueue:
         self._queue_empty_callback = None
         self._queue_remaining_callbacks = [self._when_empty_callback]
         self._watch_display_node = None
+        self._watch_display_node_preview = None
         self._watch_display_task = None
         self.queue_remaining = 0
 
@@ -463,6 +467,7 @@ class TaskQueue:
                     async with session.ws_connect(f'{client.client.base_url}ws', params={'clientId': _client_id}) as ws:
                         self.queue_remaining = 0
                         executing = False
+                        progress_data = None
                         async for msg in ws:
                             # print(msg.type)
                             if msg.type == aiohttp.WSMsgType.TEXT:
@@ -513,15 +518,25 @@ class TaskQueue:
                                         if self._watch_display_node:
                                             print(f'Queue remaining: {self.queue_remaining}')
                                 elif msg['type'] == 'progress':
-                                    # TODO: https://github.com/comfyanonymous/ComfyUI/issues/2425
-                                    data = msg['data']
-                                    _print_progress(data['value'], data['max'])
+                                    # See ComfyUI::main.hijack_progress
+                                    # 'prompt_id', 'node': https://github.com/comfyanonymous/ComfyUI/issues/2425
+                                    progress_data = msg['data']
+                                    # TODO: Node
+                                    _print_progress(progress_data['value'], progress_data['max'])
                             elif msg.type == aiohttp.WSMsgType.BINARY:
-                                pass
+                                event = client.BinaryEvent.from_bytes(msg.data)
+                                if event.type == client.BinaryEventTypes.PREVIEW_IMAGE:
+                                    prompt_id = progress_data.get('prompt_id')
+                                    if prompt_id is not None:
+                                        task: Task = self._tasks.get(prompt_id)
+                                        task._set_node_preview(progress_data['node'], event.to_object(), self._watch_display_node_preview)
+                                    else:
+                                        warn(f'Cannot get preview node, please update the ComfyUI server to at least 66831eb6e96cd974fb2d0fc4f299b23c6af16685 (2024-01-02)')
                             elif msg.type in (aiohttp.WSMsgType.CLOSED, aiohttp.WSMsgType.ERROR):
                                 break
             except Exception as e:
                 print(f'ComfyScript: Failed to watch, will retry in 5 seconds: {e}')
+                traceback.print_exc()
             await asyncio.sleep(5)
         '''
         {'type': 'status', 'data': {'status': {'exec_info': {'queue_remaining': 0}}, 'sid': 'adc24049-b013-4a58-956b-edbc591dc6e2'}}
@@ -539,19 +554,27 @@ class TaskQueue:
         {'type': 'executing', 'data': {'node': None, 'prompt_id': '3328f0c8-9368-4070-90e7-087e854fe315'}}
         '''
 
-    def start_watch(self, display_node: bool = True, display_task: bool = True):
+    def start_watch(self, display_node: bool = True, display_task: bool = True, display_node_preview: bool = True):
         '''
         - `display_node`: When an output node is finished, display its result.
         - `display_task`: When a task is finished (all output nodes are finished), display all the results.
 
         `load()` will `start_watch()` by default.
+
+        ## Previewing
+        Previewing is disabled by default. Pass `--preview-method auto` to ComfyUI to enable previewing.
+    
+        The default installation includes a fast latent preview method that's low-resolution. To enable higher-quality previews with [TAESD](https://github.com/madebyollin/taesd), download the [taesd_decoder.pth](https://github.com/madebyollin/taesd/raw/main/taesd_decoder.pth) (for SD1.x and SD2.x) and [taesdxl_decoder.pth](https://github.com/madebyollin/taesd/raw/main/taesdxl_decoder.pth) (for SDXL) models and place them in the `models/vae_approx` folder. Once they're installed, restart ComfyUI to enable high-quality previews.
+        
+        The default maximum preview resolution is 512x512. The only way to change it is to modify ComfyUI::MAX_PREVIEW_RESOLUTION.
         '''
 
-        if display_node or display_task:
+        if display_node or display_task or display_node_preview:
             try:
                 import IPython
                 self._watch_display_node = display_node
                 self._watch_display_task = display_task
+                self._watch_display_node_preview = display_node_preview
             except ImportError:
                 print('ComfyScript: IPython is not available, cannot display task results')
 
@@ -567,13 +590,14 @@ class TaskQueue:
         if callback in self._queue_remaining_callbacks:
             self._queue_remaining_callbacks.remove(callback)
 
-    def watch_display(self, display_node: bool = True, display_task: bool = True):
+    def watch_display(self, display_node: bool = True, display_task: bool = True, display_node_preview: bool = True):
         '''
         - `display_node`: When an output node is finished, display its result.
         - `display_task`: When a task is finished (all output nodes are finished), display all the results.
         '''
         self._watch_display_node = display_node
         self._watch_display_task = display_task
+        self._watch_display_node_preview = display_node_preview
 
     async def _put(self, workflow: data.NodeOutput | Iterable[data.NodeOutput] | Workflow, source = None) -> Task | None:
         global _client_id
@@ -685,12 +709,22 @@ class Task:
         self._id = id
         self._new_outputs = {}
         self._fut = asyncio.Future()
+        self._node_preview_callbacks: list[Callable[[Task, str, Image.Image]]] = []
 
     def __str__(self):
         return f'Task {self.number} ({self.prompt_id})'
     
     def __repr__(self):
         return f'Task(n={self.number}, id={self.prompt_id})'
+    
+    def _set_node_preview(self, node_id: str, preview: Image.Image, display: bool):
+        for callback in self._node_preview_callbacks:
+            callback(self, node_id, preview)
+        
+        if display:
+            from IPython.display import display
+
+            display(preview, clear=True)
     
     async def _set_result_threadsafe(self, node_id: str | None, output: dict, display_result: bool = False) -> None:
         if node_id is not None:
@@ -780,6 +814,12 @@ class Task:
 
     # def __await__(self):
     #     return self._wait().__await__()
+
+    def add_preview_callback(self, callback: Callable[[Task, str, Image.Image], None]):
+        self._node_preview_callbacks.append(callback)
+    
+    def remove_preview_callback(self, callback: Callable[[Task, str, Image.Image], None]):
+        self._node_preview_callbacks.remove(callback)
 
     def done(self) -> bool:
         """Return True if the task is done.

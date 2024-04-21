@@ -1,12 +1,18 @@
 from __future__ import annotations
+from dataclasses import dataclass
+from enum import IntEnum
+from io import BytesIO
 import json
 import os
 from pathlib import PurePath
+import struct
 import sys
 import traceback
 from typing import Callable
 
 import asyncio
+from warnings import warn
+from PIL import Image
 import nest_asyncio
 import aiohttp
 from yarl import URL
@@ -135,6 +141,58 @@ class WorkflowJSONEncoder(json.JSONEncoder):
         if isinstance(o, PurePath):
             return str(o)
         return super().default(o)
+
+class BinaryEventTypes(IntEnum):
+    # See ComfyUI::server.BinaryEventTypes
+    PREVIEW_IMAGE = 1
+    UNENCODED_PREVIEW_IMAGE = 2
+    '''Only used internally in ComfyUI.'''
+
+@dataclass
+class BinaryEvent:
+    type: BinaryEventTypes | int
+    data: bytes
+
+    @staticmethod
+    def from_bytes(data: bytes) -> BinaryEvent:
+        # See ComfyUI::server.encode_bytes()
+        type_int = struct.unpack('>I', data[:4])[0]
+        try:
+            type = BinaryEventTypes(type_int)
+        except ValueError:
+            warn(f'Unknown binary event type: {data[:4]}')
+            type = type_int
+        data = data[4:]
+        return BinaryEvent(type, data)
+    
+    def to_object(self) -> Image.Image | bytes:
+        if self.type == BinaryEventTypes.PREVIEW_IMAGE:
+            return _PreviewImage.from_bytes(self.data).image
+        return self
+
+class _PreviewImageFormat(IntEnum):
+    '''`format.name` is compatible with PIL.'''
+    JPEG = 1
+    PNG = 2
+
+@dataclass
+class _PreviewImage:
+    format: _PreviewImageFormat
+    image: Image.Image
+
+    @staticmethod
+    def from_bytes(data: bytes) -> _PreviewImage:
+        # See ComfyUI::LatentPreviewer
+        format_int = struct.unpack('>I', data[:4])[0]
+        format = None
+        try:
+            format = _PreviewImageFormat(format_int).name
+        except ValueError:
+            warn(f'Unknown image format: {data[:4]}')
+
+        image = Image.open(BytesIO(data[4:]), formats=(format,) if format is not None else None)
+
+        return _PreviewImage(format, image)
 
 __all__ = [
     'client',
