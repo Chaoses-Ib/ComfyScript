@@ -35,19 +35,21 @@ class Client:
 
           e.g. `lambda: aiohttp.ClientSession(auth=aiohttp.BasicAuth('Aladdin', 'open sesame'))`
         '''
-        if base_url is None:
-            base_url = 'http://127.0.0.1:8188/'
-        elif not isinstance(base_url, str):
-            base_url = str(base_url)
-        
-        if not base_url.startswith('http://'):
-            base_url = 'http://' + base_url
-        if not base_url.endswith('/'):
-            base_url += '/'
-        self.base_url = base_url
+        self.base_url = self._normalize_base_url(base_url)
 
         # Do not pass base_url to ClientSession, as it only supports absolute URLs without path part
         self._session_factory = session_factory
+        
+    def _normalize_base_url(self, base_url: str | URL):
+        if base_url is None:
+            base_url = 'http://127.0.0.1:8188/'
+        if not isinstance(base_url, str):
+            base_url = str(base_url)
+        if not base_url.startswith(('http://', 'https://')):
+            base_url = 'http://' + base_url
+        if not base_url.endswith('/'):
+            base_url += '/'
+        return base_url
     
     def session(self) -> aiohttp.ClientSession:
         '''Because `aiohttp.ClientSession` is not event-loop-safe (thread-safe), a new session should be created for each request to avoid potential issues. Also, `aiohttp.ClientSession` cannot be closed in a sync manner.'''
