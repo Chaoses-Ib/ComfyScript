@@ -86,7 +86,7 @@ ComfyScript can also be used without installed ComfyUI. See [only ComfyScript pa
 ## Transpiler
 The transpiler can translate ComfyUI's workflows to ComfyScript.
 
-When ComfyScript is installed as custom nodes, `SaveImage` and similar nodes will be hooked to automatically save the script as images' metadata. And the script will also be output to the terminal.
+When ComfyScript is installed as custom nodes, `SaveImage` and similar nodes will be hooked to automatically save the script as the image's metadata. The script will also be printed to the terminal.
 
 For example, here is a workflow in ComfyUI:
 
@@ -132,6 +132,8 @@ ComfyScript saved for each of the two saved image are respectively:
 Comparing scripts:
 
 ![](docs/images/README/diff.png)
+
+To control these features, see [settings.example.toml](settings.example.toml).
 
 You can also use the transpiler via the [CLI](docs/Transpiler.md#cli).
 

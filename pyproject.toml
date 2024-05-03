@@ -37,10 +37,13 @@ client = [
 
 # Transpiler
 transpile = [
+  # Already required by ComfyUI (torch)
   "networkx[default] ~= 3.0",
 
   # Used to get nodes info
   "comfy-script[client]",
+
+  "dynaconf ~= 3.0",
 ]
 
 # Runtime

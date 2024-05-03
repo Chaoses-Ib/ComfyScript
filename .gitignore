@@ -4,6 +4,10 @@ private/
 
 /examples
 
+# Ignore dynaconf files
+.secrets.*
+*.local.*
+
 # Hatch will only respect the first .gitignore file
 /src/comfy_script/runtime/**/*.pyi
 

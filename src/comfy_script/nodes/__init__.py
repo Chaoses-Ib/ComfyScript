@@ -77,30 +77,35 @@ def setup():
                 chunks = self._chunks
                 self._chunks = []
 
-                if 'workflow' in self._texts or 'prompt' in self._texts:
-                    try:
-                        workflow, zip = self._texts['workflow' if 'workflow' in self._texts else 'prompt']
-                        
-                        end_nodes = None
-                        # TODO: UNIQUE_ID
-                        frame = inspect.currentframe()
-                        while frame := frame.f_back:
-                            if 'unique_id' in frame.f_locals:
-                                end_nodes = [frame.f_locals['unique_id']]
-                                break
-                        else:
-                            print('ComfyScript: Failed to resolve the id of current node.')
+                print_script = settings.transpile.hook.print_script
+                save_script = settings.transpile.hook.save_script
+                if print_script is True or save_script is True:
+                    if 'workflow' in self._texts or 'prompt' in self._texts:
+                        try:
+                            workflow, zip = self._texts['workflow' if 'workflow' in self._texts else 'prompt']
+                            
+                            end_nodes = None
+                            # TODO: UNIQUE_ID
+                            frame = inspect.currentframe()
+                            while frame := frame.f_back:
+                                if 'unique_id' in frame.f_locals:
+                                    end_nodes = [frame.f_locals['unique_id']]
+                                    break
+                            else:
+                                print('ComfyScript: Failed to resolve the id of current node.')
 
-                        comfy_script = transpile.WorkflowToScriptTranspiler(workflow).to_script(end_nodes)
-                        # TODO: Syntax highlight?
-                        print('ComfyScript:', comfy_script, sep='\n')
+                            comfy_script = transpile.WorkflowToScriptTranspiler(workflow).to_script(end_nodes)
+                            if print_script is True:
+                                # TODO: Syntax highlight?
+                                print('ComfyScript:', comfy_script, sep='\n')
 
-                        super().add_text('ComfyScript', comfy_script, zip)
-                    except Exception:
-                        # Print stack trace, but do not block the original saving
-                        traceback.print_exc()
-                else:
-                    print("ComfyScript: Failed to save ComfyScript because neither of workflow and prompt is in extra_pnginfo")
+                            if save_script is True:
+                                super().add_text('ComfyScript', comfy_script, zip)
+                        except Exception:
+                            # Print stack trace, but do not block the original saving
+                            traceback.print_exc()
+                    else:
+                        print("ComfyScript: Failed to save ComfyScript because neither of workflow and prompt is in extra_pnginfo")
                 
                 if 'ComfyScriptSource' in self._texts:
                     try:
@@ -165,7 +170,9 @@ def setup():
     # setattr(SaveImage, SaveImage.FUNCTION, save_images_hook)
 
 try:
-    setup()
+    from ..config import settings
+    if settings.transpile.hook.enabled is True:
+        setup()
 except ImportError as e:
     success = False
     print(
