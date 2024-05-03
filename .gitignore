@@ -5,6 +5,7 @@ private/
 /examples
 
 # Ignore dynaconf files
+/settings.toml
 .secrets.*
 *.local.*
 
