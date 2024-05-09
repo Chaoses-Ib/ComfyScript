@@ -1,6 +1,6 @@
 [project]
 name = "comfy-script"
-version = "0.5.0a3"
+version = "0.5.0a4"
 description = "A Python front end and library for ComfyUI"
 readme = "README.md"
 # ComfyUI: >=3.8
@@ -50,6 +50,7 @@ transpile = [
 runtime = [
   # Already required by ComfyUI
   "Pillow",
+  "tqdm ~= 4.0",
 
   "wrapt ~= 1.0",
 
@@ -81,6 +82,8 @@ jupyter = [
 
   # Already required by ComfyUI
   "Pillow",
+
+  "tqdm[notebook] ~= 4.0",
 ]
 
 default = [

@@ -416,29 +416,6 @@ def join_comfyui():
     while prompt_queue.get_tasks_remaining() != 0:
         time.sleep(0.1)
 
-def _print_progress(iteration, total, prefix = '', suffix = '', decimals = 0, length = 50, fill = '█', printEnd = '\r'):
-    """
-    Call in a loop to create terminal progress bar
-    @params:
-        iteration   - Required  : current iteration (Int)
-        total       - Required  : total iterations (Int)
-        prefix      - Optional  : prefix string (Str)
-        suffix      - Optional  : suffix string (Str)
-        decimals    - Optional  : positive number of decimals in percent complete (Int)
-        length      - Optional  : character length of bar (Int)
-        fill        - Optional  : bar fill character (Str)
-        printEnd    - Optional  : end character (e.g. "\r", "\r\n") (Str)
-    
-    From https://stackoverflow.com/questions/3173320/text-progress-bar-in-terminal-with-block-characters
-    """
-    percent = ("{0:3." + str(decimals) + "f}").format(100 * (iteration / float(total)))
-    filledLength = int(length * iteration // total)
-    bar = fill * filledLength + '-' * (length - filledLength)
-    print(f'\r{prefix}{percent}%|{bar}| {iteration}/{total}{suffix}', end = printEnd)
-    # Print New Line on Complete
-    if iteration == total: 
-        print()
-
 class TaskQueue:
     def __init__(self):
         self._tasks = {}
@@ -461,6 +438,9 @@ class TaskQueue:
                     print(f'ComfyScript: Failed to get history: {await client.response_to_str(response)}')
 
     async def _watch(self):
+        from tqdm.auto import tqdm
+        pbar = None
+
         while True:
             try:
                 async with client.client.session() as session:
@@ -522,7 +502,17 @@ class TaskQueue:
                                     # 'prompt_id', 'node': https://github.com/comfyanonymous/ComfyUI/issues/2425
                                     progress_data = msg['data']
                                     # TODO: Node
-                                    _print_progress(progress_data['value'], progress_data['max'])
+                                    value = progress_data['value']
+                                    max = progress_data['max']
+                                    if value == 1:
+                                        if pbar is not None:
+                                            pbar.close()
+                                        pbar = tqdm(initial=value, total=max)
+                                    else:
+                                        pbar.update(value - pbar.n)
+                                        if value == max:
+                                            pbar.close()
+                                            pbar = None
                             elif msg.type == aiohttp.WSMsgType.BINARY:
                                 event = client.BinaryEvent.from_bytes(msg.data)
                                 if event.type == client.BinaryEventTypes.PREVIEW_IMAGE:
