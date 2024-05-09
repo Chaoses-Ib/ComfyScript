@@ -20,7 +20,7 @@ def ImageToPIL(
 ) -> PilImage
 ```
 
-## [ComfyUI Nodes for External Tooling](https://github.com/Acly/comfyui-tooling-nodes)
+## [ComfyUI Nodes for External Tooling](https://github.com/Chaoses-Ib/comfyui-tooling-nodes)
 ```python
 def ETNLoadImageBase64(
     image: str
@@ -46,4 +46,25 @@ def ETNCropImage(
     width: int = 512,
     height: int = 512
 ) -> Image
+```
+
+## [Civitai Comfy Nodes](https://github.com/Chaoses-Ib/civitai_comfy_nodes)
+```python
+def CivitAICheckpointLoader(
+    ckpt_air: str = '{model_id}@{model_version}',
+    ckpt_name: CivitAICheckpointLoader.ckpt_name = 'none',
+    download_chunks: int | None = 4,
+    download_path: CivitAICheckpointLoader.download_path | None = r'models\checkpoints'
+) -> tuple[Model, Clip, Vae]
+
+def CivitAILoraLoader(
+    model: Model,
+    clip: Clip,
+    lora_air: str = '{model_id}@{model_version}',
+    lora_name: CivitAILoraLoader.lora_name = 'none',
+    strength_model: float = 1.0,
+    strength_clip: float = 1.0,
+    download_chunks: int | None = 4,
+    download_path: CivitAILoraLoader.download_path | None = r'models\loras'
+) -> tuple[Model, Clip]
 ```

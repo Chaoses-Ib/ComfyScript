@@ -60,9 +60,11 @@ runtime = [
 ]
 
 # Addtional nodes
+# See docs/Nodes/README.md for details 
 nodes = [
   "ComfyUI_Ib_CustomNodes >= 0.2.2",
   "comfyui-tooling-nodes",
+  "civitai_comfy_nodes",
 ]
 
 # Everything except UI (Jupyter and CLI)

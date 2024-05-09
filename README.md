@@ -300,6 +300,7 @@ Screenshot:
 ## [Documentation](docs/README.md)
 - [Runtime](docs/Runtime.md)
 - [Images](docs/Image/README.md)
+- [Models](docs/Models/README.md)
 - [Additional Nodes](docs/Nodes/README.md)
 - [Transpiler](docs/Transpiler.md)
 
