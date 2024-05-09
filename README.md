@@ -3,7 +3,7 @@
 
 A Python front end and library for [ComfyUI](https://github.com/comfyanonymous/ComfyUI).
 
-![](docs/images/README/plot.png)
+![](docs/imgs/README/plot.png)
 
 It has the following use cases:
 - Serving as a [human-readable format](https://github.com/comfyanonymous/ComfyUI/issues/612) for ComfyUI's workflows.
@@ -90,7 +90,7 @@ When ComfyScript is installed as custom nodes, `SaveImage` and similar nodes wil
 
 For example, here is a workflow in ComfyUI:
 
-![](docs/images/README/workflow.png)
+![](docs/imgs/README/workflow.png)
 
 ComfyScript translated from it:
 ```python
@@ -105,7 +105,7 @@ SaveImage(image, 'ComfyUI')
 
 If there two or more `SaveImage` nodes in one workflow, only the necessary inputs of each node will be translated to scripts. For example, here is a 2 pass txt2img (hires fix) workflow:
 
-![](docs/images/README/workflow2.png)
+![](docs/imgs/README/workflow2.png)
 
 ComfyScript saved for each of the two saved image are respectively:
 1. ```python
@@ -131,7 +131,7 @@ ComfyScript saved for each of the two saved image are respectively:
 
 Comparing scripts:
 
-![](docs/images/README/diff.png)
+![](docs/imgs/README/diff.png)
 
 To control these features, see [settings.example.toml](settings.example.toml).
 
@@ -160,7 +160,7 @@ A Jupyter Notebook example is available at [`examples/runtime.ipynb`](examples/r
 
   | | |
   | --- | --- |
-  | ![](docs/images/README/type-stubs.png) | ![](docs/images/README/type-stubs2.png) |
+  | ![](docs/imgs/README/type-stubs.png) | ![](docs/imgs/README/type-stubs2.png) |
 
   [Python enumerations](https://docs.python.org/3/howto/enum.html) are generated for all arguments provding the value list. So instead of copying and pasting strings like `'v1-5-pruned-emaonly.ckpt'`, you can use:
   ```python
@@ -223,7 +223,7 @@ with Workflow():
         SaveImage(VAEDecode(latent, vae2), f'{seed} {color} hires')
 ```
 
-![](docs/images/README/plot.png)
+![](docs/imgs/README/plot.png)
 
 #### Auto queue
 Automatically queue new workflows when the queue becomes empty.
@@ -246,7 +246,7 @@ queue.when_empty(f)
 ```
 Screenshot:
 
-![](docs/images/README/auto-queue.png)
+![](docs/imgs/README/auto-queue.png)
 
 #### Select and process
 For example, to generate 3 images at once, and then let the user decide which ones they want to hires fix:
@@ -295,11 +295,11 @@ This example uses [ipywidgets](https://github.com/jupyter-widgets/ipywidgets) fo
 
 Screenshot:
 
-![](docs/images/README/select.png)
+![](docs/imgs/README/select.png)
 
 ## [Documentation](docs/README.md)
 - [Runtime](docs/Runtime.md)
-- [Images](docs/Image/README.md)
+- [Images](docs/Images/README.md)
 - [Models](docs/Models/README.md)
 - [Additional Nodes](docs/Nodes/README.md)
 - [Transpiler](docs/Transpiler.md)
