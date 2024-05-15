@@ -2,9 +2,10 @@ from __future__ import annotations
 from pathlib import Path
 import traceback
 from typing import Any, Iterable
+from warnings import warn
 import wrapt
 
-from . import RealModeConfig
+from . import RealModeConfig, Workflow
 from .. import factory
 from ..nodes import _positional_args_to_keyword, Node as VirtualNode
 
@@ -130,6 +131,22 @@ class RealRuntimeFactory(factory.RuntimeFactory):
                                         unique_id = id.get_id(virtual_outputs[0].node_prompt)
                                     kwds[k] = unique_id
                                 # TODO: EXTRA_PNGINFO: ComfyScriptSource
+                
+                # Lookup cache
+                cache = None
+                wf = Workflow._instance
+                if wf is not None:
+                    cache = wf._get_cache(info['name'])
+                    if cache is not None:
+                        if not config.track_workflow:
+                            warn('Workflow cache requires `track_workflow` to work')
+                            cache = None
+                        else:
+                            # TODO: Or FrozenDict?
+                            prompt = virtual_outputs[0].api_format_json()
+                            outputs = cache.get(prompt, None)
+                            if outputs is not None:
+                                return outputs
 
                 # Call the node
                 outputs = getattr(obj, obj.FUNCTION)(*args, **kwds)
@@ -147,7 +164,11 @@ class RealRuntimeFactory(factory.RuntimeFactory):
 
                 # See ComfyUI's `get_output_data()`
                 if config.unpack_single_output and isinstance(outputs, Iterable) and not isinstance(outputs, dict) and len(outputs) == 1:
-                    return outputs[0]
+                    outputs = outputs[0]
+                
+                # Cache outputs
+                if cache is not None:
+                    cache[prompt] = outputs
                 
                 return outputs
             

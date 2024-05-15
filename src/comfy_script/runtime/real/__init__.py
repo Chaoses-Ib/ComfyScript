@@ -2,6 +2,7 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Callable, MutableMapping
 
 def load(comfyui: Path | str = None, args: ComfyUIArgs | None = None, vars: dict | None = None, naked: bool = False, config: RealModeConfig | None = None, no_server: bool = True):
     '''
@@ -37,12 +38,38 @@ def load(comfyui: Path | str = None, args: ComfyUIArgs | None = None, vars: dict
     asyncio.run(nodes.load(nodes_info, vars, config))
 
 class Workflow:
-    def __init__(self):
+    # TODO: Thread-safe
+    _instance: Workflow = None
+
+    def __init__(
+        self,
+        *,
+        cache: MutableMapping | Callable[[str], MutableMapping] | None = None
+    ):
+        '''
+        - `cache`: Use `dict` (`{}`) for simple unbounded cache. For advanced cache, [cachetools](https://github.com/tkem/cachetools) or other libraries can be used.
+
+          To use different cache for different types of nodes, pass a callable that accepts the node name and returns a cache. For example:
+          ```
+          cache=lambda node: {}
+          ```
+          or:
+          ```
+          node_cache = {}
+          cache=lambda node: node_cache.setdefault(node, {})
+          ```
+
+          Note that for node output, any changes made by user code instead of nodes will be ignored.
+        '''
         import torch
 
         self.inference_mode = torch.inference_mode()
+        self._cache = cache
+        self._node_cache = {}
 
     def __enter__(self) -> Workflow:
+        Workflow._instance = self
+
         import comfy.model_management
 
         self.inference_mode.__enter__()
@@ -55,6 +82,20 @@ class Workflow:
         # TODO: DISABLE_SMART_MEMORY
 
         self.inference_mode.__exit__(exc_type, exc_value, traceback)
+
+        Workflow._instance = None
+    
+    def _get_cache(self, node: str) -> MutableMapping | None:
+        if self._cache is None:
+            return None
+        elif isinstance(self._cache, MutableMapping):
+            return self._cache
+        else:
+            cache = self._node_cache.get(node, None)
+            if cache is None:
+                cache = self._cache(node)
+                self._node_cache[node] = cache
+            return cache
 
 @dataclass
 class RealModeConfig:
