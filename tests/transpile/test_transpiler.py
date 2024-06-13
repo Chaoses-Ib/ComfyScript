@@ -1,3 +1,4 @@
+'''hatch env run -e test pytest tests/transpile -- -vv'''
 from pathlib import Path
 
 import pytest
@@ -12,7 +13,8 @@ conditioning2 = CLIPTextEncode('text, watermark', clip)
 latent = EmptyLatentImage(512, 512, 1)
 latent = KSampler(model, 156680208700286, 20, 8, 'euler', 'normal', conditioning, conditioning2, latent, 1)
 image = VAEDecode(latent, vae)
-SaveImage(image, 'ComfyUI')"""),
+SaveImage(image, 'ComfyUI')
+"""),
     ('bypass.json',
 r"""image, _ = LoadImage('ComfyUI_temp_rcuxh_00001_.png')
 image2 = ImageScaleToSide(image, 1024, 'Longest', 'nearest-exact', 'disabled')
