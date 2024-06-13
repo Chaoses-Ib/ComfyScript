@@ -315,9 +315,10 @@ class WorkflowToScriptTranspiler:
         for v in end_nodes:
             yield from visit(v)
     
-    def to_script(self, end_nodes: list[int | str] | None = None, *, bootstrap: bool = False) -> str:
+    def to_script(self, end_nodes: list[int | str] | None = None, *, runtime: bool = False) -> str:
         '''
         - `end_nodes`: The id can be of a different type than the type used by the workflow.
+        - `runtime`: Whether to wrap the script with runtime imports and workflow context.
         '''
         # From leaves to roots or roots to leaves?
         # ComfyUI now executes workflows from leaves to roots, but there is a PR to change this to from roots to leaves with topological sort: https://github.com/comfyanonymous/ComfyUI/pull/931
@@ -342,7 +343,7 @@ class WorkflowToScriptTranspiler:
             # TODO: Add line breaks if a node has multiple inputs
             c += self._node_to_assign_st(self.G.nodes[node])
         
-        if bootstrap:
+        if runtime:
             import textwrap
 
             c = textwrap.indent(c, '    ')
