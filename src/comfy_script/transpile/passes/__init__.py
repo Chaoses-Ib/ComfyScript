@@ -10,10 +10,11 @@ class AssignContext:
     vars: list
     c: str
 
+REROUTE_NODES = ('Reroute', 'Reroute (rgthree)')
 def reroute_elimination(ctx: AssignContext):
-    if ctx.v.type != 'Reroute':
+    if ctx.v.type not in REROUTE_NODES:
         return
-    assert re.fullmatch(r'(?:# )?(?:_ = Reroute\(\S+\)|(\S+) = Reroute\(\1\))\s*', ctx.c), ctx.c
+    assert re.fullmatch(r'(?:# )?(?:_ = [A-Za-z_0-9]+\(\S+\)|(\S+) = [A-Za-z_0-9]+\(\1\))\s*', ctx.c), ctx.c
     ctx.c = ''
 
 def bypass_move_elimination(ctx: AssignContext):

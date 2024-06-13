@@ -34,6 +34,15 @@ basic_pipe = ToBasicPipe(model, clip, vae, conditioning, conditioning2)
 image5, _, _, _ = DetailerForEachPipe(image3, segs2, 1024, True, 1024, 403808226377311, 10, 3, 'lcm', 'ddim_uniform', 0.1, 50, True, True, basic_pipe, '', 0, 1, None, None, True, 50)
 PreviewImage(image5)
 PreviewImage(image)
+"""),
+    ('rgthree-comfy.json',
+r"""model, clip, vae = CheckpointLoaderSimple('v1-5-pruned-emaonly.ckpt')
+# _ = CLIPTextEncode('n', clip)
+conditioning = CLIPTextEncode('p', clip)
+latent = EmptyLatentImage(512, 512, 1)
+latent = KSampler(model, 0, 20, 8, 'euler', 'normal', conditioning, conditioning, latent, 1)
+image = VAEDecode(latent, vae)
+SaveImage(image, 'ComfyUI')
 """)
 ])
 def test_workflow(workflow, script):

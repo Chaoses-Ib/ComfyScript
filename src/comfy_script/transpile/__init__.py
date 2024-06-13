@@ -58,8 +58,9 @@ class WorkflowToScriptTranspiler:
         return name
 
     def _get_input_types(self, node_type: str) -> dict:
+        # UI-only virtual nodes
         # registerNodeType: Reroute, PrimitiveNode, Note
-        if node_type == 'Reroute':
+        if node_type in passes.REROUTE_NODES:
             return {
                 'required': {
                     '': ('*',)
@@ -78,6 +79,8 @@ class WorkflowToScriptTranspiler:
                 }
             }
         else:
+            if node_type not in self.nodes_info:
+                raise KeyError(f'Node not found: {node_type}. If this node is an UI-only virtual node (e.g. custom Reroute, PrimitiveNode, Note nodes), you can workaround this problem by exporting the API format workflow and transpiling it. You can report this issue in https://github.com/Chaoses-Ib/ComfyScript/issues .')
             return self.nodes_info[node_type]['input']
     
     def _get_widget_value_names(self, node_type: str) -> list[str]:
