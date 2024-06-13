@@ -315,7 +315,7 @@ class WorkflowToScriptTranspiler:
         for v in end_nodes:
             yield from visit(v)
     
-    def to_script(self, end_nodes: list[int | str] | None = None) -> str:
+    def to_script(self, end_nodes: list[int | str] | None = None, *, bootstrap: bool = False) -> str:
         '''
         - `end_nodes`: The id can be of a different type than the type used by the workflow.
         '''
@@ -341,6 +341,19 @@ class WorkflowToScriptTranspiler:
         for node in self._topological_generations_ordered_dfs(end_nodes):
             # TODO: Add line breaks if a node has multiple inputs
             c += self._node_to_assign_st(self.G.nodes[node])
+        
+        if bootstrap:
+            import textwrap
+
+            c = textwrap.indent(c, '    ')
+            c = (
+f'''from comfy_script.runtime import *
+load()
+from comfy_script.runtime.nodes import *
+
+with Workflow():
+{c}''')
+        
         return c
     
 __all__ = [
