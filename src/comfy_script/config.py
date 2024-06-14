@@ -9,6 +9,7 @@ settings = Dynaconf(
         Validator('transpile.hook.enabled', default=True),
         Validator('transpile.hook.save_script', default=True),
         Validator('transpile.hook.print_script', default=True),
+        Validator('transpile.hook.prefer_api_format', default=False),
     ],
 )
 

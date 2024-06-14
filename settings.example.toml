@@ -16,3 +16,7 @@
 # To disable a feature, change its value to `false`.
 save_script = true
 print_script = true
+
+# Use workflows in API format instead of web UI format when possible.
+# Web UI format contains more information, but may also contain some UI-only virtual nodes (e.g. custom Reroute, PrimitiveNode, Note nodes) that cannot be properly transpiled. API format has better compatibility at the cost of less readable output.
+prefer_api_format = false

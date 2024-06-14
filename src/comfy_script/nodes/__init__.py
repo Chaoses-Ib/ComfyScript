@@ -79,10 +79,14 @@ def setup():
 
                 print_script = settings.transpile.hook.print_script
                 save_script = settings.transpile.hook.save_script
+                prefer_api_format = settings.transpile.hook.prefer_api_format
                 if print_script is True or save_script is True:
                     if 'workflow' in self._texts or 'prompt' in self._texts:
                         try:
-                            workflow, zip = self._texts['workflow' if 'workflow' in self._texts else 'prompt']
+                            if not prefer_api_format:
+                                workflow, zip = self._texts['workflow' if 'workflow' in self._texts else 'prompt']
+                            else:
+                                workflow, zip = self._texts['prompt']
                             
                             end_nodes = None
                             # TODO: UNIQUE_ID

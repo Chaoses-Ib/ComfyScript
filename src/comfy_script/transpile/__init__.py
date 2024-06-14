@@ -80,7 +80,7 @@ class WorkflowToScriptTranspiler:
             }
         else:
             if node_type not in self.nodes_info:
-                raise KeyError(f'Node not found: {node_type}. If this node is an UI-only virtual node (e.g. custom Reroute, PrimitiveNode, Note nodes), you can workaround this problem by exporting the API format workflow and transpiling it. You can report this issue in https://github.com/Chaoses-Ib/ComfyScript/issues .')
+                raise KeyError(f'Node not found: {node_type}. If this node is an UI-only virtual node (e.g. custom Reroute, PrimitiveNode, Note nodes), you can workaround this problem by exporting the API format workflow and transpiling it. If you are using the transpiler hook, you can config it with `transpile.hook.prefer_api_format` in a `settings.toml`, see `settings.example.toml` for details. You can report this issue in https://github.com/Chaoses-Ib/ComfyScript/issues .')
             return self.nodes_info[node_type]['input']
     
     def _get_widget_value_names(self, node_type: str) -> list[str]:
