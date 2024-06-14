@@ -101,7 +101,8 @@ def setup():
                                 except Exception:
                                     traceback.print_exc()
 
-                                    warn('Failed to transpile workflow in web UI format, fallbacking to API format... If this fixes the problem, you can suppress this warning by setting `transpile.hook.prefer_api_format` to `true` in a `settings.toml`, see `settings.example.toml` for details. Please report this issue in https://github.com/Chaoses-Ib/ComfyScript/issues .')
+                                    msg = 'Failed to transpile workflow in web UI format, fallbacking to API format... If this fixes the problem, you can suppress this warning by setting `transpile.hook.prefer_api_format` to `true` in a `settings.toml`, see `settings.example.toml` for details. Please report this issue in https://github.com/Chaoses-Ib/ComfyScript/issues .'
+                                    warn(msg)
                                     workflow, zip = self._texts['prompt']
                                     comfy_script = transpile.WorkflowToScriptTranspiler(workflow).to_script(end_nodes)
                             else:
