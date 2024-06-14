@@ -1,6 +1,7 @@
 from __future__ import annotations
 import json
 from types import SimpleNamespace
+from warnings import warn
 
 import networkx as nx
 
@@ -291,7 +292,20 @@ class WorkflowToScriptTranspiler:
             # ↓
             # Y
             # The most top-left node has the smallest (x + y).
-            end_nodes.sort(key=lambda v: sum(G.nodes[v]['v'].pos))
+            def node_pos_sum(v):
+                node = G.nodes[v]
+                if 'v' not in node:
+                    # e.g. ghostsquad.json
+                    msg = f'Unkown output node: {v}'
+                    warn(msg)
+                    return 0
+                pos = node['v'].pos
+                if isinstance(pos, SimpleNamespace):
+                    # e.g. ghostsquad.json
+                    return getattr(pos, '0') + getattr(pos, '1')
+                else:
+                    return sum(pos)
+            end_nodes.sort(key=node_pos_sum)
 
         visited = set()
         def visit(node):
