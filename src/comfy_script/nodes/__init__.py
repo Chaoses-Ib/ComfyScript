@@ -15,6 +15,7 @@ def setup():
     import inspect
     import traceback
     import json
+    from warnings import warn
     
     import PIL.PngImagePlugin
 
@@ -83,11 +84,6 @@ def setup():
                 if print_script is True or save_script is True:
                     if 'workflow' in self._texts or 'prompt' in self._texts:
                         try:
-                            if not prefer_api_format:
-                                workflow, zip = self._texts['workflow' if 'workflow' in self._texts else 'prompt']
-                            else:
-                                workflow, zip = self._texts['prompt']
-                            
                             end_nodes = None
                             # TODO: UNIQUE_ID
                             frame = inspect.currentframe()
@@ -98,7 +94,20 @@ def setup():
                             else:
                                 print('ComfyScript: Failed to resolve the id of current node.')
 
-                            comfy_script = transpile.WorkflowToScriptTranspiler(workflow).to_script(end_nodes)
+                            if not prefer_api_format and 'workflow' in self._texts:
+                                workflow, zip = self._texts['workflow']
+                                try:
+                                    comfy_script = transpile.WorkflowToScriptTranspiler(workflow).to_script(end_nodes)
+                                except Exception:
+                                    traceback.print_exc()
+
+                                    warn('Failed to transpile workflow in web UI format, fallbacking to API format... If this fixes the problem, you can suppress this warning by setting `transpile.hook.prefer_api_format` to `true` in a `settings.toml`, see `settings.example.toml` for details. Please report this issue in https://github.com/Chaoses-Ib/ComfyScript/issues .')
+                                    workflow, zip = self._texts['prompt']
+                                    comfy_script = transpile.WorkflowToScriptTranspiler(workflow).to_script(end_nodes)
+                            else:
+                                workflow, zip = self._texts['prompt']
+                                comfy_script = transpile.WorkflowToScriptTranspiler(workflow).to_script(end_nodes)
+                            
                             if print_script is True:
                                 # TODO: Syntax highlight?
                                 print('ComfyScript:', comfy_script, sep='\n')
