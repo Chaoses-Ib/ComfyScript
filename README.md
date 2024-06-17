@@ -303,6 +303,8 @@ Screenshot:
 - [Models](docs/Models/README.md)
 - [Additional Nodes](docs/Nodes/README.md)
 - [Transpiler](docs/Transpiler.md)
+- UI
+  - [Solara UI](docs/UI/Solara.md)
 
 
 [^graph-gui]: [I hate nodes. (No offense comfyui) : StableDiffusion](https://www.reddit.com/r/StableDiffusion/comments/15cr5xx/i_hate_nodes_no_offense_comfyui/)

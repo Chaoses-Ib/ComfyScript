@@ -97,9 +97,15 @@ cli = [
   "click ~= 8.1",
 ]
 
+# Solara UI
+solara = [
+  "solara-ui[markdown] ~= 1.33"
+]
+
 all = [
   "comfy-script[default]",
   "comfy-script[cli]",
+  "comfy-script[solara]",
 ]
 
 [project.urls]
