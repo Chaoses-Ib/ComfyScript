@@ -12,12 +12,14 @@ def MetadataViewer(comfyui_api: str = None):
         # print(file_info)
 
         # Use WorkflowToScriptTranspiler.from_file()/from_image() if you don't need 'ComfyScriptSource' and 'parameters'
-        bin = file_info['file_obj'].read()
-        if bin.startswith(b'{'):
-            workflow = bin.decode('utf-8')
+        file_obj = file_info['file_obj']
+        first_byte = file_obj.read(1)
+        file_obj.seek(0)
+        if first_byte == b'{':
+            workflow = file_obj.read().decode('utf-8')
             set_script(WorkflowToScriptTranspiler(workflow).to_script())
         else:
-            image = Image.open(bin)
+            image = Image.open(file_obj)
             
             # TODO: webp
             image_info = image.info
