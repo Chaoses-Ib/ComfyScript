@@ -635,12 +635,27 @@ class TaskQueue:
     
     def _when_empty_callback(self, queue_remaining: int):
         if queue_remaining == 0 and self._queue_empty_callback is not None:
-            self._queue_empty_callback()
+            try:
+                if self._queue_empty_callback() is False:
+                    self._queue_empty_callback = None
+            except Exception as e:
+                msg = 'when_empty callback raised an exception:'
+                warn(msg)
+                traceback.print_exc()
 
-    def when_empty(self, callback: Callable[[Workflow], None | bool] | None, enter_workflow: bool = True, source = None):
+    def when_empty(
+        self,
+        callback: Callable[[], None | bool] | Callable[[Workflow], None | bool] | None,
+        source = None
+    ):
         '''Call the callback when the queue is empty.
 
-        - `callback`: Return `True` to stop, `None` or `False` to continue.
+        - `callback`
+          - `None` to remove the callback.
+          - If the callback takes 0 argument, it will be called directly.
+          - If the callback takes 1 argument, it will be passed an *entered* `Workflow`, so that you don't need to write it yourself and indent the code one more level. 
+          - If the callback returns `False`, it will be removed and the workflow will not be queued.
+          - If the callback raises an exception, the workflow will not be queued.
 
         Only one callback can be registered at a time. Use `add_queue_remaining_callback()` if you want to register multiple callbacks.
         '''
@@ -650,17 +665,30 @@ class TaskQueue:
         if source is None:
             outer = inspect.currentframe().f_back
             source = ''.join(inspect.findsource(outer)[0])
-        def f(callback=callback, enter_workflow=enter_workflow, source=source):
-            wf = Workflow()
-            if enter_workflow:
+        argc = len(inspect.signature(callback).parameters)
+        if argc == 1:
+            def callback(callback=callback, source=source):
+                wf = Workflow()
                 wf.__enter__()
-                callback(wf)
-                asyncio.run(wf._exit(source))
-            else:
-                callback(wf)
-        self._queue_empty_callback = f
+                try:
+                    result = callback(wf)
+                    if result is not False:
+                        asyncio.run(wf._exit(source))
+                    else:
+                        # Clear the output hook
+                        asyncio.run(wf._exit(source, False))
+                    return result
+                except Exception as e:
+                    # Clear the output hook
+                    asyncio.run(wf._exit(source, e))
+
+                    msg = 'when_empty callback raised an exception:'
+                    warn(msg)
+                    traceback.print_exc()
+                
+        self._queue_empty_callback = callback
         if self.queue_remaining == 0:
-            f()
+            self._when_empty_callback(0)
 
     def cancel_current(self):
         '''Interrupt the current task'''
@@ -908,7 +936,7 @@ class Workflow:
         nodes.Node.set_output_hook(self.__iadd__)
         return self
     
-    async def _exit(self, source, exc_type, exc_value, traceback):
+    async def _exit(self, source, exc_type = None, exc_value = None, traceback = None):
         nodes.Node.clear_output_hook()
         # Do not queue the workflow if an exception is raised
         if exc_type is None and self._queue_when_exit:
