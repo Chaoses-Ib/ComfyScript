@@ -654,7 +654,7 @@ class TaskQueue:
           - `None` to remove the callback.
           - If the callback takes 0 argument, it will be called directly.
           - If the callback takes 1 argument, it will be passed an *entered* `Workflow`, so that you don't need to write it yourself and indent the code one more level. 
-          - If the callback returns `False`, it will be removed and the workflow will not be queued.
+          - If the callback returns `False`, it will be removed. The workflow will not be queued if the callback uses the passed `Workflow`, otherwise it depends.
           - If the callback raises an exception, the workflow will not be queued.
 
         Only one callback can be registered at a time. Use `add_queue_remaining_callback()` if you want to register multiple callbacks.
