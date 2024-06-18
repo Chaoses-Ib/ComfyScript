@@ -908,9 +908,10 @@ class Workflow:
         nodes.Node.set_output_hook(self.__iadd__)
         return self
     
-    async def _exit(self, source):
+    async def _exit(self, source, exc_type, exc_value, traceback):
         nodes.Node.clear_output_hook()
-        if self._queue_when_exit:
+        # Do not queue the workflow if an exception is raised
+        if exc_type is None and self._queue_when_exit:
             if await self._queue(source):
                 # TODO: Fix multi-thread print
                 # print(task)
@@ -920,12 +921,12 @@ class Workflow:
     async def __aexit__(self, exc_type, exc_value, traceback):
         outer = inspect.currentframe().f_back
         source = ''.join(inspect.findsource(outer)[0])
-        await self._exit(source)
+        await self._exit(source, exc_type, exc_value, traceback)
     
     def __exit__(self, exc_type, exc_value, traceback):
         outer = inspect.currentframe().f_back
         source = ''.join(inspect.findsource(outer)[0])
-        asyncio.run(self._exit(source))
+        asyncio.run(self._exit(source, exc_type, exc_value, traceback))
 
 queue = TaskQueue()
 
