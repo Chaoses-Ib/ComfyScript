@@ -89,8 +89,8 @@ If there are problems with the latest ComfyUI package, one can use the last test
 python -m pip install --no-build-isolation git+https://github.com/hiddenswitch/ComfyUI.git@e49c662c7f026f05a5e082d48b629e2b977c0441
 ```
 
-### Other ways
-ComfyScript can also be used without installed ComfyUI. See [only ComfyScript package](docs/README.md#only-comfyscript-package) for details. And see [uninstallation](docs/README.md#uninstallation) for how to uninstall.
+### Others
+See [troubleshooting](docs/README.md#troubleshooting) if you encountered any problems. To use ComfyScript without installed ComfyUI, see [only ComfyScript package](docs/README.md#only-comfyscript-package) for details. To uninstall, see [uninstallation](docs/README.md#uninstallation).
 
 ## Transpiler
 The transpiler can translate ComfyUI's workflows to ComfyScript.

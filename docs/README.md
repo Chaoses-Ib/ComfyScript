@@ -39,6 +39,19 @@ import comfy_script
 
 </details>
 
+### Troubleshooting
+#### ERROR: File "setup.py" or "setup.cfg" not found
+Run `python -m pip install -U pip` to update pip.
+
+#### ModuleNotFoundError: No module named 'hatchling'
+Run `python -m pip install hatchling` . See [#41](https://github.com/Chaoses-Ib/ComfyScript/issues/41) for details.
+
+#### ModuleNotFoundError: No module named 'editables'
+Run `python -m pip install editables` . See [#41](https://github.com/Chaoses-Ib/ComfyScript/issues/41) for details.
+
+#### ModuleNotFoundError: No module named 'comfy_extras.nodes_model_merging'
+Installing ComfyUI package in the same venv used by official ComfyUI will break the official ComfyUI. Uninstalling ComfyUI package by `python -m pip uninstall comfyui` can fix this problem. See [ComfyUI#3702](https://github.com/comfyanonymous/ComfyUI/issues/3702) for details.
+
 ### Uninstallation
 ```sh
 python -m pip uninstall comfy-script
