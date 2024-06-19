@@ -1,3 +1,5 @@
+import traceback
+from warnings import warn
 import solara
 from PIL import Image
 
@@ -28,9 +30,19 @@ def MetadataViewer(comfyui_api: str = None):
             elif 'workflow' in image_info or 'prompt' in image_info:
                 if 'workflow' in image_info:
                     workflow = image_info['workflow']
+                    try:
+                        script = WorkflowToScriptTranspiler(workflow).to_script()
+                    except Exception:
+                        traceback.print_exc()
+                        
+                        msg = 'Failed to transpile workflow in web UI format, fallbacking to API format...'
+                        warn(msg)
+                        workflow = image_info['prompt']
+                        script = WorkflowToScriptTranspiler(workflow).to_script()
                 elif 'prompt' in image_info:
                     workflow = image_info['prompt']
-                set_script(WorkflowToScriptTranspiler(workflow).to_script())
+                    script = WorkflowToScriptTranspiler(workflow).to_script()
+                set_script(script)
             elif 'parameters' in image_info:
                 set_script(image_info['parameters'])
         
