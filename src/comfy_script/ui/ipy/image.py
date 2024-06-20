@@ -1,13 +1,34 @@
 import asyncio
+import itertools
 import math
+from typing import Iterable
+from PIL import Image
 
 class ImageViewer:
     '''Used to display multiple images in Jupyter Notebook.'''
 
-    def __init__(self, *images):
-        # TODO: NodeOutput | ImageBatchResult
-        # TODO: Support PIL.Image
+    def __init__(self, *images: 'Image.Image | NodeOutput | ImageBatchResult | Iterable'):
+        '''
+        - `images`: `PIL.Image`, `NodeOutput`, `ImageBatchResult`, or iterables (`list`, `tuple`, ...) of them. Recursive iterables are also supported.
+        '''
         self.images = images
+    
+    async def _flatten(images) -> list[Image.Image]:
+        from comfy_script.runtime.data import NodeOutput
+        from comfy_script.runtime.data.Images import ImageBatchResult
+
+        if isinstance(images, Image.Image):
+            return [images]
+
+        if isinstance(images, NodeOutput):
+            images = await images
+        if isinstance(images, ImageBatchResult):
+            return await images
+        
+        if isinstance(images, Iterable):
+            return [*itertools.chain(*[await ImageViewer._flatten(image) for image in images])]
+    
+        raise TypeError(f'Invalid image type: {type(images)}')
 
     async def _display(
         self,
@@ -19,17 +40,8 @@ class ImageViewer:
         titles: list[str] | None = None,
         **kwds
     ):
-        from comfy_script.runtime.data import NodeOutput
-        from comfy_script.runtime.data.Images import ImageBatchResult
-
-        # TODO: Partial display
-        images = []
-        for image in self.images:
-            if isinstance(image, NodeOutput):
-                image = await image
-            if isinstance(image, ImageBatchResult):
-                images.extend(await image)
-        images = [img for img in images if img is not None]
+        images = await ImageViewer._flatten(self.images)
+        self.images = images
         if not images:
             return
         
