@@ -6,9 +6,19 @@ class ImageViewer:
 
     def __init__(self, *images):
         # TODO: NodeOutput | ImageBatchResult
+        # TODO: Support PIL.Image
         self.images = images
 
-    async def _display(self, rows: int | None = 1, cols: int | None = None, height: int | None = None, width: int | None = None, **kwds):
+    async def _display(
+        self,
+        rows: int | None = 1,
+        cols: int | None = None,
+        height: int | None = None,
+        width: int | None = None,
+        *,
+        titles: list[str] | None = None,
+        **kwds
+    ):
         from comfy_script.runtime.data import NodeOutput
         from comfy_script.runtime.data.Images import ImageBatchResult
 
@@ -26,7 +36,7 @@ class ImageViewer:
         from IPython.display import display
         
         # Not use HTML if there is only one image or one column
-        if height is None and width is None:
+        if height is None and width is None and titles is None:
             if len(images) == 1:
                 display(images[0])
                 return
@@ -61,7 +71,10 @@ class ImageViewer:
                         kwds['width'] = width
                     image = widgets.Image(value=images[k]._repr_png_(), **kwds)
                     image.add_class('comfy-script-image')
-                    grid[i, j] = image
+                    if titles is not None:
+                        grid[i, j] = widgets.VBox([image, widgets.Label(titles[k], layout=widgets.Layout(align_self='center'))])
+                    else:
+                        grid[i, j] = image
 
         # https://github.com/microsoft/vscode-jupyter/issues/7161
         display(widgets.HBox(children=[widgets.HTML('''<style>
@@ -76,8 +89,17 @@ background-color: transparent !important;
 padding: 2px;
 }</style>'''), grid]))
         
-    def display(self, rows: int | None = 1, cols: int | None = None, height: int | None = None, width: int | None = None, **kwds):
-        asyncio.run(self._display(rows, cols, height, width, **kwds))
+    def display(
+        self,
+        rows: int | None = 1,
+        cols: int | None = None,
+        height: int | None = None,
+        width: int | None = None,
+        *,
+        titles: list[str] | None = None,
+        **kwds
+    ):
+        asyncio.run(self._display(rows, cols, height, width, titles=titles, **kwds))
     
     def _ipython_display_(self):
         self.display()
