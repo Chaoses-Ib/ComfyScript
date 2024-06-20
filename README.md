@@ -43,6 +43,7 @@ It has the following use cases:
 - [Additional Nodes](docs/Nodes/README.md)
 - [Transpiler](docs/Transpiler.md)
 - UI
+  - [ipywidgets UI](docs/UI/ipywidgets.md)
   - [Solara UI](docs/UI/Solara.md)
 
 ## Installation
@@ -307,6 +308,12 @@ Screenshot:
 ![](docs/imgs/README/select.png)
 
 ## UI
+### [ipywidgets UI](docs/UI/ipywidgets.md)
+#### [ImageViewer](docs/UI/ipywidgets.md#imageviewer)
+A simple image viewer that can display multiple images with optional titles.
+
+![](docs/UI/images/ipywidgets/ImageViewer.png)
+
 ### [Solara UI](docs/UI/Solara.md)
 These Solara widgets can be used in Jupyter Notebook and in web pages.
 
