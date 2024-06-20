@@ -7,11 +7,12 @@ from PIL import Image
 class ImageViewer:
     '''Used to display multiple images in Jupyter Notebook.'''
 
-    def __init__(self, *images: 'Image.Image | NodeOutput | ImageBatchResult | Iterable'):
+    def __init__(self, *images: 'Image.Image | NodeOutput | ImageBatchResult | Iterable', titles: list[str] | None = None):
         '''
         - `images`: `PIL.Image`, `NodeOutput`, `ImageBatchResult`, or iterables (`list`, `tuple`, ...) of them. Recursive iterables are also supported.
         '''
         self.images = images
+        self.titles = titles
     
     async def _flatten(images) -> list[Image.Image]:
         from comfy_script.runtime.data import NodeOutput
@@ -36,12 +37,12 @@ class ImageViewer:
         cols: int | None = None,
         height: int | None = None,
         width: int | None = None,
-        *,
-        titles: list[str] | None = None,
         **kwds
     ):
-        images = await ImageViewer._flatten(self.images)
-        self.images = images
+        self.images = await ImageViewer._flatten(self.images)
+
+        images = self.images
+        titles = self.titles
         if not images:
             return
         
