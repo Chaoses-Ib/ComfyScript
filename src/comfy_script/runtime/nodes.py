@@ -1,7 +1,8 @@
+# Do not import classes here. They may be overridden by custom nodes.
 from __future__ import annotations
-from pathlib import Path
+import pathlib
 import traceback
-from typing import Any, Callable
+import typing
 
 from . import factory
 from . import data
@@ -31,7 +32,7 @@ async def load(nodes_info: dict, vars: dict | None) -> None:
         vars.update(fact.vars())
 
     # nodes.pyi
-    with open(Path(__file__).resolve().with_suffix('.pyi'), 'w', encoding='utf8') as f:
+    with open(pathlib.Path(__file__).resolve().with_suffix('.pyi'), 'w', encoding='utf8') as f:
         f.write(fact.type_stubs())
 
 def _positional_args_to_keyword(node: dict, args: tuple) -> dict:
@@ -51,7 +52,7 @@ def _positional_args_to_keyword(node: dict, args: tuple) -> dict:
     return kwargs
 
 class Node:
-    output_hook: Callable[[data.NodeOutput | list[data.NodeOutput]], None] | None = None
+    output_hook: typing.Callable[[data.NodeOutput | list[data.NodeOutput]], None] | None = None
 
     def __init__(self, info: dict, defaults: dict, output_types: list[type], pack_single_output: bool = False):
         self.info = info
@@ -95,7 +96,7 @@ class Node:
         return r
 
     @classmethod
-    def set_output_hook(cls, hook: Callable[[data.NodeOutput | list[data.NodeOutput]], None]):
+    def set_output_hook(cls, hook: typing.Callable[[data.NodeOutput | list[data.NodeOutput]], None]):
         if cls.output_hook is not None:
             # TODO: Stack?
             raise RuntimeError('Output hook already set')

@@ -1,15 +1,16 @@
+# Do not import classes here. They may be overridden by custom nodes.
 from __future__ import annotations
-from pathlib import Path
+import pathlib
 import traceback
-from typing import Any, Iterable
+import typing
 from warnings import warn
 import wrapt
 
-from . import RealModeConfig, Workflow
+from .. import real
 from .. import factory
 from ..nodes import _positional_args_to_keyword, Node as VirtualNode
 
-async def load(nodes_info: dict, vars: dict | None, config: RealModeConfig) -> None:
+async def load(nodes_info: dict, vars: dict | None, config: real.RealModeConfig) -> None:
     fact = RealRuntimeFactory(config)
     await fact.init()
 
@@ -30,7 +31,7 @@ async def load(nodes_info: dict, vars: dict | None, config: RealModeConfig) -> N
         vars.update(fact.vars())
 
     # nodes.pyi
-    with open(Path(__file__).resolve().with_suffix('.pyi'), 'w', encoding='utf8') as f:
+    with open(pathlib.Path(__file__).resolve().with_suffix('.pyi'), 'w', encoding='utf8') as f:
         f.write(fact.type_stubs())
 
 class RealNodeOutputWrapper(wrapt.ObjectProxy):
@@ -41,7 +42,7 @@ class RealNodeOutputWrapper(wrapt.ObjectProxy):
         return type(self.__wrapped__)
 
 class RealRuntimeFactory(factory.RuntimeFactory):
-    def __init__(self, config: RealModeConfig):
+    def __init__(self, config: real.RealModeConfig):
         super().__init__(hidden_inputs=True)
         self._config = config
 
@@ -76,7 +77,7 @@ class RealRuntimeFactory(factory.RuntimeFactory):
 
             def new(cls, *args, _comfy_script_v=(orginal_new, info, defaults, config, virtual_node), **kwds):
                 orginal_new, info, defaults, config, virtual_node = _comfy_script_v
-                config: RealModeConfig
+                config: real.RealModeConfig
 
                 obj = orginal_new(cls)
                 obj.__init__()
@@ -134,7 +135,7 @@ class RealRuntimeFactory(factory.RuntimeFactory):
                 
                 # Lookup cache
                 cache = None
-                wf = Workflow._instance
+                wf = real.Workflow._instance
                 if wf is not None:
                     cache = wf._get_cache(info['name'])
                     if cache is not None:
@@ -152,7 +153,7 @@ class RealRuntimeFactory(factory.RuntimeFactory):
                 outputs = getattr(obj, obj.FUNCTION)(*args, **kwds)
 
                 if config.track_workflow and virtual_outputs is not None:
-                    if isinstance(outputs, Iterable) and not isinstance(outputs, dict):
+                    if isinstance(outputs, typing.Iterable) and not isinstance(outputs, dict):
                         if len(outputs) != len(virtual_outputs):
                             print(f'ComfyScript: track_workflow: {info["name"]} has different number of real and virtual outputs: {len(outputs)} != {len(virtual_outputs)}')
                         wrapped_outputs = []
@@ -163,7 +164,7 @@ class RealRuntimeFactory(factory.RuntimeFactory):
                         outputs = wrapped_outputs
 
                 # See ComfyUI's `get_output_data()`
-                if config.unpack_single_output and isinstance(outputs, Iterable) and not isinstance(outputs, dict) and len(outputs) == 1:
+                if config.unpack_single_output and isinstance(outputs, typing.Iterable) and not isinstance(outputs, dict) and len(outputs) == 1:
                     outputs = outputs[0]
                 
                 # Cache outputs
