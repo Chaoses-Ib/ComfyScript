@@ -343,7 +343,9 @@ class RuntimeFactory:
                 # c = f'Optional[{c}]'
                 c = f'{c} | None'
                 if default is None:
-                    input_defaults[id] = None
+                    # Optional inputs should not be set if not provided
+                    # e.g. FooocusLoader (#59)
+                    # input_defaults[id] = None
 
                     c += ' = None'
             
