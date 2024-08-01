@@ -70,11 +70,73 @@ def SaveImage(
 )
 ```
 
+Retrieving the saved images:
+```python
+from PIL import Image
+
+image = EmptyImage(512, 512, 1)
+image = SaveImage(image, 'ComfyUI')
+
+image_batch = image.wait()
+
+# Get the first image
+image: Image.Image = image_batch[0]
+
+# Get all images in the batch
+images: list[Image.Image] = image_batch.wait()
+```
+Or with `await`:
+```python
+from PIL import Image
+
+image = EmptyImage(512, 512, 1)
+image = SaveImage(image, 'ComfyUI')
+
+image_batch = await image
+
+# Get the first image
+image: Image.Image = await image_batch.get(0)
+
+# Get all images in the batch
+images: list[Image.Image] = await image_batch
+```
+
 ### To `temp` directory
 ```python
 def PreviewImage(
     images: Image
 )
+```
+
+Retrieving the preview images:
+```python
+from PIL import Image
+
+image = EmptyImage(512, 512, 1)
+image = PreviewImage(image)
+
+image_batch = image.wait()
+
+# Get the first image
+image: Image.Image = image_batch[0]
+
+# Get all images in the batch
+images: list[Image.Image] = image_batch.wait()
+```
+Or with `await`:
+```python
+from PIL import Image
+
+image = EmptyImage(512, 512, 1)
+image = PreviewImage(image)
+
+image_batch = await image
+
+# Get the first image
+image: Image.Image = await image_batch.get(0)
+
+# Get all images in the batch
+images: list[Image.Image] = await image_batch
 ```
 
 ### [To client](https://github.com/Acly/comfyui-tooling-nodes)
