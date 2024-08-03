@@ -546,6 +546,10 @@ class TaskQueue:
                                             pbar.close()
                                         pbar = tqdm(initial=value, total=max)
                                     else:
+                                        # value may not start with 1
+                                        # e.g. start watch in the middle, CivitAICheckpointLoader
+                                        if pbar is None:
+                                            pbar = tqdm(initial=value, total=max)
                                         pbar.update(value - pbar.n)
                                         if value == max:
                                             pbar.close()
