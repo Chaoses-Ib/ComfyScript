@@ -87,7 +87,7 @@ python -m pip install -U "comfy-script[default]"
 
 If there are problems with the latest ComfyUI package, one can use the last tested version:
 ```
-python -m pip install --no-build-isolation git+https://github.com/hiddenswitch/ComfyUI.git@e49c662c7f026f05a5e082d48b629e2b977c0441
+python -m pip install --no-build-isolation git+https://github.com/hiddenswitch/ComfyUI.git@e8eab4dbc6487a14a0c548a806b0b772e274e3df
 ```
 
 ### Others
