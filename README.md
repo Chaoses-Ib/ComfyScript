@@ -263,7 +263,7 @@ For example, to generate 3 images at once, and then let the user decide which on
 ```python
 import ipywidgets as widgets
 
-queue.watch_display(False, False)
+queue.watch_display(False)
 
 latents = []
 image_batches = []

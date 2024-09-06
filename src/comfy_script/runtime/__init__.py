@@ -621,14 +621,25 @@ class TaskQueue:
         if callback in self._queue_remaining_callbacks:
             self._queue_remaining_callbacks.remove(callback)
 
-    def watch_display(self, display_node: bool = True, display_task: bool = True, display_node_preview: bool = True):
+    def watch_display(self, all: bool | None = None, *, preview: bool | None = None, output: bool | None = None, task: bool | None = None):
         '''
-        - `display_node`: When an output node is finished, display its result.
-        - `display_task`: When a task is finished (all output nodes are finished), display all the results.
+        - `preview`: When a preview of the node output is received, display it.
+        - `output`: When an output node is finished, display its result.
+        - `task`: When a task is finished (all output nodes are finished), display all the results.
         '''
-        self._watch_display_node = display_node
-        self._watch_display_task = display_task
-        self._watch_display_node_preview = display_node_preview
+        if all is not None:
+            if preview is None:
+                preview = all
+            if output is None:
+                output = all
+            if task is None:
+                task = all
+        if preview is not None:
+            self._watch_display_node_preview = preview
+        if output is not None:
+            self._watch_display_node = output
+        if task is not None:
+            self._watch_display_task = task
 
     async def _put(self, workflow: data.NodeOutput | Iterable[data.NodeOutput] | Workflow, source = None) -> Task | None:
         global _client_id
