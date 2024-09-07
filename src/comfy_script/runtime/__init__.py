@@ -270,8 +270,10 @@ def start_comfyui(comfyui: Path | str = None, args: ComfyUIArgs | None = None, *
         #     for name in 'loop', 'server', 'q', 'extra_model_paths_config_path':
         #         setattr(main, name, main_locals[name])
         
+        import comfy.nodes.base_nodes
         import comfy.nodes.common
         nodes = types.ModuleType('nodes')
+        nodes.__dict__.update(comfy.nodes.base_nodes.__dict__)
         exported_nodes = getattr(server, 'nodes', None)
         if exported_nodes is None:
             exported_nodes = comfy.cmd.server.nodes
@@ -383,6 +385,8 @@ def start_comfyui(comfyui: Path | str = None, args: ComfyUIArgs | None = None, *
             else:
                 main.main()
             del main.exit
+
+            main.init_custom_nodes()
         
         asyncio.get_event_loop_policy().set_event_loop(original_loop)
         
