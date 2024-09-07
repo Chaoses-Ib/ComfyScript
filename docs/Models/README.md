@@ -1,5 +1,17 @@
 # Models
 ## Checkpoints
+Any checkpoint format supported by ComfyUI will work, including `.ckpt`, `.pt`, `.bin`, `.pth` and `.safetensors`.
+
+List all checkpoints:
+```python
+from comfy_script.runtime import load
+load()
+from comfy_script.runtime.nodes import Checkpoints
+
+print(list(Checkpoints))
+# [<Checkpoints.Anything_V3_0: 'Anything-V3.0.ckpt'>, <Checkpoints.Realistic_Vision_V5_1_fp16_no_ema: 'Realistic_Vision_V5.1_fp16-no-ema.safetensors'>, ..., <Checkpoints.wd_illusion_fp16: 'wd-illusion-fp16.safetensors'>]
+```
+
 ### [CivitAI](https://github.com/Chaoses-Ib/civitai_comfy_nodes)
 ```python
 def CivitAICheckpointLoader(
