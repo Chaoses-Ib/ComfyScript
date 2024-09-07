@@ -48,14 +48,18 @@ It has the following use cases:
 
 ## Installation
 ### With ComfyUI
-Install [ComfyUI](https://github.com/comfyanonymous/ComfyUI#installing) first. And then run the following commands:
+Install ComfyUI first, see [Installing](https://github.com/comfyanonymous/ComfyUI#installing) or use [Comfy-Cli](https://github.com/Comfy-Org/comfy-cli) to install:
+```sh
+python -m pip install comfy-cli
+comfy --here install
+```
+And then run the following commands to install ComfyScript:
 ```sh
 cd ComfyUI/custom_nodes
 git clone https://github.com/Chaoses-Ib/ComfyScript.git
 cd ComfyScript
 python -m pip install -e ".[default]"
 ```
-(If you see `ERROR: File "setup.py" or "setup.cfg" not found`, run `python -m pip install -U pip` first.)
 
 Update:
 ```sh
@@ -63,6 +67,8 @@ cd ComfyUI/custom_nodes/ComfyScript
 git pull
 python -m pip install -e ".[default]"
 ```
+
+`[default]` is necessary to install common dependencies. See [`pyproject.toml`](pyproject.toml) for other options. If no option is specified, ComfyScript will be installed without any dependencies.
 
 ### With ComfyUI package
 Install [ComfyUI package](https://github.com/hiddenswitch/ComfyUI) first:
@@ -83,12 +89,13 @@ Install/update ComfyScript:
 python -m pip install -U "comfy-script[default]"
 ```
 
-`[default]` is necessary to install common dependencies. See [`pyproject.toml`](pyproject.toml) for other options. If no option is specified, `comfy-script` will be installed without any dependencies.
-
 If there are problems with the latest ComfyUI package, one can use the last tested version:
 ```
 python -m pip install --no-build-isolation git+https://github.com/hiddenswitch/ComfyUI.git@e8eab4dbc6487a14a0c548a806b0b772e274e3df
 ```
+
+### Containers
+- [Modal](examples/modal.py) by @the-dream-machine (ComfyUI + Comfy-Cli)
 
 ### Others
 See [troubleshooting](docs/README.md#troubleshooting) if you encountered any problems. To use ComfyScript without installed ComfyUI, see [only ComfyScript package](docs/README.md#only-comfyscript-package) for details. To uninstall, see [uninstallation](docs/README.md#uninstallation).
@@ -164,7 +171,7 @@ with Workflow():
     SaveImage(image, 'ComfyUI')
 ```
 
-A Jupyter Notebook example is available at [`examples/runtime.ipynb`](examples/runtime.ipynb). (Files under `examples` directory will be ignored by Git and you can put your personal notebooks there.)
+A Jupyter Notebook example is available at [`examples/runtime.ipynb`](examples/runtime.ipynb).
 
 - [Type stubs](https://typing.readthedocs.io/en/latest/source/stubs.html) will be generated at `comfy_script/runtime/nodes.pyi` after loading. Mainstream code editors (e.g. [VS Code](https://code.visualstudio.com/docs/languages/python)) can use them to help with coding:
 

@@ -2,6 +2,11 @@
 ## Installation
 See [README](../README.md#installation) for basic ways to install.
 
+You can use the following command to install ComfyScript with the latest commit that may has not been released to PyPI yet:
+```sh
+python -m pip install "comfy-script[default] @ git+https://github.com/Chaoses-Ib/ComfyScript.git"
+```
+
 ### Only ComfyScript package
 Install/update:
 ```sh
