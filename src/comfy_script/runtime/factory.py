@@ -1,5 +1,5 @@
 from __future__ import annotations
-from enum import Enum
+from enum import Enum, StrEnum
 from pathlib import Path
 import textwrap
 from typing import Any
@@ -337,6 +337,9 @@ class RuntimeFactory:
                         t = type_id
             if c is None:
                 c = t.__name__
+
+            if isinstance(t, type(StrEnum)):
+                c += ' | str'
 
             if optional:
                 assert not output
