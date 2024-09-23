@@ -338,6 +338,9 @@ class RuntimeFactory:
             if c is None:
                 c = t.__name__
 
+            if isinstance(t, type(astutil.StrEnum)):
+                c += ' | str'
+
             if optional:
                 assert not output
                 # c = f'Optional[{c}]'
