@@ -1,6 +1,6 @@
 [project]
 name = "comfy-script"
-version = "0.5.1"
+version = "0.5.2"
 description = "A Python frontend and library for ComfyUI"
 readme = "README.md"
 # ComfyUI: >=3.8

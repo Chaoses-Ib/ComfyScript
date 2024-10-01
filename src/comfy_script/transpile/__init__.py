@@ -177,7 +177,7 @@ class WorkflowToScriptTranspiler:
         links = self.links
 
         v = node['v']
-        # print(v.id)
+        # print(v.id, node)
 
         # Modes
         # 0: Always
@@ -266,6 +266,7 @@ class WorkflowToScriptTranspiler:
                     
                     if len(args_of_same_type) == 1 and args_of_same_type[0]['move']:
                         id = args_of_same_type[0]['exp']
+                        args_of_same_type[0]['move'] = False
                     elif len(v.outputs) == 1 and len(args_of_any_type) == 1:
                         # e.g. Reroute
                         id = args_of_any_type[0]['exp']
@@ -273,6 +274,7 @@ class WorkflowToScriptTranspiler:
                         id = self._assign_id(astutil.str_to_var_id(
                             getattr(v, 'title', '') + output.name if output.name != '' else output.type
                         ))
+                    # print('output id:', id)
 
                     node.setdefault('output_ids', {})[slot_index] = id
 

@@ -1,0 +1,292 @@
+{
+  "1": {
+    "inputs": {
+      "text": "prompt text",
+      "clip": [
+        "14",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode (Prompt)"
+    }
+  },
+  "3": {
+    "inputs": {
+      "guidance": 3.5,
+      "conditioning": [
+        "1",
+        0
+      ]
+    },
+    "class_type": "FluxGuidance",
+    "_meta": {
+      "title": "FluxGuidance"
+    }
+  },
+  "4": {
+    "inputs": {
+      "vae_name": "ae.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "Load VAE"
+    }
+  },
+  "5": {
+    "inputs": {
+      "samples": [
+        "19",
+        0
+      ],
+      "vae": [
+        "4",
+        0
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode"
+    }
+  },
+  "6": {
+    "inputs": {
+      "filename_prefix": "ComfyUI",
+      "images": [
+        "5",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save Image"
+    }
+  },
+  "7": {
+    "inputs": {
+      "width": 512,
+      "height": 768,
+      "aspect_ratio": "custom",
+      "swap_dimensions": "Off",
+      "upscale_factor": 1,
+      "prescale_factor": 1,
+      "batch_size": 1
+    },
+    "class_type": "CR Aspect Ratio",
+    "_meta": {
+      "title": "🔳 CR Aspect Ratio"
+    }
+  },
+  "8": {
+    "inputs": {
+      "noise": [
+        "11",
+        0
+      ],
+      "guider": [
+        "12",
+        0
+      ],
+      "sampler": [
+        "9",
+        0
+      ],
+      "sigmas": [
+        "18",
+        0
+      ],
+      "latent_image": [
+        "7",
+        5
+      ]
+    },
+    "class_type": "SamplerCustomAdvanced",
+    "_meta": {
+      "title": "SamplerCustomAdvanced"
+    }
+  },
+  "9": {
+    "inputs": {
+      "sampler_name": "deis"
+    },
+    "class_type": "KSamplerSelect",
+    "_meta": {
+      "title": "KSamplerSelect"
+    }
+  },
+  "10": {
+    "inputs": {
+      "scheduler": "beta",
+      "steps": 30,
+      "denoise": 1,
+      "model": [
+        "16",
+        0
+      ]
+    },
+    "class_type": "BasicScheduler",
+    "_meta": {
+      "title": "BasicScheduler"
+    }
+  },
+  "11": {
+    "inputs": {
+      "noise_seed": 149684926930931
+    },
+    "class_type": "RandomNoise",
+    "_meta": {
+      "title": "RandomNoise"
+    }
+  },
+  "12": {
+    "inputs": {
+      "model": [
+        "16",
+        0
+      ],
+      "conditioning": [
+        "3",
+        0
+      ]
+    },
+    "class_type": "BasicGuider",
+    "_meta": {
+      "title": "BasicGuider"
+    }
+  },
+  "13": {
+    "inputs": {
+      "unet_name": "flux1-dev.safetensors",
+      "weight_dtype": "fp8_e4m3fn"
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "Load Diffusion Model"
+    }
+  },
+  "14": {
+    "inputs": {
+      "clip_name1": "t5.safetensors",
+      "clip_name2": "clip_l.safetensors",
+      "type": "flux"
+    },
+    "class_type": "DualCLIPLoader",
+    "_meta": {
+      "title": "DualCLIPLoader"
+    }
+  },
+  "16": {
+    "inputs": {
+      "max_shift": 1.1500000000000001,
+      "base_shift": 0.5,
+      "width": [
+        "7",
+        0
+      ],
+      "height": [
+        "7",
+        1
+      ],
+      "model": [
+        "17",
+        0
+      ]
+    },
+    "class_type": "ModelSamplingFlux",
+    "_meta": {
+      "title": "ModelSamplingFlux"
+    }
+  },
+  "17": {
+    "inputs": {
+      "lora_name": "b.safetensors",
+      "strength_model": 0.7000000000000001,
+      "model": [
+        "22",
+        0
+      ]
+    },
+    "class_type": "LoraLoaderModelOnly",
+    "_meta": {
+      "title": "LoraLoaderModelOnly"
+    }
+  },
+  "18": {
+    "inputs": {
+      "denoise": 0.4,
+      "sigmas": [
+        "10",
+        0
+      ]
+    },
+    "class_type": "SplitSigmasDenoise",
+    "_meta": {
+      "title": "SplitSigmasDenoise"
+    }
+  },
+  "19": {
+    "inputs": {
+      "noise": [
+        "21",
+        0
+      ],
+      "guider": [
+        "12",
+        0
+      ],
+      "sampler": [
+        "9",
+        0
+      ],
+      "sigmas": [
+        "18",
+        1
+      ],
+      "latent_image": [
+        "20",
+        0
+      ]
+    },
+    "class_type": "SamplerCustomAdvanced",
+    "_meta": {
+      "title": "SamplerCustomAdvanced"
+    }
+  },
+  "20": {
+    "inputs": {
+      "noise_seed": 49328841076664,
+      "noise_strength": 0.3,
+      "normalize": "true",
+      "latent": [
+        "8",
+        0
+      ]
+    },
+    "class_type": "InjectLatentNoise+",
+    "_meta": {
+      "title": "🔧 Inject Latent Noise"
+    }
+  },
+  "21": {
+    "inputs": {},
+    "class_type": "DisableNoise",
+    "_meta": {
+      "title": "DisableNoise"
+    }
+  },
+  "22": {
+    "inputs": {
+      "lora_name": "a.safetensors",
+      "strength_model": 0.7000000000000001,
+      "model": [
+        "13",
+        0
+      ]
+    },
+    "class_type": "LoraLoaderModelOnly",
+    "_meta": {
+      "title": "LoraLoaderModelOnly"
+    }
+  }
+}
