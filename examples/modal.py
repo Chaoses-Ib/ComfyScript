@@ -3,7 +3,7 @@ An example script for setting up and running ComfyUI and ComfyScript with Modal.
 
 Be careful if you want to replace the official ComfyUI with the comfyui package, Modal does not work well with it: https://github.com/Chaoses-Ib/ComfyScript/issues/69
 
-Author: @the-dream-machine
+Authors: @the-dream-machine, @Chaoses-Ib
 '''
 
 import subprocess
@@ -60,8 +60,9 @@ class Model:
         print("🎨 Generating image...")
         from comfy_script.runtime import Workflow
         from comfy_script.runtime.nodes import CheckpointLoaderSimple, CLIPTextEncode, EmptyLatentImage, KSampler, VAEDecode, SaveImage, CivitAICheckpointLoader
+        from PIL import Image
 
-        with Workflow(wait=True):
+        with Workflow():
             model, clip, vae = CivitAICheckpointLoader('https://civitai.com/models/101055?modelVersionId=128078')
             # model, clip, vae = CheckpointLoaderSimple("ponyDiffusionV6XL_v6StartWithThisOne.safetensors")
             conditioning = CLIPTextEncode('beautiful scenery nature glass bottle landscape, , purple galaxy bottle,', clip)
@@ -70,7 +71,8 @@ class Model:
             latent = KSampler(model, 156680208700286, 20, 8, 'euler', 'normal', conditioning, conditioning2, latent, 1)
             image = VAEDecode(latent, vae)
             result = SaveImage(image, 'ComfyUI')
-            print("result", result)
+        images: list[Image.Image] = result.wait().wait()
+        return images
 
 @app.local_entrypoint()
 def main(prompt: str):
