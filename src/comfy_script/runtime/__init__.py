@@ -932,6 +932,37 @@ class Task:
 
 class Workflow:
     '''
+    ## Context manager
+    `with Workflow` is a syntax sugar for combing multiple output nodes into the same workflow and putting it into the queue.
+    
+    If you have multiple output nodes and want to run them in the same workflow, with `with Workflow` you need the following code:
+    ```python
+    with Workflow(wait=True):
+        ...
+        SaveImage(...)
+
+        ...
+        SaveImage(...)
+    ```
+    Without `with Workflow` you need the following:
+    ```python
+    wf = Workflow()
+
+    ...
+    image = SaveImage(...)
+    wf += image 
+
+    ...
+    image = SaveImage(...)
+    wf += image
+
+    # or: queue.put(wf)
+    task = wf.queue()
+    task.wait()
+    ```
+    But if you only have one output node, you can just use `image.wait()` and there is no difference.
+    
+    ## Fields
     - `task: Task | None`: The last task associated with the workflow.
     '''
     def __init__(self, queue: bool = True, cancel_all: bool = False, cancel_remaining: bool = False, wait: bool = False, outputs: data.NodeOutput | Iterable[data.NodeOutput] | None = None):
