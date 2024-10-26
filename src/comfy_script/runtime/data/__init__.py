@@ -124,7 +124,7 @@ def _get_outputs_prompt_and_id(outputs: Iterable[NodeOutput]) -> (dict, IdManage
     return prompt, id
 
 class Result:
-    def __init__(self, output: dict):
+    def __init__(self, output: dict | None):
         self._output = output
     
     def __repr__(self) -> str:
@@ -134,10 +134,27 @@ class Result:
         return f'{self.__class__.__name__}({self._output.__str__()})'
 
     @classmethod
-    def from_output(cls, output: dict) -> Result:
-        if 'images' in output:
-            return ImageBatchResult(output)
+    def from_output(cls, output: dict | None) -> Result:
+        if isinstance(output, dict):
+            if 'images' in output:
+                return ImageBatchResult(output)
+        elif output is None:
+            return EmptyResult(output)
         return Result(output)
+
+class EmptyResult(Result):
+    '''
+    An empty result from an output node that outputs nothing.
+
+    Example:
+    ```
+    # Derfuu_Nodes
+    StringDebugPrint('123', '456').wait()
+    ```
+    '''
+
+    def _ipython_display_(self):
+        pass
 
 from .Images import ImageBatchResult, Images
 

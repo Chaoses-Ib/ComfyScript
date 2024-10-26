@@ -463,9 +463,9 @@ class TaskQueue:
         self._watch_thread = None
         self._queue_empty_callback = None
         self._queue_remaining_callbacks = [self._when_empty_callback]
-        self._watch_display_node = None
-        self._watch_display_node_preview = None
-        self._watch_display_task = None
+        self._watch_display_node = False
+        self._watch_display_node_preview = False
+        self._watch_display_task = False
         self.queue_remaining = 0
 
     async def _get_history(self, prompt_id: str) -> dict | None:
@@ -516,7 +516,7 @@ class TaskQueue:
                                         if self.queue_remaining == 0:
                                             for task in self._tasks.values():
                                                 print(f'ComfyScript: The queue is empty but {task} has not been executed')
-                                                await task._set_result_threadsafe(None, {})
+                                                await task._set_results_threadsafe({})
                                             self._tasks.clear()
                                         
                                         for callback in self._queue_remaining_callbacks:
@@ -527,7 +527,7 @@ class TaskQueue:
                                         outputs = {}
                                         if history is not None:
                                             outputs = history['outputs']
-                                        await task._set_result_threadsafe(None, outputs, self._watch_display_task)
+                                        await task._set_results_threadsafe(outputs, self._watch_display_task)
                                         if self._watch_display_task:
                                             print(f'Queue remaining: {self.queue_remaining}')
                                 elif msg['type'] == 'executed':
@@ -781,7 +781,7 @@ class Task:
         self.prompt_id = prompt_id
         self.number = number
         self._id = id
-        self._new_outputs = {}
+        self._new_outputs: dict[str, dict | None] = {}
         self._fut = asyncio.Future()
         self._node_preview_callbacks: list[Callable[[Task, str, Image.Image]]] = []
 
@@ -800,38 +800,41 @@ class Task:
 
             display(preview, clear=True)
     
-    async def _set_result_threadsafe(self, node_id: str | None, output: dict, display_result: bool = False) -> None:
-        if node_id is not None:
-            self._new_outputs[node_id] = output
-            if display_result:
-                from IPython.display import display
+    async def _set_result_threadsafe(self, node_id: str, output: dict | None, display_result: bool = False) -> None:
+        self._new_outputs[node_id] = output
+        if display_result:
+            from IPython.display import display
 
-                display(clear=True)
+            display(clear=True)
+            result = data.Result.from_output(output)
+            if isinstance(result, data.ImageBatchResult):
+                await Images(result)._display()
+            else:
+                display(result)
+    
+    async def _set_results_threadsafe(self, outputs: dict[str, dict | None], display_result: bool = False) -> None:
+        # ComfyUI will skip node outputs None in outputs
+        outputs = self._new_outputs | outputs
+
+        self.get_loop().call_soon_threadsafe(self._fut.set_result, outputs)
+        if display_result:
+            from IPython.display import display
+
+            image_batches = []
+            others = []
+            # TODO: Sort by the parsed id
+            for _id, output in sorted(outputs.items(), key=lambda item: item[0]):
                 result = data.Result.from_output(output)
                 if isinstance(result, data.ImageBatchResult):
-                    await Images(result)._display()
+                    image_batches.append(result)
                 else:
-                    display(result)
-        else:
-            self.get_loop().call_soon_threadsafe(self._fut.set_result, output)
-            if display_result:
-                from IPython.display import display
-
-                image_batches = []
-                others = []
-                # TODO: Sort by the parsed id
-                for _id, output in sorted(output.items(), key=lambda item: item[0]):
-                    result = data.Result.from_output(output)
-                    if isinstance(result, data.ImageBatchResult):
-                        image_batches.append(result)
-                    else:
-                        others.append(result)
-                if image_batches or others:
-                    display(clear=True)
-                if image_batches:
-                    await Images(*image_batches)._display()
-                if others:
-                    display(*others)
+                    others.append(result)
+            if image_batches or others:
+                display(clear=True)
+            if image_batches:
+                await Images(*image_batches)._display()
+            if others:
+                display(*others)
     
     async def _wait(self) -> list[data.Result]:
         '''`Task` can be directly awaited like `await task`. This method is for internal use only.'''
@@ -850,13 +853,13 @@ class Task:
         if id is None:
             return None
         
-        output = self._new_outputs.get(id)
-        if output is not None:
+        if id in self._new_outputs:
+            output: dict | None = self._new_outputs[id]
             return data.Result.from_output(output)
 
         outputs: dict = await self._fut
-        output = outputs.get(id)
-        if output is not None:
+        if id in outputs:
+            output: dict | None = outputs[id]
             return data.Result.from_output(output)
         return None
     
