@@ -81,6 +81,8 @@ class RuntimeFactory:
         
         - `import_fullname_types`: WIP.
         '''
+        self.nodes: dict[str, Any] = {}
+
         self._vars = { id: None for k, dic in self.GLOBAL_ENUMS.items() for id in dic.values() }
         self._data_type_stubs = {}
         self._enum_values = {}
@@ -520,6 +522,8 @@ def {class_id}(
         for enum_id, enum in enums.items():
             setattr(node, enum_id, enum)
         self._set_type(info['name'], class_id, node)
+
+        self.nodes[info['name']] = node
     
     def vars(self) -> dict:
         return self._vars

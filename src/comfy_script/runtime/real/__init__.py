@@ -40,7 +40,8 @@ def load(comfyui: Path | str = None, args: ComfyUIArgs | None = None, vars: dict
         config = RealModeConfig.naked()
     elif config is None:
         config = RealModeConfig()
-    asyncio.run(nodes.load(nodes_info, vars, config))
+    node.nodes.clear()
+    asyncio.run(nodes.load(nodes_info, vars, config, nodes=node.nodes))
 
 class Workflow:
     # TODO: Thread-safe
@@ -169,11 +170,13 @@ class RealModeConfig:
 
 from ... import client
 from .. import ComfyUIArgs, start_comfyui
+from . import node
 from . import nodes
 
 __all__ = [
     'load',
     'ComfyUIArgs',
     'RealModeConfig',
-    'Workflow'
+    'Workflow',
+    'node'
 ]

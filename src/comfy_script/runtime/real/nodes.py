@@ -10,7 +10,7 @@ from .. import real
 from .. import factory
 from ..nodes import _positional_args_to_keyword, Node as VirtualNode
 
-async def load(nodes_info: dict, vars: dict | None, config: real.RealModeConfig) -> None:
+async def load(nodes_info: dict, vars: dict | None, config: real.RealModeConfig, *, nodes: dict[str, typing.Any] | None = None) -> None:
     fact = RealRuntimeFactory(config)
     await fact.init()
 
@@ -21,6 +21,9 @@ async def load(nodes_info: dict, vars: dict | None, config: real.RealModeConfig)
             print(f'ComfyScript: Failed to load node {node_info["name"]}')
             traceback.print_exc()
     
+    if nodes is not None:
+        nodes.update(fact.nodes)
+
     globals().update(fact.vars())
     __all__.extend(fact.vars().keys())
 

@@ -11,7 +11,7 @@ class VirtualRuntimeFactory(factory.RuntimeFactory):
     def new_node(self, info: dict, defaults: dict, output_types: list[type]):
         return Node(info, defaults, output_types)
 
-async def load(nodes_info: dict, vars: dict | None) -> None:
+async def load(nodes_info: dict, vars: dict | None, *, nodes: dict[str, typing.Any] | None = None) -> None:
     fact = VirtualRuntimeFactory()
     await fact.init()
     
@@ -21,7 +21,10 @@ async def load(nodes_info: dict, vars: dict | None) -> None:
         except Exception as e:
             print(f'ComfyScript: Failed to load node {node_info["name"]}')
             traceback.print_exc()
-    
+
+    if nodes is not None:
+        nodes.update(fact.nodes)
+
     globals().update(fact.vars())
     __all__.extend(fact.vars().keys())
 
@@ -94,6 +97,9 @@ class Node:
                 r = [r]
         
         return r
+    
+    def __repr__(self):
+        return f'<Node {self.info["name"]}>'
 
     @classmethod
     def set_output_hook(cls, hook: typing.Callable[[data.NodeOutput | list[data.NodeOutput]], None]):

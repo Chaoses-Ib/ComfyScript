@@ -60,7 +60,8 @@ async def _load(comfyui: str | Client | Path = None, args: ComfyUIArgs | None = 
         nodes_info = await client._get_nodes_info()
     print(f'Nodes: {len(nodes_info)}')
 
-    await nodes.load(nodes_info, vars)
+    node.nodes.clear()
+    await nodes.load(nodes_info, vars, nodes=node.nodes)
     
     # TODO: Stop watch if watch turns to False
     if watch:
@@ -1050,6 +1051,7 @@ queue = TaskQueue()
 
 from .. import client
 from ..client import Client
+from . import node
 from . import nodes
 from . import data
 from .data import *
@@ -1063,5 +1065,6 @@ __all__ = [
     'queue',
     'Task',
     'Workflow',
+    'node'
 ]
 __all__.extend(data.__all__)

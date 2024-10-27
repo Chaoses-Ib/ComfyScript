@@ -1,4 +1,4 @@
-'''These nodes are the nodes provided by ComfyScript, not the nodes loaded by  ComfyUI, which should be in `runtime` package.'''
+'''These nodes are the nodes provided by ComfyScript, not the nodes loaded by ComfyUI, which should be in `runtime` package.'''
 
 __all__ = ['NODE_CLASS_MAPPINGS', 'NODE_DISPLAY_NAME_MAPPINGS']
 
