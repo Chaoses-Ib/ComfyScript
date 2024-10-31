@@ -72,7 +72,9 @@ class NodeOutput:
                     if group is not None and k in group:
                         input_type = group[k][0]
                         break
-                if factory.is_bool_enum(input_type):
+                # input_type is None if the input is extra
+                # e.g. ComfyUI-VideoHelperSuite (#22)
+                if input_type is not None and factory.is_bool_enum(input_type):
                     prompt_inputs[k] = factory.to_bool_enum(input_type, v)
                 else:
                     prompt_inputs[k] = v
