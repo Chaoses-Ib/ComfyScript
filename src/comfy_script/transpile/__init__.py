@@ -330,7 +330,7 @@ class WorkflowToScriptTranspiler:
                 node = G.nodes[v]
                 if 'v' not in node:
                     # e.g. ghostsquad.json
-                    msg = f'Unkown output node: {v}'
+                    msg = f'Unknown output node: {v}'
                     warn(msg)
                     return 0
                 pos = node['v'].pos

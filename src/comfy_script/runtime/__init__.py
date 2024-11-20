@@ -304,6 +304,34 @@ def start_comfyui(comfyui: Path | str = None, args: ComfyUIArgs | None = None, *
             nodes.EXTENSION_WEB_DIRS.update(exported_nodes.EXTENSION_WEB_DIRS)
         main.init_custom_nodes = init_custom_nodes
 
+    def spoof_logger_if_needed():
+        '''Spoof `LogInterceptor` if `start_comfyui()` in Jupyter Notebook.
+        
+        A hack for another hack. Ideally this should be fixed in ComfyUI, but Jupyter Notebook is not clearly supported,
+        and I don't want to waste time arguing with others, so just hack it here.
+
+        See also https://github.com/ipython/ipykernel/issues/786
+        '''
+        if not hasattr(sys.stdout, 'buffer'):
+            from comfy.cli_args import args
+
+            new_stdout = sys.stdout
+            new_stderr = sys.stderr
+
+            sys.stdout = sys.__stdout__
+            sys.stderr = sys.__stderr__
+            try:
+                import app.logger
+                app.logger.setup_logger(log_level=args.verbose)
+
+                # `if logs` in setup_logger() doesn't check correctly
+                app.logger.setup_logger = lambda *args, **kwargs: None
+            except ImportError:
+                pass
+            finally:
+                sys.stdout = new_stdout
+                sys.stderr = new_stderr
+
     if not autonomy:
         sys.argv.append('--quick-test-for-ci')
         def exit_hook(code = None):
@@ -365,6 +393,9 @@ def start_comfyui(comfyui: Path | str = None, args: ComfyUIArgs | None = None, *
                 globals['exit'] = exit_hook
 
                 enable_args_parsing()
+
+                spoof_logger_if_needed()
+
             comfy.options.enable_args_parsing = enable_args_parsing_hook
 
             import main
