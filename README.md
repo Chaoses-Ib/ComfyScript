@@ -45,6 +45,7 @@ It has the following use cases:
 - UI
   - [ipywidgets UI](docs/UI/ipywidgets.md)
   - [Solara UI](docs/UI/Solara.md)
+- [Differences from ComfyUI-to-Python-Extension](docs/README.md#differences-from-comfyui-to-python-extension)
 
 ## Installation
 ### With ComfyUI
