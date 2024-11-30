@@ -1,4 +1,16 @@
 # Images
+## Metadata
+By default, ComfyUI and ComfyScript will save the workflow into the generated image's metadata (in both virtual and real mode). The workflow can then be loaded from the image into ComfyUI's web UI and ComfyScript's [MetadataViewer](../UI/Solara.md#metadataviewer).
+
+You can disable this behavior by passing `--disable-metadata` when launching ComfyUI. If you start ComfyUI in ComfyScript, use the following code:
+```python
+from comfy_script.runtime import *
+load(args=ComfyUIArgs('--disable-metadata'))
+from comfy_script.runtime.nodes import *
+```
+
+Note that only PNG images are fully supported, [WebP may cannot be loaded properly](https://github.com/Chaoses-Ib/ComfyScript/issues/19) due to bugs/limitations in custom nodes and ComfyUI.
+
 ## Loading
 ### [From path](https://github.com/Chaoses-Ib/ComfyUI_Ib_CustomNodes#load-image-from-path)
 ```python
