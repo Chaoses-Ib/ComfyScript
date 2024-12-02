@@ -2,7 +2,7 @@
 ## ImageViewer
 A simple image viewer that can display multiple images with optional titles.
 
-Example:
+[Example](../../examples/ui.ipynb):
 ```python
 import comfy_script.ui as ui
 

@@ -50,3 +50,6 @@ model, clip = CivitAILoraLoader(model, clip, '350450@391994', strength_clip=1, s
 model, clip = CivitAILoraLoader(model, clip, 'https://civitai.com/models/350450?modelVersionId=391994', strength_clip=1, strength_model=1)
 model, clip = CivitAILoraLoader(model, clip, 'https://civitai.com/models/350450/sdxl-lightning-lora-2step?modelVersionId=391994', strength_clip=1, strength_model=1)
 ```
+
+## Flux
+See [Flux Examples](../../examples/flux.ipynb).

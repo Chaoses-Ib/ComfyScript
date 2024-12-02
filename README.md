@@ -45,6 +45,7 @@ It has the following use cases:
 - UI
   - [ipywidgets UI](docs/UI/ipywidgets.md)
   - [Solara UI](docs/UI/Solara.md)
+- [Examples](examples/README.md)
 - [Differences from ComfyUI-to-Python-Extension](docs/README.md#differences-from-comfyui-to-python-extension)
 
 ## Installation
@@ -218,8 +219,8 @@ A Jupyter Notebook example is available at [`examples/runtime.ipynb`](examples/r
 
 See [differences from ComfyUI's web UI](docs/Runtime.md#differences-from-comfyuis-web-ui) if you are a previous user of ComfyUI's web UI, and [runtime](docs/Runtime.md) for the details of runtime.
 
-### Examples
-#### Plotting
+### [Examples](examples)
+#### [Plotting](examples/plotting.ipynb)
 ```python
 with Workflow():
     seed = 0
