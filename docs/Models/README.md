@@ -29,6 +29,17 @@ model, clip, vae = CivitAICheckpointLoader('https://civitai.com/models/101055?mo
 model, clip, vae = CivitAICheckpointLoader('https://civitai.com/models/101055/sd-xl?modelVersionId=128078')
 ```
 
+### Saving checkpoints
+The `CheckpointSave` node can be used to save a checkpoint.
+
+For example:
+```python
+with Workflow():
+    model, clip, vae = CheckpointLoaderSimple('v1-5-pruned-emaonly.ckpt')
+    CheckpointSave(model, clip, vae, 'checkpoints/new-model')
+```
+The checkpoint will be saved to the output directory, e.g. `D:\ComfyUI\output\checkpoints\new-model_00001_.safetensors`.
+
 ## LoRA
 ### [CivitAI](https://github.com/Chaoses-Ib/civitai_comfy_nodes)
 ```python
