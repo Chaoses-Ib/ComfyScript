@@ -63,7 +63,7 @@ runtime = [
 # Addtional nodes
 # See docs/Nodes/README.md for details 
 nodes = [
-  "ComfyUI_Ib_CustomNodes >= 0.2.2",
+  "ComfyUI_Ib_CustomNodes >= 0.2.3",
   "comfyui-tooling-nodes",
   "civitai_comfy_nodes",
 ]
