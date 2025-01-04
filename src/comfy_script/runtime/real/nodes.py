@@ -1,5 +1,6 @@
 # Do not import classes here. They may be overridden by custom nodes.
 from __future__ import annotations
+import inspect
 import pathlib
 import traceback
 import typing
@@ -105,6 +106,7 @@ class RealRuntimeFactory(factory.RuntimeFactory):
                 
                 # TODO: Bool enum, path
                 
+                has_hidden_prompt_input = False
                 if config.track_workflow:
                     virtual_kwds = {}
                     for k, v in kwds.items():
@@ -133,6 +135,7 @@ class RealRuntimeFactory(factory.RuntimeFactory):
                                         prompt, id = virtual_outputs[0]._get_prompt_and_id()
                                         unique_id = id.get_id(virtual_outputs[0].node_prompt)
                                     kwds[k] = prompt
+                                    has_hidden_prompt_input = True
                                 elif v == 'UNIQUE_ID':
                                     if prompt is None:
                                         prompt, id = virtual_outputs[0]._get_prompt_and_id()
@@ -156,6 +159,20 @@ class RealRuntimeFactory(factory.RuntimeFactory):
                             if outputs is not None:
                                 return outputs
 
+                # Filter out invalid kwds
+                # TODO: LazyCell
+                valid_kwds = self._get_valid_kwds(getattr(obj, obj.FUNCTION))
+                if valid_kwds is not None:
+                    filtered_kwds = { k: v for k, v in kwds.items() if k in valid_kwds }
+                    if len(filtered_kwds) != len(kwds) and not has_hidden_prompt_input:
+                        invalid_kwds = { k: v for k, v in kwds.items() if k not in valid_kwds }
+                        print(f'ComfyScript: {info["name"]}: Invalid kwds: {invalid_kwds}')
+                    else:
+                        # kwds only valid for prompt
+                        # e.g. FooocusLoader (#85)
+                        pass
+                    kwds = filtered_kwds
+
                 # Call the node
                 outputs = getattr(obj, obj.FUNCTION)(*args, **kwds)
 
@@ -168,10 +185,10 @@ class RealRuntimeFactory(factory.RuntimeFactory):
                     # TODO: Add API
                     ui = outputs.get('ui')
                     if ui:
-                        print(f"{info['name']}: ui output: {ui}")
+                        print(f"ComfyScript: {info['name']}: ui output: {ui}")
                     expand = outputs.get('expand')
                     if expand:
-                        print(f"{info['name']}: expand output: {expand}")
+                        print(f"ComfyScript: {info['name']}: expand output: {expand}")
 
                     outputs = outputs['result']
 
@@ -212,5 +229,25 @@ class RealRuntimeFactory(factory.RuntimeFactory):
     # @staticmethod
     # def _map_arg(arg: typing.Any) -> typing.Any:
     #     return arg
+
+    @staticmethod
+    def _get_valid_kwds(f):
+        # new_args, new_varargs, new_varkwds, new_defaults = inspect.getargspec(f)
+        # if new_varkwds is not None:
+        #     valid_kwds = None
+        # else:
+        #     valid_kwds = set(new_args)
+
+        valid_kwds = set()
+        signature = inspect.signature(f)
+        for param in signature.parameters.values():
+            if param.kind == param.VAR_KEYWORD:
+                valid_kwds = None
+                break
+            elif param.kind == param.POSITIONAL_ONLY:
+                pass
+            valid_kwds.add(param.name)
+        
+        return valid_kwds
 
 __all__ = []
