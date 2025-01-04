@@ -85,6 +85,10 @@ class RealRuntimeFactory(factory.RuntimeFactory):
                 obj = orginal_new(cls)
                 obj.__init__()
 
+                # # Map args and kwds
+                # args = tuple(map(self._map_arg, args))
+                # kwds = { k: self._map_arg(v) for k, v in kwds.items() }
+
                 # TODO: LazyCell
                 if config.args_to_kwds:
                     # kwds should take precedence over args
@@ -155,6 +159,22 @@ class RealRuntimeFactory(factory.RuntimeFactory):
                 # Call the node
                 outputs = getattr(obj, obj.FUNCTION)(*args, **kwds)
 
+                # Unpack result if this is not an output node
+                # e.g. FooocusLoader (#85)
+                # TODO: Unpack output nodes too?
+                #       The result of output nodes can still be linked to other nodes.
+                if isinstance(outputs, dict) and info.get('output_node') is not True:
+                    # Print if not empty
+                    # TODO: Add API
+                    ui = outputs.get('ui')
+                    if ui:
+                        print(f"{info['name']}: ui output: {ui}")
+                    expand = outputs.get('expand')
+                    if expand:
+                        print(f"{info['name']}: expand output: {expand}")
+
+                    outputs = outputs['result']
+
                 if config.track_workflow and virtual_outputs is not None:
                     if isinstance(outputs, typing.Iterable) and not isinstance(outputs, dict):
                         if len(outputs) != len(virtual_outputs):
@@ -188,5 +208,9 @@ class RealRuntimeFactory(factory.RuntimeFactory):
                 })
         
         return cls
+
+    # @staticmethod
+    # def _map_arg(arg: typing.Any) -> typing.Any:
+    #     return arg
 
 __all__ = []
