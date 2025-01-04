@@ -13,13 +13,18 @@ def prompt_to_workflow(prompt: dict, nodes_info: dict) -> dict:
         widgets_values = {}
         for name, value in prompt_node['inputs'].items():
             if isinstance(value, list):
-                value_type = info_flatten_inputs[name][0]
-                inputs.append({
-                    'name': name,
-                    'type': value_type,
-                    # Intermediate
-                    'link': value,
-                })
+                if name in info_flatten_inputs:
+                    value_type = info_flatten_inputs[name][0]
+                    inputs.append({
+                        'name': name,
+                        'type': value_type,
+                        # Intermediate
+                        'link': value,
+                    })
+                else:
+                    # Ignore hidden inputs
+                    # In real mode they are probably ill-formed
+                    pass
             else:
                 # TODO: https://github.com/comfyanonymous/ComfyUI/issues/2275
                 widgets_values[name] = value
