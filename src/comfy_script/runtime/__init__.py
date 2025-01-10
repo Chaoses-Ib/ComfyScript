@@ -423,7 +423,14 @@ def start_comfyui(comfyui: Path | str = None, args: ComfyUIArgs | None = None, *
         asyncio.get_event_loop_policy().set_event_loop(original_loop)
         
         if not no_server:
-            threading.Thread(target=main.server.loop.run_until_complete, args=(main.server.publish_loop(),), daemon=True).start()
+            try:
+                import server
+                server_instance = server.PromptServer.instance
+            except (ImportError, AttributeError):
+                # main.server is no longer the server instance since ComfyUI v0.3.10 (https://github.com/comfyanonymous/ComfyUI/pull/6114)
+                server_instance = main.server
+
+            threading.Thread(target=server_instance.loop.run_until_complete, args=(server_instance.publish_loop(),), daemon=True).start()
 
             comfyui_base_url = f'http://127.0.0.1:{main.args.port}/'
             client.client = client.Client(comfyui_base_url)
