@@ -36,7 +36,13 @@ async def load(nodes_info: dict, vars: dict | None, config: real.RealModeConfig,
 
     # nodes.pyi
     with open(pathlib.Path(__file__).resolve().with_suffix('.pyi'), 'w', encoding='utf8') as f:
-        f.write(fact.type_stubs())
+        stubs = fact.type_stubs()
+        try:
+            f.write(stubs)
+        except UnicodeEncodeError:
+            # Replace invalid chars in type stubs with '�'
+            # e.g. #87
+            f.write(stubs.encode('utf8', 'surrogateescape').decode('utf8', 'replace'))
 
 class RealNodeOutputWrapper(wrapt.ObjectProxy):
     def __repr__(self):
