@@ -218,6 +218,8 @@ def start_comfyui(comfyui: Path | str = None, args: ComfyUIArgs | None = None, *
 
     - `autonomy`: If enabled, currently, the server will not be started even if `no_server=False`.
     '''
+    from . import run
+
     global comfyui_started, comfyui_base_url
     if comfyui_started and (comfyui_base_url is not None or no_server):
         return
@@ -391,6 +393,7 @@ def start_comfyui(comfyui: Path | str = None, args: ComfyUIArgs | None = None, *
                 globals = inspect.currentframe().f_back.f_globals
                 globals['__name__'] = '__main__'
                 globals['exit'] = exit_hook
+                run._redirect___main___file(globals['__file__'])
 
                 enable_args_parsing()
 
@@ -474,6 +477,7 @@ def start_comfyui(comfyui: Path | str = None, args: ComfyUIArgs | None = None, *
 
     sys.argv[1:] = orginal_argv
 
+    run._redirect___main___file_warn = True
     comfyui_started = True
 
     if not no_server and join_at_exit:
