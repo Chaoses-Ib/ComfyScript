@@ -128,7 +128,16 @@ class RealModeConfig:
     args_to_kwds: bool = True
     '''Map positional arguments to keyword arguments.
 
-    Virtual mode and the generated type stubs for nodes determine the position of arguments by `INPUT_TYPES`, but it may differ from what the position `FUNCTION` actually has. To make the code in virtual mode compatible with  real mode, and reuse the type stubs, `args_to_kwds` is used to map all positional arguments to keyword arguments. If `args_to_kwds` is not used, keyword arguments should always be used.
+    Virtual mode and the generated type stubs for nodes determine the position of arguments by `INPUT_TYPES`, but it may differ from what the position `FUNCTION` actually has. To make the code in virtual mode compatible with real mode, and reuse the type stubs, `args_to_kwds` is used to map all positional arguments to keyword arguments. If `args_to_kwds` is not used, keyword arguments should always be used.
+    '''
+
+    map_inputs: bool = True
+    '''
+    Do some conversions for inputs before calling the nodes, e.g. converting `bool` to corresponding `str`.
+
+    See details at `comfy_script.runtime.factory.RuntimeFactory._map_input`.
+
+    Require `args_to_kwds` at the moment.
     '''
 
     use_config_defaults: bool = True
@@ -166,7 +175,7 @@ class RealModeConfig:
     @staticmethod
     def naked() -> RealModeConfig:
         '''Equivalent to disbling all options.'''
-        return RealModeConfig(False, False, False, False, False, False, False)
+        return RealModeConfig(False, False, False, False, False, False, False, False)
 
 from ... import client
 from .. import ComfyUIArgs, start_comfyui

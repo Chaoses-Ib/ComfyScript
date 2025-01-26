@@ -101,6 +101,8 @@ class RealRuntimeFactory(factory.RuntimeFactory):
                     # kwds should take precedence over args
                     kwds = _positional_args_to_keyword(info, args) | kwds
                     args = ()
+                    if config.map_inputs:
+                        kwds = { k: RealRuntimeFactory._map_input(k, v, info) for k, v in kwds.items() }
                 
                 kwds_without_defaults = kwds
                 if config.use_config_defaults:
@@ -109,8 +111,6 @@ class RealRuntimeFactory(factory.RuntimeFactory):
                     else:
                         pos_kwds = _positional_args_to_keyword(info, args)
                         kwds = { k: v for k, v in defaults.items() if k not in pos_kwds } | kwds
-                
-                # TODO: Bool enum, path
                 
                 has_hidden_prompt_input = False
                 if config.track_workflow:

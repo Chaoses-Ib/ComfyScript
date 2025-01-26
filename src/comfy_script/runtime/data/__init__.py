@@ -65,24 +65,11 @@ class NodeOutput:
         inputs = self.node_prompt['inputs']
         prompt_inputs = {}
         for k, v in inputs.items():
-            if v is True or v is False:
-                input_type = None
-                for group in 'required', 'optional':
-                    group: dict = self.node_info['input'].get(group)
-                    if group is not None and k in group:
-                        input_type = group[k][0]
-                        break
-                # input_type is None if the input is extra
-                # e.g. ComfyUI-VideoHelperSuite (#22)
-                if input_type is not None and factory.is_bool_enum(input_type):
-                    prompt_inputs[k] = factory.to_bool_enum(input_type, v)
-                else:
-                    prompt_inputs[k] = v
-            elif isinstance(v, NodeOutput):
+            if isinstance(v, NodeOutput):
                 prompt_inputs[k] = [v._update_prompt(prompt, id), v.output_slot]
             else:
                 # Other convertions are done in client.WorkflowJSONEncoder
-                prompt_inputs[k] = v
+                prompt_inputs[k] = factory.RuntimeFactory._map_input(k, v, self.node_info)
         
         new_id = id.assign_id(self.node_prompt)
         prompt[new_id] = {

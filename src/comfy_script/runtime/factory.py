@@ -542,6 +542,29 @@ from enum import Enum as StrEnum, IntEnum, Enum as FloatEnum
         c += '\n'.join(self._node_type_stubs)
         return c
 
+    @staticmethod
+    def _map_input(k: str, v: Any, node_info: dict) -> Any:
+        '''
+        Do some conversions for inputs before calling the nodes, e.g. converting `bool` to corresponding `str`.
+
+        ### Bool enum conversions
+        The motivation to do such conversions is to unify the chaos situation of bool enums. There are many possible bool enums used by different custom nodes: e.g. `'enable'/'disable', 'on'/'off', 'true'/'false', 'yes'/'no', True/False` and their upper case variants. I think the cognitive cost is smaller to use `True`/`False` for them all.
+        '''
+        if v is True or v is False:
+            input_type = None
+            for group in 'required', 'optional':
+                group: dict = node_info['input'].get(group)
+                if group is not None and k in group:
+                    input_type = group[k][0]
+                    break
+            # input_type is None if the input is extra
+            # e.g. ComfyUI-VideoHelperSuite (#22)
+            if input_type is not None and is_bool_enum(input_type):
+                # print(f'ComfyScript: _map_input: {k}: {v} -> {repr(to_bool_enum(input_type, v))}')
+                return to_bool_enum(input_type, v)
+        # TODO: Path
+        return v
+
 __all__ = [
     'RuntimeFactory',
 ]
