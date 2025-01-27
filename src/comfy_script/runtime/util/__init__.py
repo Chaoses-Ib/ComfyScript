@@ -73,6 +73,7 @@ def get_images(value: 'Image', *, save: bool = False) -> list[PIL.Image.Image | 
     '''
     Example:
     ```
+    # Returns list[PIL.Image.Image | None]
     util.get_images(EmptyImage(batch_size=2))
     util.get_images(EmptyImage(batch_size=2), save=True)
     ```
@@ -81,7 +82,96 @@ def get_images(value: 'Image', *, save: bool = False) -> list[PIL.Image.Image | 
         SaveImage: 'type[SaveImage]' = node.nodes['SaveImage']
         result = SaveImage(value).wait()
     else:
+        # ComfyUI has no built-in API to get images without saving them to the disk (except for previews).
+        # TODO: ETNSendImageWebSocket
         PreviewImage: 'type[PreviewImage]' = node.nodes['PreviewImage']
         result = PreviewImage(value).wait()
     assert isinstance(result, data.ImageBatchResult), 'The value is not image'
     return result.wait()
+
+
+def concat_images(*images: 'Image') -> 'Image':
+    '''
+    Example:
+    ```
+    util.concat_images(gen_image(), gen_image())
+    util.concat_images(*[gen_image() for _ in range(2)])
+
+    images = util.get_images(util.concat_images(
+        EmptyImage(batch_size=2),
+        EmptyImage(batch_size=2)
+    ))
+    print(len(images))
+    # 4
+    ```
+    '''
+    ImageBatch: 'type[ImageBatch]' = node.nodes['ImageBatch']
+
+    assert len(images) > 0
+    image = images[0]
+    for img in images[1:]:
+        image = ImageBatch(image, img)
+    return image
+
+def save_image_and_get_paths(image: 'Image', prefix: str | None = None, *, temp: bool = False, type: bool = True) -> list[str]:
+    '''
+    - `prefix`: `ComfyUI` by default. Ignored if `temp` is `True`.
+
+    Example:
+    ```
+    paths = util.save_image_and_get_paths(EmptyImage(batch_size=2), 'prefix')
+    print(paths)
+    # ['prefix_00001_.png [output]', 'prefix_00002_.png [output]']
+
+    paths = util.save_image_and_get_paths(EmptyImage(batch_size=2), temp=True)
+    print(paths)
+    # ['ComfyUI_temp_sirba_00001_.png [temp]', 'ComfyUI_temp_sirba_00002_.png [temp]']
+    ```
+    With `load_image_from_paths`:
+    ```
+    paths = util.save_image_and_get_paths(EmptyImage(batch_size=2), temp=True)
+    ...
+    images = util.get_images(util.load_image_from_paths(paths))
+    print(len(images))
+    # 2
+    ```
+    '''
+    if not temp:
+        SaveImage: 'type[SaveImage]' = node.nodes['SaveImage']
+        result = SaveImage(image, prefix).wait()
+    else:
+        PreviewImage: 'type[PreviewImage]' = node.nodes['PreviewImage']
+        result = PreviewImage(image).wait()
+
+    images: list[dict] = result._output['images']
+    if type:
+        return list([f'{d["filename"]} [{d["type"]}]' for d in images])
+    else:
+        return list([d['filename'] for d in images])
+
+def load_image_from_paths(paths: list[str]) -> 'Image':
+    '''
+    Example:
+    ```
+    images = util.get_images(util.load_image_from_paths([
+        'ComfyUI_00001_.png [output]',
+        'ComfyUI_00002_.png [output]',
+        r'D:/ComfyUI/output/ComfyUI_00001_.png',
+    ]))
+    print(len(images))
+    # 3
+    ```
+    With `save_image_and_get_paths`:
+    ```
+    paths = util.save_image_and_get_paths(EmptyImage(batch_size=2), temp=True)
+    ...
+    images = util.get_images(util.load_image_from_paths(paths))
+    print(len(images))
+    # 2
+    ```
+    Required custom nodes: ComfyUI_Ib_CustomNodes (installed with ComfyScript by default)
+    '''
+    LoadImageFromPath: 'type[LoadImageFromPath] | None' = node.get('LoadImageFromPath')
+    if LoadImageFromPath:
+        return concat_images(*[LoadImageFromPath(path)[0] for path in paths])
+    raise Exception('Please install ComfyUI_Ib_CustomNodes or load the images with other nodes')
