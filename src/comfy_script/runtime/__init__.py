@@ -1097,6 +1097,7 @@ from . import node
 from . import nodes
 from . import data
 from .data import *
+from . import util
 
 __all__ = [
     'load',
@@ -1107,6 +1108,7 @@ __all__ = [
     'queue',
     'Task',
     'Workflow',
-    'node'
+    'node',
+    'util'
 ]
 __all__.extend(data.__all__)
