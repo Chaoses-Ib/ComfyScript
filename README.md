@@ -171,6 +171,10 @@ with Workflow():
     latent = KSampler(model, 156680208700286, 20, 8, 'euler', 'normal', conditioning, conditioning2, latent, 1)
     image = VAEDecode(latent, vae)
     SaveImage(image, 'ComfyUI')
+    
+    # To retrieve `image` instead of saving it, replace `SaveImage` with:
+    # images = util.get_images(image)
+    # `images` is of type `list[PIL.Image.Image]`
 ```
 
 A Jupyter Notebook example is available at [`examples/runtime.ipynb`](examples/runtime.ipynb).
