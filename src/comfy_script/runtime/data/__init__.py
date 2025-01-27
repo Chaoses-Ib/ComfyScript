@@ -97,6 +97,9 @@ class NodeOutput:
         return asyncio.run(self._wait(source))
 
 def _get_outputs_prompt_and_id(outputs: Iterable[NodeOutput]) -> (dict, IdManager):
+    if not outputs:
+        return {}, IdManager()
+    
     if len(outputs) == 1:
         return outputs[0]._get_prompt_and_id()
     

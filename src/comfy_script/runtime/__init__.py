@@ -699,6 +699,10 @@ class TaskQueue:
             raise TypeError(f'ComfyScript: Invalid workflow type: {workflow}')
         # print(prompt)
 
+        # Empty prompt (no output nodes)
+        if not prompt:
+            return None
+
         async with client.client.session() as session:
             extra_data = {}
             if _save_script_source:
@@ -1014,11 +1018,12 @@ class Workflow:
     def __init__(self, queue: bool = True, cancel_all: bool = False, cancel_remaining: bool = False, wait: bool = False, outputs: data.NodeOutput | Iterable[data.NodeOutput] | None = None):
         '''
         - `queue`: Put the workflow into the queue when exiting the context.
+          - Outputs that are already queued (called `.wait()` or `util.get()`) before exiting will be ignored.
         - `cancel_all`: Call `queue.cancel_all()` before queueing the workflow, so that it can start immediately.
         - `cancel_remaining`: Call `queue.cancel_remaining()` before queueing the workflow, so that it can start after the current task finishes.
         - `wait`: Wait for the task to finish before exiting the context. No effect if `queue` is `False`.
         '''
-        self._outputs = []
+        self._outputs: list[data.NodeOutput] = []
         if outputs is not None:
             self += outputs
         self._queue_when_exit = queue
@@ -1035,7 +1040,14 @@ class Workflow:
         return self
     
     def _get_prompt_and_id(self) -> (dict, data.IdManager):
-        return data._get_outputs_prompt_and_id(self._outputs)
+        unqueued_outputs = []
+        for output in self._outputs:
+            if output.task is not None:
+                # print(f'ComfyScript: The output node {output.node_info["name"]} has already been queued')
+                pass
+            else:
+                unqueued_outputs.append(output)
+        return data._get_outputs_prompt_and_id(unqueued_outputs)
 
     def api_format(self) -> dict:
         return self._get_prompt_and_id()[0]
@@ -1053,7 +1065,8 @@ class Workflow:
 
         self.task = await queue._put(self, source)
         for output in self._outputs:
-            output.task = self.task
+            if output.task is None:
+                output.task = self.task
         return self.task
     
     def queue(self, source = None) -> Task | None:
