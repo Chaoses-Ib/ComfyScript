@@ -409,6 +409,12 @@ def start_comfyui(comfyui: Path | str = None, args: ComfyUIArgs | None = None, *
         else:
             print(f'ComfyScript: Importing ComfyUI from comfyui package')
 
+            try:
+                # main_pre must be the earliest import since it suppresses some spurious warnings
+                import comfy.cmd.main_pre
+            except Exception:
+                pass
+
             import comfy.cmd.main as main
 
             main.exit = exit_hook
