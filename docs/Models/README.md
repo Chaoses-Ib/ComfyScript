@@ -12,6 +12,26 @@ print(list(Checkpoints))
 # [<Checkpoints.Anything_V3_0: 'Anything-V3.0.ckpt'>, <Checkpoints.Realistic_Vision_V5_1_fp16_no_ema: 'Realistic_Vision_V5.1_fp16-no-ema.safetensors'>, ..., <Checkpoints.wd_illusion_fp16: 'wd-illusion-fp16.safetensors'>]
 ```
 
+Note if you are using the ComfyUI package (hiddenswitch/ComfyUI), it will only load models under the working directory by default (e.g. `%pwd/models/checkpoints`), different from the official one. You can change this behavior with the following arguments (e.g. `load(args=ComfyUIArgs('...', '...'))` ):
+```sh
+-w CWD, --cwd CWD     Specify the working directory. If not set, this is the current working directory. models/, input/, output/ and other directories will be
+                      located here by default. [env var: COMFYUI_CWD]
+--base-paths BASE_PATHS [BASE_PATHS ...]
+                      Additional base paths for custom nodes, models and inputs. [env var: COMFYUI_BASE_PATHS]
+--extra-model-paths-config PATH [PATH ...]
+                      Load one or more extra_model_paths.yaml files. [env var: COMFYUI_EXTRA_MODEL_PATHS_CONFIG]
+--output-directory OUTPUT_DIRECTORY
+                      Set the ComfyUI output directory. [env var: COMFYUI_OUTPUT_DIRECTORY]
+--temp-directory TEMP_DIRECTORY
+                      Set the ComfyUI temp directory (default is in the ComfyUI directory). [env var: COMFYUI_TEMP_DIRECTORY]
+--input-directory INPUT_DIRECTORY
+                      Set the ComfyUI input directory. [env var: COMFYUI_INPUT_DIRECTORY]
+--create-directories  Creates the default models/, input/, output/ and temp/ directories, then exits. [env var: COMFYUI_CREATE_DIRECTORIES]
+--user-directory USER_DIRECTORY
+                      Set the ComfyUI user directory with an absolute path. [env var: COMFYUI_USER_DIRECTORY]
+```
+`os.chdir()`/`%cd` can also be used to change the working directory.
+
 ### [CivitAI](https://github.com/Chaoses-Ib/civitai_comfy_nodes)
 ```python
 def CivitAICheckpointLoader(
