@@ -30,7 +30,11 @@ def load(comfyui: Path | str = None, args: ComfyUIArgs | None = None, vars: dict
     else:
         # set_progress_bar_global_hook is removed in new versions of comfyui package
         import comfy.execution_context
-        comfy.execution_context.current_execution_context().server.receive_all_progress_notifications = False
+        try:
+            comfy.execution_context.current_execution_context().server.receive_all_progress_notifications = False
+        except Exception:
+            # receive_all_progress_notifications is readonly in new versions, give up
+            pass
 
     # Import nodes
     nodes_info = client.get_nodes_info()
