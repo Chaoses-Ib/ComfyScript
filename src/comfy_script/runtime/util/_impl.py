@@ -4,6 +4,8 @@
 > It's pretty limited as the function can only execute the workflow to get that one value. Perhaps I can make it more flexible by allow functions to add callback to process the node output, though it's a bit hacky.
 
 TODO: Real mode support
+- Auto resolve node module
+- Unify `.wait()`
 '''
 
 from typing import TYPE_CHECKING
@@ -11,6 +13,7 @@ import PIL.Image
 
 if TYPE_CHECKING:
     from comfy_script.runtime.nodes import *
+    import comfy_script.runtime.real.nodes as real
 
 from .. import node
 from .. import data
@@ -69,7 +72,7 @@ def get_str(value: 'str | String') -> str:
 
     raise Exception('Please install ComfyUI-Crystools / ComfyUI-Custom-Scripts / ComfyUI_tinyterraNodes or get the value with other output nodes')
 
-def get_images(value: 'Image', *, save: bool = False) -> list[PIL.Image.Image | None]:
+def get_images(value: 'Image | real.Image', *, save: bool = False) -> list[PIL.Image.Image | None]:
     '''
     Example:
     ```
@@ -77,7 +80,16 @@ def get_images(value: 'Image', *, save: bool = False) -> list[PIL.Image.Image | 
     util.get_images(EmptyImage(batch_size=2))
     util.get_images(EmptyImage(batch_size=2), save=True)
     ```
+
+    Required custom nodes:
+    - Virtual mode: None
+    - Real mode: ComfyUI_Ib_CustomNodes (installed with ComfyScript by default)
     '''
+    if not isinstance(value, data.NodeOutput):
+        from ..real import node
+        ImageToPIL: 'type[ImageToPIL]' = node.nodes['ImageToPIL']
+        return ImageToPIL(value)
+
     if save:
         SaveImage: 'type[SaveImage]' = node.nodes['SaveImage']
         result = SaveImage(value).wait()

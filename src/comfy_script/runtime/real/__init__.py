@@ -185,11 +185,13 @@ from ... import client
 from .. import ComfyUIArgs, start_comfyui
 from . import node
 from . import nodes
+from . import util
 
 __all__ = [
     'load',
     'ComfyUIArgs',
     'RealModeConfig',
     'Workflow',
-    'node'
+    'node',
+    'util'
 ]
