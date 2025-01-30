@@ -5,6 +5,7 @@
 
 TODO: Real mode support
 - Auto resolve node module
+  - UnboundLocalError
 - Unify `.wait()`
 '''
 
@@ -86,8 +87,8 @@ def get_images(value: 'Image | real.Image', *, save: bool = False) -> list[PIL.I
     - Real mode: ComfyUI_Ib_CustomNodes (installed with ComfyScript by default)
     '''
     if not isinstance(value, data.NodeOutput):
-        from ..real import node
-        ImageToPIL: 'type[ImageToPIL]' = node.nodes['ImageToPIL']
+        from ..real import node as rnode
+        ImageToPIL: 'type[ImageToPIL]' = rnode.nodes['ImageToPIL']
         return ImageToPIL(value)
 
     if save:
