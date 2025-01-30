@@ -323,11 +323,16 @@ def start_comfyui(comfyui: Path | str = None, args: ComfyUIArgs | None = None, *
             sys.stdout = sys.__stdout__
             sys.stderr = sys.__stderr__
             try:
-                import app.logger
-                app.logger.setup_logger(log_level=args.verbose)
+                try:
+                    import app.logger as logger
+                except ModuleNotFoundError:
+                    # comfyui package
+                    import comfy.app.logger as logger
+                    from comfy.cmd.main_pre import args
+                logger.setup_logger(log_level=args.verbose)
 
                 # `if logs` in setup_logger() doesn't check correctly
-                app.logger.setup_logger = lambda *args, **kwargs: None
+                logger.setup_logger = lambda *args, **kwargs: None
             except ImportError:
                 pass
             finally:
@@ -414,6 +419,8 @@ def start_comfyui(comfyui: Path | str = None, args: ComfyUIArgs | None = None, *
                 import comfy.cmd.main_pre
             except Exception:
                 pass
+
+            spoof_logger_if_needed()
 
             import comfy.cmd.main as main
 
