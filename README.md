@@ -50,6 +50,10 @@ It has the following use cases:
 
 ## Installation
 ### With ComfyUI
+If you have Python/ComfyUI installed:
+
+<details>
+
 Install ComfyUI first, see [Installing](https://github.com/comfyanonymous/ComfyUI#installing) or use [Comfy-Cli](https://github.com/Comfy-Org/comfy-cli) to install:
 ```sh
 python -m pip install comfy-cli
@@ -72,7 +76,58 @@ python -m pip install -e ".[default]"
 
 `[default]` is necessary to install common dependencies. See [`pyproject.toml`](pyproject.toml) for other options. If no option is specified, ComfyScript will be installed without any dependencies.
 
+</details>
+
+### With ComfyUI & uv venv
+If you haven't installed Python/ComfyUI, you can use [uv](https://docs.astral.sh/uv/), a fast Python package and project manager, to install ComfyUI and ComfyScript:
+
+<details>
+
+[Install uv](https://docs.astral.sh/uv/getting-started/installation/) first. Then create a venv, install Comfy-Cli and ComfyUI:
+```sh
+mkdir ComfyUI
+cd ComfyUI
+uv venv --seed --python 3.12
+uv pip install comfy-cli
+uv run comfy --workspace . install
+
+# (Optional) Start ComfyUI to test
+# uv run main.py
+```
+
+Install ComfyScript:
+```sh
+git clone https://github.com/Chaoses-Ib/ComfyScript.git ./custom_nodes/ComfyScript
+uv pip install -e "./custom_nodes/ComfyScript[default]"
+```
+
+Update ComfyScript:
+```sh
+git -C "./custom_nodes/ComfyScript" pull
+uv pip install -e "./custom_nodes/ComfyScript[default]"
+```
+
+`[default]` is necessary to install common dependencies. See [`pyproject.toml`](pyproject.toml) for other options. If no option is specified, ComfyScript will be installed without any dependencies.
+
+Note uv can only discover the ComfyUI venv when the working directory is `ComfyUI` or `ComfyUI/*`. To use the venv in other directories, like in `ComfyUI/custom_nodes/ComfyScript` or your script directory, you need to activate it manually:
+```pwsh
+cd ComfyUI
+# Windows
+.\.venv\Scripts\activate
+# Linux
+source .venv/bin/activate
+
+# To let VS Code discover the venv, e.g.:
+cd ComfyUI/custom_nodes/ComfyScript
+code .
+```
+</details>
+
 ### With ComfyUI package
+If you want to install ComfyUI as a pip package:
+
+<details>
+
 Install [ComfyUI package](https://github.com/hiddenswitch/ComfyUI) first:
 - If PyTorch is not installed:
 
@@ -91,10 +146,13 @@ Install/update ComfyScript:
 python -m pip install -U "comfy-script[default]"
 ```
 
+`[default]` is necessary to install common dependencies. See [`pyproject.toml`](pyproject.toml) for other options. If no option is specified, ComfyScript will be installed without any dependencies.
+
 If there are problems with the latest ComfyUI package, one can use the last tested version:
 ```
 python -m pip install --no-build-isolation git+https://github.com/hiddenswitch/ComfyUI.git@95a12f42e2b0c78202af10f2337009bd769157a7
 ```
+</details>
 
 ### Containers
 - [Modal](examples/modal.py) by @the-dream-machine (ComfyUI + Comfy-Cli)

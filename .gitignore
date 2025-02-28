@@ -1,7 +1,11 @@
+/scripts
+/user
+
 private/
 *.private
 *.private.*
 
+# TODO: Remove
 /examples
 
 # Ignore dynaconf files
