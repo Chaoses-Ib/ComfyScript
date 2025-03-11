@@ -8,6 +8,7 @@ import traceback
 from typing import Callable, Iterable
 import uuid
 from warnings import warn
+import dataclasses
 
 import asyncio
 import nest_asyncio
@@ -477,9 +478,20 @@ class TaskQueue:
                                     # See ComfyUI::main.hijack_progress
                                     # 'prompt_id', 'node': https://github.com/comfyanonymous/ComfyUI/issues/2425
                                     progress_data = msg['data']
-                                    # TODO: Node
+
                                     value = progress_data['value']
                                     max = progress_data['max']
+
+                                    prompt_id = progress_data.get('prompt_id')
+                                    node = progress_data.get('node')
+                                    if prompt_id is not None:
+                                        task: Task = self._tasks.get(prompt_id)
+                                        task._set_node_progress(TaskProgress(task=task, node_id=node, value=value, max=max, _display=True))
+                                    else:
+                                        warn(f'Cannot get progress node, please update the ComfyUI server to at least 66831eb6e96cd974fb2d0fc4f299b23c6af16685 (2024-01-02)')
+
+                                    # TODO: Move to callback
+                                    # TODO: Node
                                     if value == 1:
                                         if pbar is not None:
                                             pbar.close()
@@ -715,6 +727,20 @@ class TaskQueue:
         await self._cancel_remaining()
         await self._cancel_current()
 
+@dataclasses.dataclass
+class TaskProgress:
+    task: Task
+    node_id: str
+
+    value: int
+    '''The current progress value. `1 <= value <= max`'''
+    max: int
+    '''The maximum progress value. e.g. KSampler steps'''
+
+    # preview: Image.Image | None
+
+    _display: bool
+
 class Task:
     def __init__(self, prompt_id: str, number: int, id: data.IdManager):
         self.prompt_id = prompt_id
@@ -722,6 +748,7 @@ class Task:
         self._id = id
         self._new_outputs: dict[str, dict | None] = {}
         self._fut = asyncio.Future()
+        self._node_progress_callbacks: list[Callable[[TaskProgress], None]] = []
         self._node_preview_callbacks: list[Callable[[Task, str, Image.Image]]] = []
 
     def __str__(self):
@@ -730,6 +757,10 @@ class Task:
     def __repr__(self):
         return f'Task(n={self.number}, id={self.prompt_id})'
     
+    def _set_node_progress(self, progress: TaskProgress):
+        for callback in self._node_progress_callbacks:
+            callback(progress)
+
     def _set_node_preview(self, node_id: str, preview: Image.Image, display: bool):
         for callback in self._node_preview_callbacks:
             callback(self, node_id, preview)
@@ -830,6 +861,34 @@ class Task:
 
     # def __await__(self):
     #     return self._wait().__await__()
+
+    def add_progress_callback(self, callback: Callable[[TaskProgress], None]):
+        '''
+        Example:
+        ```
+        queue.watch_display(False)
+
+        with Workflow() as wf:
+            model, clip, vae = CheckpointLoaderSimple(Checkpoints.v1_5_pruned_emaonly)
+            latent = KSampler(model, steps=10, positive=CLIPTextEncode('1girl', clip), negative=CLIPTextEncode('watermark', clip), latent_image=EmptyLatentImage())
+            image = VAEDecode(latent, vae)
+            SaveImage(image)
+
+        def progress_callback(progress: TaskProgress):
+            print(progress.node_id, progress.value, progress.max)
+        wf.task.add_progress_callback(progress_callback)
+        """
+        KSampler.0 1 10
+        KSampler.0 2 10
+        ...
+        KSampler.0 10 10
+        """
+        ```
+        '''
+        self._node_progress_callbacks.append(callback)
+    
+    def remove_progress_callback(self, callback: Callable[[TaskProgress], None]):
+        self._node_progress_callbacks.remove(callback)
 
     def add_preview_callback(self, callback: Callable[[Task, str, Image.Image], None]):
         self._node_preview_callbacks.append(callback)
@@ -1011,6 +1070,7 @@ __all__ = [
     'ComfyUIArgs',
     'start_comfyui',
     'TaskQueue',
+    'TaskProgress',
     'queue',
     'Task',
     'Workflow',
