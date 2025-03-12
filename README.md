@@ -116,11 +116,9 @@ cd ComfyUI
 .\.venv\Scripts\activate
 # Linux
 source .venv/bin/activate
-
-# To let VS Code discover the venv, e.g.:
-cd ComfyUI/custom_nodes/ComfyScript
-code .
 ```
+
+See [VS Code](docs/README.md#vs-code) if you have problems when using ComfyScript in VS Code.
 </details>
 
 ### With ComfyUI package
@@ -159,7 +157,7 @@ python -m pip install --no-build-isolation git+https://github.com/hiddenswitch/C
 - [promeG/comfyui: ComfyUI docker images](https://github.com/promeG/comfyui)
 
 ### Others
-See [troubleshooting](docs/README.md#troubleshooting) if you encountered any problems. To use ComfyScript without installed ComfyUI, see [only ComfyScript package](docs/README.md#only-comfyscript-package) for details. To uninstall, see [uninstallation](docs/README.md#uninstallation).
+See [troubleshooting](docs/README.md#troubleshooting) and [VS Code](docs/README.md#vs-code) if you encountered any problems. To use ComfyScript without installed ComfyUI, see [only ComfyScript package](docs/README.md#only-comfyscript-package) for details. To uninstall, see [uninstallation](docs/README.md#uninstallation).
 
 ## Transpiler
 The transpiler can translate ComfyUI's workflows to ComfyScript.

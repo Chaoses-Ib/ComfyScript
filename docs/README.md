@@ -57,6 +57,34 @@ Run `python -m pip install editables` . See [#41](https://github.com/Chaoses-Ib/
 #### ModuleNotFoundError: No module named 'comfy_extras.nodes_model_merging'
 Installing ComfyUI package in the same venv used by official ComfyUI will break the official ComfyUI. Uninstalling ComfyUI package by `python -m pip uninstall comfyui` can fix this problem. See [ComfyUI#3702](https://github.com/comfyanonymous/ComfyUI/issues/3702) for details.
 
+### VS Code
+#### Notebook kernel list
+If you cannot see the venv used by ComfyUI in VS Code Notebook's kernel list, you can either:
+- Activate the venv and then launch VS Code from the terminal
+  
+  ```pwsh
+  cd ComfyUI
+  # Windows
+  .\.venv\Scripts\activate
+  # Linux
+  source .venv/bin/activate
+
+  # To let VS Code discover the venv, e.g.:
+  cd ComfyUI/custom_nodes/ComfyScript
+  code .
+  ```
+- Add the path to ComfyUI to VS Code's `python.venvFolders` setting
+
+  e.g.
+  ```json
+  {
+      "python.venvFolders": [
+          "D:\\ComfyUI"
+      ],
+  }
+  ```
+  Note this setting is local only and will not be synced by default.
+
 ### Uninstallation
 ```sh
 python -m pip uninstall comfy-script
