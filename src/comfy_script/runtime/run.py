@@ -1,5 +1,8 @@
 from dataclasses import dataclass
 
+_passive = False
+'''Using loaded ComfyUI'''
+
 _redirect___main___file_warn = False
 
 @dataclass
@@ -151,6 +154,12 @@ class ComfyUIArgs:
     def to_argv(self) -> list[str]:
         return self.argv
 
+def _is_comfyui_started():
+    import sys
+
+    nodes = sys.modules.get('nodes')
+    return nodes is not None and 'NODE_CLASS_MAPPINGS' in vars(nodes) and 'NODE_DISPLAY_NAME_MAPPINGS' in vars(nodes)
+
 def _redirect___main___file(main_file: str):
     '''
     Redirect `__main__.__file__` to `ComfyUI/main.py` to keep compatibility with some nodes.
@@ -193,3 +202,22 @@ def _redirect___main___file(main_file: str):
     # del __main__
     # import __main__
     # print(__main__.__file__)
+
+def _fix_progress_bar_global_hook():
+    if _passive:
+        return
+    
+    # hijack_progress()
+    # import server
+    # server.PromptServer.instance.last_prompt_id = 'https://github.com/Chaoses-Ib/ComfyScript'
+    import comfy.utils
+    if hasattr(comfy.utils, 'set_progress_bar_global_hook'):
+        comfy.utils.set_progress_bar_global_hook(None)
+    else:
+        # set_progress_bar_global_hook is removed in new versions of comfyui package
+        import comfy.execution_context
+        try:
+            comfy.execution_context.current_execution_context().server.receive_all_progress_notifications = False
+        except Exception:
+            # receive_all_progress_notifications is readonly in new versions, give up
+            pass

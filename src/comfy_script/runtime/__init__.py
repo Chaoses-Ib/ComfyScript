@@ -91,6 +91,22 @@ def start_comfyui(comfyui: Path | str = None, args: ComfyUIArgs | None = None, *
     from . import run
 
     global comfyui_started, comfyui_base_url
+
+    if not comfyui_started and run._is_comfyui_started():
+        comfyui_started = True
+        run._passive = True
+        print(f'ComfyScript: Using loaded ComfyUI')
+        
+        import main
+        comfyui_base_url = f'http://127.0.0.1:{main.args.port}/'
+        client.client = client.Client(comfyui_base_url)
+
+        if not no_server and join_at_exit:
+            import atexit
+            atexit.register(join_comfyui)
+        
+        return
+
     if comfyui_started and (comfyui_base_url is not None or no_server):
         return
     comfyui_started = False
