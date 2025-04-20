@@ -199,6 +199,36 @@ class RuntimeFactory:
             pass
 
         return None
+    
+    def _get_node_output_type_or_new(self, type_info: str, name: str) -> tuple[str | None, Any]:
+        if self._import_modules is not None and '.' in name:
+            # TODO: list[]
+            spec = astutil.find_spec_from_fullname(name)
+            if spec is not None:
+                try:
+                    package = __import__(spec.name)
+                    self._vars[package.__name__] = package
+                except Exception as e:
+                    print(f'ComfyScript: Failed to import {spec.name}: {e}')
+
+                if spec.name not in self._import_modules:
+                    self._import_modules.add(spec.name)
+                
+                c = name
+            else:
+                c = '.'.join([astutil.str_to_raw_id(part) for part in name.split('.')])
+            t = None
+            return c, t
+        else:
+            type_id = self._get_type_or_assign_id(type_info)
+            if isinstance(type_id, str):
+                self._data_type_stubs[type_id] = f'class {type_id}: ...'
+
+                t = type(type_id, (data.NodeOutput,), {})
+                self._set_type(type_info, type_id, t)
+            else:
+                t = type_id
+            return None, t
 
     def new_node(self, info: dict, defaults: dict, output_types: list[type]):
         raise NotImplementedError
@@ -293,8 +323,19 @@ class RuntimeFactory:
 
                         enums[id] = t
 
-                    if default is None and len(type_info) > 0:
-                        default = type_info[0]
+                    if output:
+                        # Fix for virtual mode
+
+                        # TODO: This breaks input type checking
+                        # TODO: EnumOutput.wait() -> Enum hint
+                        # c, t = self._get_node_output_type_or_new(c + 'Output', name)
+
+                        t = type(c + 'Output', (data.NodeOutput,), {})
+                        # For debug
+                        # c += 'Output'
+                    else:
+                        if default is None and len(type_info) > 0:
+                            default = type_info[0]
             elif type_info == '*':
                 if not output:
                     t = Any
@@ -311,32 +352,7 @@ class RuntimeFactory:
             elif not output and type_info == 'BOOLEAN':
                 t = bool
             else:
-                if self._import_modules is not None and '.' in name:
-                    # TODO: list[]
-                    spec = astutil.find_spec_from_fullname(name)
-                    if spec is not None:
-                        try:
-                            package = __import__(spec.name)
-                            self._vars[package.__name__] = package
-                        except Exception as e:
-                            print(f'ComfyScript: Failed to import {spec.name}: {e}')
-
-                        if spec.name not in self._import_modules:
-                            self._import_modules.add(spec.name)
-                        
-                        c = name
-                    else:
-                        c = '.'.join([astutil.str_to_raw_id(part) for part in name.split('.')])
-                    t = None
-                else:
-                    type_id = self._get_type_or_assign_id(type_info)
-                    if isinstance(type_id, str):
-                        self._data_type_stubs[type_id] = f'class {type_id}: ...'
-
-                        t = type(type_id, (data.NodeOutput,), {})
-                        self._set_type(type_info, type_id, t)
-                    else:
-                        t = type_id
+                c, t = self._get_node_output_type_or_new(type_info, name)
             if c is None:
                 c = t.__name__
 
