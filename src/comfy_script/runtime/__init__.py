@@ -551,6 +551,13 @@ class TaskQueue:
         {'type': 'status', 'data': {'status': {'exec_info': {'queue_remaining': 0}}}}
         {'type': 'executing', 'data': {'node': None, 'prompt_id': '3328f0c8-9368-4070-90e7-087e854fe315'}}
         '''
+        # If cancel:
+        '''
+        {'type': 'executing', 'data': {'node': 'PreviewImage.0', 'display_node': 'PreviewImage.0', 'prompt_id': 'd146cf9b-877e-46a2-bf05-6b165e2bd40f'}}
+        {'type': 'execution_interrupted', 'data': {'prompt_id': 'd146cf9b-877e-46a2-bf05-6b165e2bd40f', 'node_id': 'PreviewImage.0', 'node_type': 'PreviewImage', 'executed': ['ImageBlur.0'], 'timestamp': 1750061369100}}
+        {'type': 'status', 'data': {'status': {'exec_info': {'queue_remaining': 0}}}}
+        {'type': 'executing', 'data': {'node': None, 'prompt_id': 'd146cf9b-877e-46a2-bf05-6b165e2bd40f'}}
+        '''
 
     def start_watch(self, display_node: bool = True, display_task: bool = True, display_node_preview: bool = True):
         '''
@@ -849,24 +856,30 @@ class Task:
         return asyncio.run(self)
     
     async def result(self, output: data.NodeOutput) -> data.Result | None:
+        '''
+        `None` if the task has been cancelled.
+        '''
         id = self._id.get_id(output.node_prompt)
         if id is None:
             return None
         
-        while True:
+        while not self._fut.done():
             if id in self._new_outputs:
                 output: dict | None = self._new_outputs[id]
                 return data.Result.from_output(output)
             # print(self._event.is_set())
             await self._event.wait()
 
-        # outputs: dict = await self._fut
-        # if id in outputs:
-        #     output: dict | None = outputs[id]
-        #     return data.Result.from_output(output)
-        # return None
+        outputs: dict = await self._fut
+        if id in outputs:
+            output: dict | None = outputs[id]
+            return data.Result.from_output(output)
+        return None
     
     def wait_result(self, output: data.NodeOutput) -> data.Result | None:
+        '''
+        `None` if the task has been cancelled.
+        '''
         return asyncio.run(self.result(output))
 
     # def wait(self):

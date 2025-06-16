@@ -87,11 +87,17 @@ class NodeOutput:
         return await self.task.result(self)
     
     def __await__(self) -> Result | None:
+        '''
+        `None` if the task has been cancelled.
+        '''
         outer = inspect.currentframe().f_back
         source = ''.join(inspect.findsource(outer)[0])
         return self._wait(source).__await__()
     
     def wait(self) -> Result | None:
+        '''
+        `None` if the task has been cancelled.
+        '''
         outer = inspect.currentframe().f_back
         source = ''.join(inspect.findsource(outer)[0])
         return asyncio.run(self._wait(source))
