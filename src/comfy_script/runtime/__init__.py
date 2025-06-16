@@ -763,6 +763,8 @@ class Task:
         self.number = number
         self._id = id
         self._new_outputs: dict[str, dict | None] = {}
+        # TODO: Only create event if there are more than one outputs?
+        self._event = asyncio.Event()
         self._fut = asyncio.Future()
         self._node_progress_callbacks: list[Callable[[TaskProgress], None]] = []
         self._node_preview_callbacks: list[Callable[[Task, str, Image.Image]]] = []
@@ -787,7 +789,14 @@ class Task:
             display(preview, clear=True)
     
     async def _set_result_threadsafe(self, node_id: str, output: dict | None, display_result: bool = False) -> None:
+        # print('_set_result_threadsafe', node_id, output)
         self._new_outputs[node_id] = output
+
+        def set_once(event=self._event):
+            event.set()
+            event.clear()
+        self.get_loop().call_soon_threadsafe(set_once)
+
         if display_result:
             from IPython.display import display
 
@@ -799,10 +808,15 @@ class Task:
                 display(result)
     
     async def _set_results_threadsafe(self, outputs: dict[str, dict | None], display_result: bool = False) -> None:
+        # print('_set_results_threadsafe', outputs)
         # ComfyUI will skip node outputs None in outputs
         outputs = self._new_outputs | outputs
+        self._new_outputs = outputs
 
-        self.get_loop().call_soon_threadsafe(self._fut.set_result, outputs)
+        def f(self=self):
+            self._fut.set_result(self._new_outputs)
+            self._event.set()
+        self.get_loop().call_soon_threadsafe(f)
         if display_result:
             from IPython.display import display
 
@@ -839,15 +853,18 @@ class Task:
         if id is None:
             return None
         
-        if id in self._new_outputs:
-            output: dict | None = self._new_outputs[id]
-            return data.Result.from_output(output)
+        while True:
+            if id in self._new_outputs:
+                output: dict | None = self._new_outputs[id]
+                return data.Result.from_output(output)
+            # print(self._event.is_set())
+            await self._event.wait()
 
-        outputs: dict = await self._fut
-        if id in outputs:
-            output: dict | None = outputs[id]
-            return data.Result.from_output(output)
-        return None
+        # outputs: dict = await self._fut
+        # if id in outputs:
+        #     output: dict | None = outputs[id]
+        #     return data.Result.from_output(output)
+        # return None
     
     def wait_result(self, output: data.NodeOutput) -> data.Result | None:
         return asyncio.run(self.result(output))
