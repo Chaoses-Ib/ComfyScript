@@ -115,21 +115,27 @@ class RuntimeFactory:
         except Exception as e:
             print(f'ComfyScript: Failed to get embeddings: {e}')
 
-    def _get_type_or_assign_id(self, raw_id: str) -> type | str:
+    def _get_type_or_assign_id(self, raw_id: str, node: bool) -> type | str:
+        '''
+        Assign id for a node or an output/input type.
+        
+        For convenience, node and output/input type reside in the same namespace in ComfyScript. But they actually reside in different namespaces in ComfyUI. To avoid name conflicts (e.g. `VHS_BatchManager`), we keep a `_node` attr to distinguish them. (TODO: Use different namespaces in ComfyScript too?)
+        '''
         id = astutil.str_to_class_id(raw_id)
         while id in self._vars:
             t = self._vars[id]
-            if getattr(t, '_raw_id', None) == raw_id:
+            if getattr(t, '_raw_id', None) == raw_id and getattr(t, '_node', None) == node:
                 return t
             id += '_'
         
-        self._vars[id] = type(id, (), { '_raw_id': raw_id })
+        self._vars[id] = type(id, (), { '_raw_id': raw_id, '_node': node })
         return id
 
-    def _set_type(self, raw_id: str, id: str, t: type) -> None:
+    def _set_type(self, raw_id: str, id: str, t: type, node: bool) -> None:
         if id in self._vars:
             assert self._vars[id]._raw_id == raw_id
         setattr(t, '_raw_id', raw_id)
+        setattr(t, '_node', node)
         self._vars[id] = t
 
     # Sync with docs/Runtime.md
@@ -220,12 +226,12 @@ class RuntimeFactory:
             t = None
             return c, t
         else:
-            type_id = self._get_type_or_assign_id(type_info)
+            type_id = self._get_type_or_assign_id(type_info, False)
             if isinstance(type_id, str):
                 self._data_type_stubs[type_id] = f'class {type_id}: ...'
 
                 t = type(type_id, (data.NodeOutput,), {})
-                self._set_type(type_info, type_id, t)
+                self._set_type(type_info, type_id, t, False)
             else:
                 t = type_id
             return None, t
@@ -234,7 +240,7 @@ class RuntimeFactory:
         raise NotImplementedError
 
     def add_node(self, info: dict) -> None:
-        class_id = self._get_type_or_assign_id(info['name'])
+        class_id = self._get_type_or_assign_id(info['name'], True)
         if not isinstance(class_id, str):
             print(f'ComfyScript: Node already exists: {info}')
             return
@@ -537,7 +543,7 @@ def {class_id}(
         node = self.new_node(info, input_defaults, output_types)
         for enum_id, enum in enums.items():
             setattr(node, enum_id, enum)
-        self._set_type(info['name'], class_id, node)
+        self._set_type(info['name'], class_id, node, True)
 
         self.nodes[info['name']] = node
     
