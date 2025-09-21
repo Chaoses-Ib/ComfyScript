@@ -85,11 +85,14 @@ class RealRuntimeFactory(factory.RuntimeFactory):
             if config.track_workflow:
                 virtual_node = VirtualNode(info, defaults, output_types, pack_single_output=True)
 
-            def new(cls, *args, _comfy_script_v=(orginal_new, info, defaults, config, virtual_node), **kwds):
-                orginal_new, info, defaults, config, virtual_node = _comfy_script_v
+            def new(cls, *args, _comfy_script_v=(orginal_new, cls, info, defaults, config, virtual_node), **kwds):
+                original_new, original_cls, info, defaults, config, virtual_node = _comfy_script_v
                 config: real.RealModeConfig
 
-                obj = orginal_new(cls)
+                # `new_node` will inject `create` method and factory will inject enums.
+                # These attrs may cause conflict (e.g. #112), so we create the instance with the original class.
+                # Require `config.wrapper` to make sense.
+                obj = original_new(original_cls)
                 obj.__init__()
 
                 # # Map args and kwds

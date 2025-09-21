@@ -112,7 +112,8 @@ class RealModeConfig:
     wrapper: bool = True
     '''Make the nodes callable with a wrapper class.
 
-    Directly modify class or subclass? Subclass will add another layer of abstraction, which is the opposite to the goal of real mode. However, directly modifying the class may cause problems if the class is called in other places (#20).
+    Directly modify class or subclass? Subclass will add another layer of abstraction, which is the opposite to the goal of real mode. However, directly modifying the class may cause problems if the class is called in other places (#20)
+    or there are name conflicts (#112).
 
     `wrapper` avoids modifying the original class, and allows the original class to be used in other places.
     '''
