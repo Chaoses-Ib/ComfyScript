@@ -11,6 +11,16 @@ from .. import real
 from .. import factory
 from ..nodes import _positional_args_to_keyword, Node as VirtualNode
 
+_comfy_api_NodeOutput = None
+
+def _load_import():
+    try:
+        import comfy_api.latest
+        global _comfy_api_NodeOutput
+        _comfy_api_NodeOutput = comfy_api.latest.io.NodeOutput
+    except ImportError:
+        pass
+
 async def load(nodes_info: dict, vars: dict | None, config: real.RealModeConfig, *, nodes: dict[str, typing.Any] | None = None) -> None:
     fact = RealRuntimeFactory(config)
     await fact.init()
@@ -43,6 +53,8 @@ async def load(nodes_info: dict, vars: dict | None, config: real.RealModeConfig,
             # Replace invalid chars in type stubs with '�'
             # e.g. #87
             f.write(stubs.encode('utf8', 'surrogateescape').decode('utf8', 'replace'))
+    
+    _load_import()
 
 class RealNodeOutputWrapper(wrapt.ObjectProxy):
     def __repr__(self):
@@ -189,17 +201,25 @@ class RealRuntimeFactory(factory.RuntimeFactory):
                 # e.g. FooocusLoader (#85)
                 # TODO: Unpack output nodes too?
                 #       The result of output nodes can still be linked to other nodes.
-                if isinstance(outputs, dict) and info.get('output_node') is not True:
-                    # Print if not empty
-                    # TODO: Add API
-                    ui = outputs.get('ui')
-                    if ui:
-                        print(f"ComfyScript: {info['name']}: ui output: {ui}")
-                    expand = outputs.get('expand')
-                    if expand:
-                        print(f"ComfyScript: {info['name']}: expand output: {expand}")
+                if info.get('output_node') is not True:
+                    if isinstance(outputs, dict):
+                        # Print if not empty
+                        # TODO: Add API
+                        ui = outputs.get('ui')
+                        if ui:
+                            print(f"ComfyScript: {info['name']}: ui output: {ui}")
+                        expand = outputs.get('expand')
+                        if expand:
+                            print(f"ComfyScript: {info['name']}: expand output: {expand}")
 
-                    outputs = outputs['result']
+                        outputs = outputs['result']
+                    elif isinstance(outputs, _comfy_api_NodeOutput) and _comfy_api_NodeOutput is not None:
+                        # v3 schema (#113)
+                        if outputs.ui:
+                            print(f"ComfyScript: {info['name']}: ui output: {outputs.ui}")
+                        if outputs.expand:
+                            print(f"ComfyScript: {info['name']}: expand output: {outputs.expand}")
+                        outputs = outputs.result
 
                 if config.track_workflow and virtual_outputs is not None:
                     if isinstance(outputs, typing.Iterable) and not isinstance(outputs, dict):
