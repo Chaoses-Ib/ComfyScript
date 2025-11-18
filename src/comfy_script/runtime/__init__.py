@@ -11,11 +11,11 @@ from warnings import warn
 import dataclasses
 
 import asyncio
-import nest_asyncio
+import nest_asyncio2
 import aiohttp
 from PIL import Image
 
-nest_asyncio.apply()
+nest_asyncio2.apply()
 
 _client_id = str(uuid.uuid4())
 _save_script_source = True

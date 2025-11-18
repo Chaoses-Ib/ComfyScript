@@ -13,11 +13,11 @@ from typing import Callable
 import asyncio
 from warnings import warn
 from PIL import Image
-import nest_asyncio
+import nest_asyncio2
 import aiohttp
 from yarl import URL
 
-nest_asyncio.apply()
+nest_asyncio2.apply()
 
 class Client:
     def __init__(
