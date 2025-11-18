@@ -2,6 +2,7 @@ from __future__ import annotations
 from enum import Enum
 from pathlib import Path
 import textwrap
+import typing
 from typing import Any
 
 from .. import astutil
@@ -248,14 +249,29 @@ class RuntimeFactory:
         enum_type_stubs = ''
         input_defaults = {}
 
-        def type_and_hint(type_info: str | list[str | bool], name: str = None, optional: bool = False, default = None, output: bool = False) -> (type, str):
+        def type_and_hint(
+            type_info: str | list[str | bool | int | float],
+            name: str,
+            config: dict = {},
+            optional: bool = False,
+            default = None,
+            output: bool = False,
+        ) -> tuple[type, str]:
             nonlocal enum_type_stubs
 
             id = astutil.str_to_raw_id(name)
 
             c = None
             # Standalone runtime: Some nodes may use tuple for enum values, possibly for bypassing validation
-            if isinstance(type_info, list) or isinstance(type_info, tuple):
+            is_list_enum = isinstance(type_info, list) or isinstance(type_info, tuple)
+            # v3 schema
+            is_combo_enum = type_info == 'COMBO'
+            if is_combo_enum or is_list_enum:
+                if is_combo_enum:
+                    # e.g. UpscaleModelLoader
+                    # TODO: multiselect
+                    type_info = config.get('options', [])
+                type_info = typing.cast(list[str | bool | int | float], type_info)
                 # Output types can also be lists (#9):
                 '''
                 {
@@ -431,7 +447,7 @@ class RuntimeFactory:
                             config = {}
                         
                         input_configs[input_id] = config
-                inputs.append(f'{input_id}: {type_and_hint(type_info, name, optional, config.get("default"))[1]}')
+                inputs.append(f'{input_id}: {type_and_hint(type_info, name, config, optional, config.get("default"))[1]}')
 
         # info['output_name'] may be a tuple (WAS_Latent_Size_To_Number)
         output_name = list(info['output_name'])
