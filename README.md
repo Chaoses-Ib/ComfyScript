@@ -49,12 +49,65 @@ It has the following use cases:
 - [Differences from ComfyUI-to-Python-Extension](docs/README.md#differences-from-comfyui-to-python-extension)
 
 ## Installation
+### Only ComfyScript package
+If you only want to use ComfyScript with an external ComfyUI server,
+like using cloud ComfyUI servers and developing apps/libraries:
+
+<details>
+
+Install Python first.
+
+Install/update ComfyScript:
+```sh
+python -m pip install -U "comfy-script[default]"
+```
+
+Save and run [the following code](examples/runtime.py) to test (e.g. `python examples/runtime.py`):
+```py
+from comfy_script.runtime import *
+# ComfyUI server/path
+# or: load(r'path/to/ComfyUI')
+load('http://127.0.0.1:8188/')
+from comfy_script.runtime.nodes import *
+
+with Workflow(wait=True):
+    image = EmptyImage()
+    images = util.get_images(image, save=True)
+```
+
+Or without installing Python, directly use ComfyScript with [uv](https://docs.astral.sh/uv/):
+```sh
+uv run examples/uv.py
+```
+[`examples/uv.py`](examples/uv.py):
+```python
+# /// script
+# requires-python = ">=3.9"
+# dependencies = [
+#     "comfy-script[default]",
+# ]
+# ///
+from comfy_script.runtime import *
+load('http://127.0.0.1:8188/')
+from comfy_script.runtime.nodes import *
+
+with Workflow(wait=True):
+    image = EmptyImage()
+    images = util.get_images(image, save=True)
+```
+
+See [only ComfyScript package](docs/README.md#only-comfyscript-package) for details.
+
+</details>
+
 ### With ComfyUI
 If you have Python/ComfyUI installed:
 
 <details>
 
-Install ComfyUI first, see [Installing](https://github.com/comfyanonymous/ComfyUI#installing) or use [Comfy-Cli](https://github.com/Comfy-Org/comfy-cli) to install:
+If you haven't installed ComfyUI, install it first.
+See [ComfyUI Installing](https://github.com/comfyanonymous/ComfyUI#installing)
+or use [Comfy-Cli](https://github.com/Comfy-Org/comfy-cli) to install:
 ```sh
 python -m pip install comfy-cli
 comfy --here install
@@ -157,7 +210,8 @@ python -m pip install --no-build-isolation git+https://github.com/hiddenswitch/C
 - [promeG/comfyui: ComfyUI docker images](https://github.com/promeG/comfyui)
 
 ### Others
-See [troubleshooting](docs/README.md#troubleshooting) and [VS Code](docs/README.md#vs-code) if you encountered any problems. To use ComfyScript without installed ComfyUI, see [only ComfyScript package](docs/README.md#only-comfyscript-package) for details. To uninstall, see [uninstallation](docs/README.md#uninstallation).
+See [troubleshooting](docs/README.md#troubleshooting) and [VS Code](docs/README.md#vs-code) if you encountered any problems.
+To uninstall, see [uninstallation](docs/README.md#uninstallation).
 
 ## Transpiler
 The transpiler can translate ComfyUI's workflows to ComfyScript.
