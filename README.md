@@ -218,6 +218,18 @@ The transpiler can translate ComfyUI's workflows to ComfyScript.
 
 When ComfyScript is installed as custom nodes, `SaveImage` and similar nodes will be hooked to automatically save the script as the image's metadata. The script will also be printed to the terminal.
 
+If you installed ComfyScript outside of ComfyUI, you can still use the transpiler by:
+- [CLI](docs/Transpiler.md#cli)
+  ```sh
+  python -m comfy_script.transpile "workflow.json" --api http://127.0.0.1:8188/
+  ```
+  Or without installing ComfyScript, directly with uv:
+  ```sh
+  uvx --from "comfy-script[default]" python -m comfy_script.transpile "workflow.json" --api http://127.0.0.1:8188/
+  ```
+- [Python code](docs/Transpiler.md#from-python-code)
+- Jupyter Notebook / web: [MetadataViewer](#metadataviewer)
+
 For example, here is a workflow in ComfyUI:
 
 ![](docs/imgs/README/workflow.png)
@@ -263,9 +275,6 @@ Comparing scripts:
 
 ![](docs/imgs/README/diff.png)
 
-To control these features, see [settings.example.toml](settings.example.toml).
-
-You can also use the transpiler via the [CLI](docs/Transpiler.md#cli).
 
 ## Runtime
 With the runtime, one can run ComfyScript like this:

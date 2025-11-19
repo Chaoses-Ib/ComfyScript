@@ -1,10 +1,40 @@
 # Transpiler
+The transpiler can translate ComfyUI's workflows to ComfyScript.
+
+## Installing as custom nodes
+When ComfyScript is installed as custom nodes,
+`SaveImage` and similar nodes will be hooked to
+automatically save the script as the image's metadata.
+The script will also be printed to the terminal.
+
+To control these features, see
+[settings.example.toml](../settings.example.toml).
+
+## From Python code
+```python
+from comfy_script.transpile import WorkflowToScriptTranspiler
+
+# PNG / Web UI JSON / API JSON
+script = WorkflowToScriptTranspiler.from_file(
+  r'tests/transpile/default.json',
+  comfyui_api='http://127.0.0.1:8188/'
+).to_script()
+print(script)
+# model, clip, vae = CheckpointLoaderSimple('v1-5-pruned-emaonly.ckpt')
+# ...
+# SaveImage(image, 'ComfyUI')
+```
+
 ## CLI
+The command line interface.
+
+<!--
 Requirement:
 ```sh
 python -m pip install click~=8.1
 ```
 (or `pip install -e ".[default,cli]"` or `pip install "comfy-script[default,cli]"` when installing)
+-->
 
 Usage:
 ```sh
@@ -21,6 +51,10 @@ Options:
 Example:
 ```powershell
 python -m comfy_script.transpile "D:\workflow.json"
+```
+Or without installing ComfyScript, directly with uv:
+```sh
+uvx --from "comfy-script[default]" python -m comfy_script.transpile "D:\workflow.json"
 ```
 Output:
 ```python
@@ -57,3 +91,7 @@ Save the code to `script.py`:
 ```powershell
 python -m comfy_script.transpile "tests\transpile\default.json" --runtime > script.py
 ```
+
+## MetadataViewer
+Jupyter Notebook / web,
+see [MetadataViewer](UI/Solara.md#metadataviewer).
