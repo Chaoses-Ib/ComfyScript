@@ -10,6 +10,7 @@ TODO: Real mode support
 '''
 
 from typing import TYPE_CHECKING
+from pathlib import Path
 import PIL.Image
 
 if TYPE_CHECKING:
@@ -126,8 +127,34 @@ def concat_images(*images: 'Image') -> 'Image':
         image = ImageBatch(image, img)
     return image
 
+def save_image(image: 'Image', prefix: str | None = None, *, temp: bool = False) -> data.ImageBatchResult:
+    '''
+    Save `Image` to ComfyUI server's output/temp directory.
+
+    - `prefix`: `ComfyUI` by default. Ignored if `temp` is `True`.
+    '''
+    if not temp:
+        SaveImage: 'type[SaveImage]' = node.nodes['SaveImage']
+        return SaveImage(image, prefix).wait()
+    else:
+        PreviewImage: 'type[PreviewImage]' = node.nodes['PreviewImage']
+        return PreviewImage(image).wait()
+
+def save_image_cwd(image: 'Image', prefix: str = 'ComfyUI', *, temp: bool = False) -> data.ImageBatchResult:
+    '''
+    Save `Image` to the current working directory.
+
+    Currently, this only works when using local ComfyUI server and
+    the current working directory is within `ComfyUI/output`.
+
+    - `prefix`: `ComfyUI` by default. Ignored if `temp` is `True`.
+    '''
+    return save_image(image, str(Path.cwd() / prefix), temp=temp)
+
 def save_image_and_get_paths(image: 'Image', prefix: str | None = None, *, temp: bool = False, type: bool = True) -> list[str]:
     '''
+    Save `Image` to ComfyUI server's output/temp directory, and return relative paths.
+
     - `prefix`: `ComfyUI` by default. Ignored if `temp` is `True`.
 
     Example:
@@ -149,12 +176,7 @@ def save_image_and_get_paths(image: 'Image', prefix: str | None = None, *, temp:
     # 2
     ```
     '''
-    if not temp:
-        SaveImage: 'type[SaveImage]' = node.nodes['SaveImage']
-        result = SaveImage(image, prefix).wait()
-    else:
-        PreviewImage: 'type[PreviewImage]' = node.nodes['PreviewImage']
-        result = PreviewImage(image).wait()
+    result = save_image(image, prefix, temp=temp)
 
     images: list[dict] = result._output['images']
     if type:
@@ -195,6 +217,8 @@ __all__ = [
     'get_str',
     'get_images',
     'concat_images',
+    'save_image',
+    'save_image_cwd',
     'save_image_and_get_paths',
     'load_image_from_paths',
 ]
