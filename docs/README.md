@@ -11,7 +11,7 @@ python -m pip install "comfy-script[default] @ git+https://github.com/Chaoses-Ib
 See [`pyproject.toml`](../pyproject.toml) for other options.
 If no option is specified, ComfyScript will be installed without any dependencies.
 
-### Only ComfyScript package
+### Installing only ComfyScript package
 If you only want to use ComfyScript with an external ComfyUI server,
 like using cloud ComfyUI servers and developing apps/libraries:
 
@@ -94,7 +94,7 @@ uv pip install "comfy-script[default]"
 
 See [VS Code](#vs-code) if you have problems when using ComfyScript in VS Code.
 
-### Only nodes with ComfyUI
+### Installing only nodes with ComfyUI
 <details>
 
 Install [ComfyUI](https://github.com/comfyanonymous/ComfyUI) first. And then:
