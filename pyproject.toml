@@ -1,6 +1,6 @@
 [project]
 name = "comfy-script"
-version = "0.6.0"
+version = "0.6.1"
 description = "A Python frontend and library for ComfyUI"
 readme = "README.md"
 # ComfyUI: >=3.8
@@ -27,7 +27,7 @@ client = [
   "yarl",
 
   # 1.5.9: https://github.com/erdewit/nest_asyncio/issues/87
-  "nest_asyncio2 ~= 1.0, >= 1.5.9",
+  "nest_asyncio2 ~= 1.0, >= 1.6.3",
 
   # Already required by ComfyUI
   "Pillow",

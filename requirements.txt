@@ -3,7 +3,7 @@
 aiohttp
 
 # 1.5.9: https://github.com/erdewit/nest_asyncio/issues/87
-nest_asyncio2 ~= 1.0, >= 1.5.9
+nest_asyncio2 ~= 1.0, >= 1.6.3
 
 
 # Transpiler
