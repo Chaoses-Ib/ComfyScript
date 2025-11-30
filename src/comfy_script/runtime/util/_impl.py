@@ -19,6 +19,7 @@ if TYPE_CHECKING:
 
 from .. import node
 from .. import data
+from . import path
 
 def get_int(value: 'Int') -> int:
     '''
@@ -179,10 +180,7 @@ def save_image_and_get_paths(image: 'Image', prefix: str | None = None, *, temp:
     result = save_image(image, prefix, temp=temp)
 
     images: list[dict] = result._output['images']
-    if type:
-        return list([f'{d["filename"]} [{d["type"]}]' for d in images])
-    else:
-        return list([d['filename'] for d in images])
+    return path._outputs_to_paths(images, type)
 
 def load_image_from_paths(paths: list[str]) -> 'Image':
     '''
