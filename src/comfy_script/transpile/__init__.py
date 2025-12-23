@@ -180,16 +180,17 @@ class WorkflowToScriptTranspiler:
         input_types = self._get_input_types(node_type)
         
         for group in 'required', 'optional':
-            group: dict = input_types.get(group)
-            if group is None:
+            group_dict: dict = input_types.get(group)
+            if group_dict is None:
                 continue
-            for name in group:
+            for name in group_dict:
                 value = args_dict.get(name)
                 if value is not None:
                     # Format as keyword argument
                     result.append(f"{name}={value['exp']}")
-                else:
-                    # Optional inputs
+                elif group == 'required':
+                    # Only include None for required parameters
+                    # Optional parameters with None value are skipped
                     result.append(f"{name}=None")
         return result
 
