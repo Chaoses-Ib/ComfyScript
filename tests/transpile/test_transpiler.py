@@ -70,3 +70,18 @@ SaveImage(image, 'ComfyUI')
 def test_workflow(workflow, script):
     with open(Path(__file__).parent / workflow) as f:
         assert transpile.WorkflowToScriptTranspiler(f.read()).to_script() == script
+
+@pytest.mark.parametrize('workflow, script', [
+    ('default.json',
+r"""model, clip, vae = CheckpointLoaderSimple(ckpt_name='v1-5-pruned-emaonly.ckpt')
+conditioning = CLIPTextEncode(text='beautiful scenery nature glass bottle landscape, , purple galaxy bottle,', clip=clip)
+conditioning2 = CLIPTextEncode(text='text, watermark', clip=clip)
+latent = EmptyLatentImage(width=512, height=512, batch_size=1)
+latent = KSampler(model=model, seed=156680208700286, steps=20, cfg=8, sampler_name='euler', scheduler='normal', positive=conditioning, negative=conditioning2, latent_image=latent, denoise=1)
+image = VAEDecode(samples=latent, vae=vae)
+SaveImage(images=image, filename_prefix='ComfyUI')
+"""),
+])
+def test_workflow_with_keyword_args(workflow, script):
+    with open(Path(__file__).parent / workflow) as f:
+        assert transpile.WorkflowToScriptTranspiler(f.read(), use_keyword_args=True).to_script() == script
