@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-import comfy_script.transpile as transpile
+from comfy_script.transpile import *
 
 @pytest.mark.parametrize('workflow, script', [
     ('default.json',
@@ -68,8 +68,9 @@ SaveImage(image, 'ComfyUI')
 """)
 ])
 def test_workflow(workflow, script):
+    format = FormatOptions(args=ArgsFormat.Pos)
     with open(Path(__file__).parent / workflow) as f:
-        assert transpile.WorkflowToScriptTranspiler(f.read()).to_script() == script
+        assert WorkflowToScriptTranspiler(f.read()).to_script(format=format) == script
 
 @pytest.mark.parametrize('workflow, script', [
     ('default.json',
@@ -126,7 +127,7 @@ sigmas = BasicScheduler(model=model, scheduler='beta', steps=30, denoise=1)
 sigmas, low_sigmas = SplitSigmasDenoise(sigmas=sigmas, denoise=0.4)
 noise2 = RandomNoise(noise_seed=149684926930931)
 empty_latent, _ = SamplerCustomAdvanced(noise=noise2, guider=guider, sampler=sampler, sigmas=sigmas, latent_image=empty_latent)
-empty_latent = InjectLatentNoise(latent=empty_latent, seed=49328841076664, strength=0.3, normalize='true', average=None)
+empty_latent = InjectLatentNoise(latent=empty_latent, noise_seed=49328841076664, noise_strength=0.3, normalize='true')
 empty_latent, _ = SamplerCustomAdvanced(noise=noise, guider=guider, sampler=sampler, sigmas=low_sigmas, latent_image=empty_latent)
 vae = VAELoader(vae_name='ae.safetensors')
 image = VAEDecode(samples=empty_latent, vae=vae)
@@ -134,5 +135,6 @@ SaveImage(images=image, filename_prefix='ComfyUI')
 """)
 ])
 def test_workflow_with_keyword_args(workflow, script):
+    format = FormatOptions(args=ArgsFormat.Kwd)
     with open(Path(__file__).parent / workflow) as f:
-        assert transpile.WorkflowToScriptTranspiler(f.read(), use_keyword_args=True).to_script() == script
+        assert WorkflowToScriptTranspiler(f.read()).to_script(format=format) == script

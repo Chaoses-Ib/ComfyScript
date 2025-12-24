@@ -16,6 +16,11 @@ class FloatEnum(str, Enum):
 import re
 import keyword
 
+if sys.version_info < (3, 10):
+    _dataclass_kw_only = {}
+else:
+    _dataclass_kw_only = {'kw_only': True}
+
 def is_xid_start(s: str) -> bool:
     return s.isidentifier()
 
@@ -166,6 +171,32 @@ def to_float_enum(id: str, values: Iterable[float], indent: str) -> (str, FloatE
     Requires: `from enum import Enum as FloatEnum`
     '''
     return to_enum(id, { str(v): v for v in values }, indent, FloatEnum)
+
+class ArgsFormat(StrEnum):
+    '''
+    Format function arguments as positional or keyword arguments.
+
+    Members are named in CamelCase to simplify CLI usage.
+    '''
+
+    Pos = 'pos'
+    '''Format as positional arguments.'''
+
+    Pos2OrKwd = 'pos2orkwd'
+    '''Format as positional arguments if there are 2 or fewer args;
+    otherwise, format as keyword arguments.
+    '''
+
+    Kwd = 'kwd'
+    '''Format as keyword arguments.'''
+
+    def _format_as_kwd(self, args: dict) -> bool:
+        if self == self.Pos:
+            return False
+        elif self == self.Pos2OrKwd:
+            return len(args) > 2
+        else:
+            return True
 
 def find_spec_from_fullname(fullname: str) -> importlib.ModuleSpec | None:
     module, _, _ = fullname.rpartition('.')
