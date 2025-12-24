@@ -30,6 +30,12 @@ def primitive_node_elimination(ctx: AssignContext):
     assert new_c != ctx.c, ctx.c
     ctx.c = new_c
 
+JS_NODES = [
+    *REROUTE_NODES,
+    'PrimitiveNode',
+    'Note'
+]
+
 SWITCH_NODES = {
     'HypernetworkLoader': [{'strength': 0}],
     'CLIPSetLastLayer': [{'stop_at_clip_layer': -1}],

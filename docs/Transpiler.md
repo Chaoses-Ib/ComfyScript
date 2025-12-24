@@ -45,6 +45,8 @@ Usage: python -m comfy_script.transpile [OPTIONS] WORKFLOW
 Options:
   --api TEXT  [default: http://127.0.0.1:8188/]
   --runtime   Wrap the script with runtime imports and workflow context.
+  --args [pos|pos2orkwd|kwd]  Format node inputs as positional or keyword
+                              arguments.  [default: Pos2OrKwd]
   --help      Show this message and exit.
 ```
 

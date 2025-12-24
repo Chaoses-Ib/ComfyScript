@@ -125,6 +125,9 @@ build-backend = "hatchling.build"
 # TODO: Exclude docs and examples in sdist?
 
 [tool.hatch.envs.test]
+features = [
+  "default",
+]
 dependencies = [
   "pytest"
 ]
