@@ -37,10 +37,13 @@ It has the following use cases:
 - Converting workflows from ComfyUI's web UI format to API format without the web UI.
 
 ## [Documentation](docs/README.md)
+- [Introduction](#installation) (this page)
 - [Runtime](docs/Runtime.md)
 - [Images](docs/Images/README.md)
 - [Models](docs/Models/README.md)
-- [Additional Nodes](docs/Nodes/README.md)
+- Nodes
+  - [Node Compatibility](docs/Nodes/Compatibility.md)
+  - [Additional Nodes](docs/Nodes/Additional.md)
 - [Transpiler](docs/Transpiler.md)
 - UI
   - [ipywidgets UI](docs/UI/ipywidgets.md)
