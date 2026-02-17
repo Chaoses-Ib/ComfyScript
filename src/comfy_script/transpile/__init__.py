@@ -257,9 +257,9 @@ class WorkflowToScriptTranspiler:
         if hasattr(v, 'inputs'):
             # If a node's output is not used, it is allowed to have dangling inputs, in which case the link is None.
             # TODO: This breaks the order and arg positions.
-            v.inputs.sort(key=lambda input: G.edges[links[input.link]]['v_slot'] if input.link else 0xFFFFFFFF)
+            v.inputs.sort(key=lambda input: G.edges[links[input.link]]['v_slot'] if getattr(input, 'link', False) else 0xFFFFFFFF)
             for input in v.inputs:
-                if input.link is None:
+                if getattr(input, 'link', None) is None:
                     continue
 
                 (node_u, node_v, link_id) = links[input.link]
@@ -293,7 +293,7 @@ class WorkflowToScriptTranspiler:
             v.outputs.sort(key=lambda output: getattr(output, 'slot_index', 0xFFFFFFFF))
             for i, output in enumerate(v.outputs):
                 # Outputs used before have slot_index, but no links.
-                if output.links is not None and len(output.links) > 0:
+                if getattr(output, 'links', None) is not None and len(output.links) > 0:
                     # Used outputs may also have no slot_index.
                     # TODO: How is the slot determined? Only valid for single output nodes?
                     if hasattr(output, 'slot_index'):
@@ -415,7 +415,7 @@ class WorkflowToScriptTranspiler:
                     inputs = passes.multiplexer_node_input_filter(G.nodes[node], self._widget_values_to_dict(v.type, v.widgets_values))
                 for input in inputs:
                     # If a node's output is not used, it is allowed to have dangling inputs, in which case the link is None.
-                    if input.link is not None:
+                    if getattr(input, 'link', None) is not None:
                         (node_u, _node_v, _link_id) = links[input.link]
                         yield from visit(node_u)
             
