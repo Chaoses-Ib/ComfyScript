@@ -190,7 +190,7 @@ uv pip install --torch-backend=auto --extra-index-url https://nodes.appmana.com/
 
 Install/update ComfyScript:
 ```sh
-uv pip install "comfy-script[default]"
+uv pip install -U "comfy-script[default]"
 ```
 
 `[default]` is necessary to install common dependencies. See [`pyproject.toml`](pyproject.toml) for other options. If no option is specified, ComfyScript will be installed without any dependencies.
