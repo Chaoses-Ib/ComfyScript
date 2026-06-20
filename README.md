@@ -183,29 +183,19 @@ If you want to install ComfyUI as a pip package:
 <details>
 
 Install [ComfyUI package](https://github.com/hiddenswitch/ComfyUI) first:
-- If PyTorch is not installed:
-
-  ```sh
-  python -m pip install git+https://github.com/hiddenswitch/ComfyUI.git
-  ```
-- If PyTorch is already installed (e.g. Google Colab):
-
-  ```sh
-  python -m pip install wheel
-  python -m pip install --no-build-isolation git+https://github.com/hiddenswitch/ComfyUI.git
-  ```
+```sh
+uv venv --python 3.12
+uv pip install --torch-backend=auto --extra-index-url https://nodes.appmana.com/simple/ comfyui
+```
 
 Install/update ComfyScript:
 ```sh
-python -m pip install -U "comfy-script[default]"
+uv pip install "comfy-script[default]"
 ```
 
 `[default]` is necessary to install common dependencies. See [`pyproject.toml`](pyproject.toml) for other options. If no option is specified, ComfyScript will be installed without any dependencies.
 
-If there are problems with the latest ComfyUI package, one can use the last tested version:
-```
-python -m pip install --no-build-isolation git+https://github.com/hiddenswitch/ComfyUI.git@95a12f42e2b0c78202af10f2337009bd769157a7
-```
+[Click here](https://github.com/hiddenswitch/pip-and-uv-installable-ComfyUI/blob/master/docs/installing.md) to read more about getting started with the installable ComfyUI package.
 </details>
 
 ### Containers
