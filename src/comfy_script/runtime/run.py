@@ -1,4 +1,30 @@
+'''
+ComfyUI instance management.
+
+- Load ComfyUI modules.
+- Optionally start the server, initialize `comfyui_base_url` & `comfy_script.client.client`.
+- Can be used in Jupyter Notebook.
+- Can be used independently, without ComfyScript workflows.
+- Can be used in custom nodes to use the current ComfyUI instance.
+- Wait for all tasks to be done.
+
+Methods in this module are in the order they will get executed.
+
+Historically, the ComfyUI package from hiddenswitch is called 'comfyui',
+which also has changed its name several times.
+It's planned to rename it to 'hiddenswitch' to avoid confusion.
+'''
+from __future__ import annotations
+import asyncio
 from dataclasses import dataclass
+import inspect
+from pathlib import Path
+import sys
+import threading
+import warnings
+
+comfyui_started = False
+comfyui_base_url = None
 
 _passive = False
 '''Using loaded ComfyUI'''
@@ -203,6 +229,369 @@ def _redirect___main___file(main_file: str):
     # import __main__
     # print(__main__.__file__)
 
+def _spoof_logger_if_needed():
+    '''Spoof `LogInterceptor` if `start_comfyui()` in Jupyter Notebook.
+
+    A hack for another hack. Ideally this should be fixed in ComfyUI, but Jupyter Notebook is not clearly supported,
+    and I don't want to waste time arguing with others, so just hack it here.
+
+    See also https://github.com/ipython/ipykernel/issues/786
+    '''
+    if not hasattr(sys.stdout, 'buffer'):
+        from comfy.cli_args import args
+
+        new_stdout = sys.stdout
+        new_stderr = sys.stderr
+
+        sys.stdout = sys.__stdout__
+        sys.stderr = sys.__stderr__
+        try:
+            try:
+                import app.logger as logger
+            except ModuleNotFoundError:
+                # hiddenswitch
+                import comfy.app.logger as logger
+                from comfy.cmd.main_pre import args
+            logger.setup_logger(log_level=args.verbose)
+
+            # `if logs` in setup_logger() doesn't check correctly
+            logger.setup_logger = lambda *args, **kwargs: None
+        except ImportError:
+            pass
+        finally:
+            sys.stdout = new_stdout
+            sys.stderr = new_stderr
+
+def _hiddenswitch_share_context_vars():
+    '''Share hiddenswitch/comfyui context vars
+    
+    See ComfyUIArgs.context_local.
+    '''
+    try:
+        import comfy.execution_context
+
+        current_context = comfy.execution_context.current_execution_context()
+        comfy.execution_context.current_execution_context = lambda: current_context
+    except Exception:
+        warnings.warn('Failed to share context-local execution context')
+
+def _exit_hook(code = None, *, comfyui, no_server, main_globals: dict, start_locals: dict):
+    if code != 0:
+        exit(code)
+
+    if comfyui == 'comfyui':
+        _hiddenswitch_setup_polyfills(start_locals)
+
+    args = main_globals['args']
+    async def run(server, address='', port=8188, verbose=True, call_on_start=None):
+        # await asyncio.gather(server.start(address, port, verbose, call_on_start), server.publish_loop())
+
+        if no_server:
+            return
+
+        try:
+            await server.start(address, port, verbose, call_on_start)
+        except OSError:
+            def dynamic_port_hook(address: str, port: int) -> int:
+                locals = inspect.currentframe().f_back.f_locals
+                site = locals['site']
+
+                _, port = site._server.sockets[0].getsockname()
+
+                args.port = port
+                # comfyui
+                if hasattr(server, 'port'):
+                    server.port = port
+
+                if verbose:
+                    print("Starting server\n")
+                    print("To see the GUI go to: http://{}:{}".format(address, port))
+                if call_on_start is not None:
+                    call_on_start(address, port)
+
+            await server.start(address, 0, False, dynamic_port_hook)
+    main_globals['run'] = run
+
+def _hiddenswitch_setup_polyfills(start_locals: dict | None = None):
+    '''
+    Should be called after `comfy.cmd.main.main()`.
+
+    - `start_locals`: Currently not used.
+    '''
+    import importlib.metadata
+    import traceback
+    import types
+
+    for name in 'cuda_malloc', 'execution', 'folder_paths', 'latent_preview', 'main', 'server':
+        module = sys.modules.get(f'comfy.cmd.{name}')
+        if module:
+            sys.modules[name] = module
+            # globals()[name] = module
+
+    try:
+        import comfy.cmd.server
+        import main
+        server = getattr(comfy.cmd.server.PromptServer, 'instance', None)
+        if server is None:
+            main.server = main.server_module
+            # TODO: Hook something to get other variables?
+        else:
+            main.server = server
+            main.loop = server.loop
+            main.q = server.prompt_queue
+    except Exception as e:
+        # Give up
+        # https://github.com/Chaoses-Ib/ComfyScript/issues/127#issuecomment-5011175162
+        warnings.warn('hiddenswitch server broken')
+
+    # if start_locals is not None:
+    #     for name in 'loop', 'server', 'q', 'extra_model_paths_config_path':
+    #         setattr(main, name, start_locals[name])
+
+    try:
+        import comfy.nodes.base_nodes
+        import comfy.nodes.common
+        nodes = types.ModuleType('nodes')
+        nodes.__dict__.update(comfy.nodes.base_nodes.__dict__)
+        exported_nodes = getattr(server, 'nodes', None)
+        if exported_nodes is None:
+            exported_nodes = comfy.cmd.server.nodes
+        setattr(nodes, 'NODE_CLASS_MAPPINGS', exported_nodes.NODE_CLASS_MAPPINGS)
+        setattr(nodes, 'NODE_DISPLAY_NAME_MAPPINGS', exported_nodes.NODE_DISPLAY_NAME_MAPPINGS)
+        setattr(nodes, 'EXTENSION_WEB_DIRS', exported_nodes.EXTENSION_WEB_DIRS)
+        setattr(nodes, 'MAX_RESOLUTION', comfy.nodes.common.MAX_RESOLUTION)
+        # TODO: load_custom_node, load_custom_nodes
+        sys.modules['nodes'] = nodes
+        # globals()['nodes'] = nodes
+
+        def init_custom_nodes():
+            # Load comfyui-legacy custom nodes
+            import comfy.nodes.package
+            for entry_point in importlib.metadata.entry_points(group='comfyui_legacy.custom_nodes'):
+                try:
+                    module = entry_point.load()
+                    if isinstance(module, types.ModuleType):
+                        exported_nodes.update(
+                        comfy.nodes.package._import_and_enumerate_nodes_in_module(module, print_import_times=True))
+                except Exception as e:
+                    print(f'ComfyScript: Failed to load legacy custom nodes from {entry_point}: {e}')
+                    traceback.print_exc()
+
+            nodes.NODE_CLASS_MAPPINGS.update(exported_nodes.NODE_CLASS_MAPPINGS)
+            nodes.NODE_DISPLAY_NAME_MAPPINGS.update(exported_nodes.NODE_DISPLAY_NAME_MAPPINGS)
+            nodes.EXTENSION_WEB_DIRS.update(exported_nodes.EXTENSION_WEB_DIRS)
+        main.init_custom_nodes = init_custom_nodes
+    except Exception as e:
+        warnings.warn('hiddenswitch nodes broken')
+
+def _start_comfyui_autonomy(
+    comfyui: Path | str | None = None,
+):
+    '''
+    Currently, the server will not be started even if `no_server=False`.
+    '''
+    if comfyui != 'comfyui':
+        print(f'ComfyScript: Importing ComfyUI from {comfyui}')
+        sys.path.insert(0, str(comfyui))
+        import main
+    else:
+        print(f'ComfyScript: Importing ComfyUI from hiddenswitch/comfyui package')
+
+        import comfy.cmd.main as main
+
+        _hiddenswitch_setup_polyfills()
+
+    # Included in `import main`
+    # execute_prestartup_script()
+
+    # This server is not used by real mode, but some nodes require it to load
+    main.server = main.server.PromptServer(None)
+    main.server.add_routes()
+
+    # TODO: temp_directory, output_directory, input_directory
+
+    # extra_model_paths
+    import os
+    import itertools
+    extra_model_paths_config_path = os.path.join(os.path.dirname(os.path.realpath(main.__file__)), 'extra_model_paths.yaml')
+    if os.path.isfile(extra_model_paths_config_path):
+        main.load_extra_path_config(extra_model_paths_config_path)
+
+    if main.args.extra_model_paths_config:
+        for config_path in itertools.chain(*main.args.extra_model_paths_config):
+            main.load_extra_path_config(config_path)
+
+    main.init_custom_nodes()
+
+    main.cuda_malloc_warning()
+
+    # TODO: hijack_progress
+
+def _start_comfyui_managed(comfyui, args, no_server):
+    sys.argv.append('--quick-test-for-ci')
+    def exit_hook(code = None, *, comfyui=comfyui, no_server=no_server):
+        outer = inspect.currentframe().f_back
+        return _exit_hook(code, comfyui=comfyui, no_server=no_server, main_globals=outer.f_globals, start_locals=outer.f_locals)
+
+    # The original event loop should be restored after start comfyui (#23)
+    original_loop = None
+    try:
+        original_loop = asyncio.get_event_loop_policy().get_event_loop()
+    except Exception as e:
+        pass
+
+    if comfyui != 'comfyui':
+        print(f'ComfyScript: Importing ComfyUI from {comfyui}')
+        sys.path.insert(0, str(comfyui))
+
+        # main: dict = runpy.run_module('main', {'exit': exit_hook}, '__main__')
+        import comfy.options
+        enable_args_parsing = comfy.options.enable_args_parsing
+        def enable_args_parsing_hook():
+            globals = inspect.currentframe().f_back.f_globals
+            globals['__name__'] = '__main__'
+            globals['exit'] = exit_hook
+            _redirect___main___file(globals['__file__'])
+
+            enable_args_parsing()
+
+            _spoof_logger_if_needed()
+
+        comfy.options.enable_args_parsing = enable_args_parsing_hook
+
+        import main
+
+        del main.exit
+        main.__name__ = 'main'
+        comfy.options.enable_args_parsing = enable_args_parsing
+    else:
+        print(f'ComfyScript: Importing ComfyUI from hiddenswitch/comfyui package')
+
+        try:
+            # main_pre must be the earliest import since it suppresses some spurious warnings
+            import comfy.cmd.main_pre
+        except Exception:
+            pass
+
+        if args and not args.context_local:
+            _hiddenswitch_share_context_vars()
+
+        _spoof_logger_if_needed()
+
+        import comfy.cmd.main as main
+
+        main.exit = exit_hook
+        # or hasattr(main, 'entrypoint')
+        if inspect.iscoroutinefunction(main.main):
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(main.main())
+        else:
+            main.main()
+        del main.exit
+
+        try:
+            main.init_custom_nodes()
+        except Exception:
+            warnings.warn('init nodes failed: {e}')
+
+    asyncio.get_event_loop_policy().set_event_loop(original_loop)
+
+    if not no_server:
+        try:
+            import server
+            server_instance = server.PromptServer.instance
+        except (ImportError, AttributeError):
+            # main.server is no longer the server instance since ComfyUI v0.3.10 (https://github.com/comfyanonymous/ComfyUI/pull/6114)
+            server_instance = main.server
+
+        threading.Thread(target=server_instance.loop.run_until_complete, args=(server_instance.publish_loop(),), daemon=True).start()
+
+        comfyui_base_url = f'http://127.0.0.1:{main.args.port}/'
+        client.client = client.Client(comfyui_base_url)
+
+def start_comfyui(
+    comfyui: Path | str | None = None,
+    args: ComfyUIArgs | None = None,
+    *,
+    no_server: bool = False,
+    join_at_exit: bool = True,
+    autonomy: bool = False,
+):
+    '''
+    Start ComfyUI. Immediately return if ComfyUI is already started.
+
+    - `comfyui`: Path to ComfyUI directory.
+
+      The default path is `ComfyScript/../..`, which only works if ComfyScript is installed at `ComfyUI/custom_nodes/ComfyScript`.
+
+      If the default path does not exist, or the value of this argument is `'comfyui'`, then the runtime will try to load ComfyUI from the [`comfyui` package](https://github.com/comfyanonymous/ComfyUI/pull/298).
+
+    - `args`: CLI arguments to be passed to ComfyUI. See `ComfyUIArgs` for details.
+
+    - `no_server`: Do not start the server.
+
+    - `join_at_exit`: Join ComfyUI (wait for all tasks to be done) at process exit.
+
+    - `autonomy`: If enabled, currently, the server will not be started even if `no_server=False`.
+
+    ## Returns
+    `comfyui_started`, `comfyui_base_url`, `comfy_script.client.client` will be initialized.
+    '''
+    global comfyui_started, comfyui_base_url, _passive
+
+    if not comfyui_started and _is_comfyui_started():
+        comfyui_started = True
+        _passive = True
+        print(f'ComfyScript: Using loaded ComfyUI')
+
+        import main
+        comfyui_base_url = f'http://127.0.0.1:{main.args.port}/'
+        client.client = client.Client(comfyui_base_url)
+
+        if not no_server and join_at_exit:
+            import atexit
+            atexit.register(join_comfyui)
+
+        return
+
+    if comfyui_started and (comfyui_base_url is not None or no_server):
+        return
+    comfyui_started = False
+    comfyui_base_url = None
+
+    if comfyui is None:
+        default_comfyui = Path(__file__).resolve().parents[5]
+        if (default_comfyui / 'comfy_extras').exists() and (default_comfyui / 'main.py').exists():
+            comfyui = default_comfyui
+        else:
+            try:
+                import comfy
+            except ImportError:
+                raise ImportError(f'ComfyUI is not found at {default_comfyui} and hiddenswitch/comfyui package')
+
+    argv = args.to_argv() if args is not None else []
+    if sys.modules.get('torch') is not None and '--disable-cuda-malloc' not in argv:
+        print('ComfyScript: PyTorch is imported before start ComfyUI, PyTorch config will be skipped. If it is possible, you should only `import torch` after start_comfyui()/load() is called.')
+        argv.append('--disable-cuda-malloc')
+
+    orginal_argv = sys.argv[1:]
+    sys.argv[1:] = argv
+
+    if not autonomy:
+        _start_comfyui_managed(comfyui=comfyui, args=args, no_server=no_server)
+    else:
+        _start_comfyui_autonomy(comfyui)
+
+    sys.argv[1:] = orginal_argv
+
+    _redirect___main___file_warn = True
+    comfyui_started = True
+
+    if not no_server and join_at_exit:
+        import atexit
+        atexit.register(join_comfyui)
+
 def _fix_progress_bar_global_hook():
     if _passive:
         return
@@ -221,3 +610,21 @@ def _fix_progress_bar_global_hook():
         except Exception:
             # receive_all_progress_notifications is readonly in new versions, give up
             pass
+
+def join_comfyui():
+    '''Wait for all tasks to be done.'''
+
+    import server
+    server = getattr(server.PromptServer, 'instance', None)
+    if server is None:
+        return
+
+    prompt_queue = getattr(server, 'prompt_queue', None)
+    if prompt_queue is None:
+        return
+
+    import time
+    while prompt_queue.get_tasks_remaining() != 0:
+        time.sleep(0.1)
+
+from .. import client

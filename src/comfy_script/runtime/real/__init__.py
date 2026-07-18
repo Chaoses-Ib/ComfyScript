@@ -4,7 +4,14 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, MutableMapping
 
-def load(comfyui: Path | str = None, args: ComfyUIArgs | None = None, vars: dict | None = None, naked: bool = False, config: RealModeConfig | None = None, no_server: bool = True):
+def load(
+    comfyui: Path | str | None = None,
+    args: ComfyUIArgs | None = None,
+    vars: dict | None = None,
+    naked: bool = False,
+    config: RealModeConfig | None = None,
+    no_server: bool = True,
+):
     '''
     - `comfyui`: Path to ComfyUI directory.
     
