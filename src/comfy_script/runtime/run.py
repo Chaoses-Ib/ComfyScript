@@ -270,8 +270,14 @@ def _hiddenswitch_share_context_vars():
     try:
         import comfy.execution_context
 
-        current_context = comfy.execution_context.current_execution_context()
-        comfy.execution_context.current_execution_context = lambda: current_context
+        # https://github.com/Chaoses-Ib/ComfyScript/issues/127#issuecomment-5007240602
+        ctxs = [comfy.execution_context.current_execution_context()]
+        original_new_execution_context = comfy.execution_context._new_execution_context
+        def _new_execution_context(ctx, *, ctxs=ctxs, _new_execution_context=original_new_execution_context):
+            ctxs[0] = ctx
+            return _new_execution_context(ctx)
+        comfy.execution_context._new_execution_context = _new_execution_context
+        comfy.execution_context.current_execution_context = lambda: ctxs[0]
     except Exception:
         warnings.warn('Failed to share context-local execution context')
 
@@ -279,10 +285,16 @@ def _exit_hook(code = None, *, comfyui, no_server, main_globals: dict, start_loc
     if code != 0:
         exit(code)
 
-    if comfyui == 'comfyui':
-        _hiddenswitch_setup_polyfills(start_locals)
+    # hiddenswitch breaks that server is available after import nodes
+    # if comfyui == 'comfyui':
+    #     _hiddenswitch_setup_polyfills(start_locals)
 
-    args = main_globals['args']
+    args = main_globals.get('args')
+    if args is None:
+        # hiddenswitch breaks main.args
+        args = start_locals['args']
+        main_globals['args'] = args
+
     async def run(server, address='', port=8188, verbose=True, call_on_start=None):
         # await asyncio.gather(server.start(address, port, verbose, call_on_start), server.publish_loop())
 
@@ -487,10 +499,19 @@ def _start_comfyui_managed(comfyui, args, no_server):
             asyncio.set_event_loop(loop)
             loop.run_until_complete(main.main())
         else:
-            main.main()
+            try:
+                # hiddenswitch breaks None behavior
+                # asyncio_loop = asyncio.new_event_loop()
+                # main.start_comfyui(asyncio_loop)
+                main.main()
+            except SystemExit as e:
+                # Typer always exit()
+                if e.code != 0:
+                    raise e
         del main.exit
 
         try:
+            _hiddenswitch_setup_polyfills()
             main.init_custom_nodes()
         except Exception:
             warnings.warn('init nodes failed: {e}')
